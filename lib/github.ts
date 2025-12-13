@@ -67,22 +67,22 @@ export async function fetchAllRecipes(): Promise<Recipe[]> {
   return results.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : []));
 }
 
-interface CommitOptions {
-  recipe: Recipe;
+interface PutFileOptions {
   path: string;
   message: string;
+  contentBase64: string;
   sha?: string;
 }
 
-export async function commitRecipe({ recipe, path, message, sha }: CommitOptions): Promise<void> {
+function encodeStringToBase64(input: string): string {
+  if (typeof btoa !== 'undefined') {
+    return btoa(unescape(encodeURIComponent(input)));
+  }
+  return Buffer.from(input, 'utf-8').toString('base64');
+}
+
+export async function putFile({ path, message, contentBase64, sha }: PutFileOptions): Promise<void> {
   if (!token) throw new Error('GITHUB_TOKEN is required to commit');
-  const encode = (input: string) => {
-    if (typeof btoa !== 'undefined') {
-      return btoa(unescape(encodeURIComponent(input)));
-    }
-    return Buffer.from(input).toString('base64');
-  };
-  const content = encode(recipeToJson(recipe));
   const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
     method: 'PUT',
     headers: {
@@ -91,7 +91,7 @@ export async function commitRecipe({ recipe, path, message, sha }: CommitOptions
     },
     body: JSON.stringify({
       message,
-      content,
+      content: contentBase64,
       branch,
       sha,
     }),
@@ -100,6 +100,18 @@ export async function commitRecipe({ recipe, path, message, sha }: CommitOptions
     const body = await res.text();
     throw new Error(`GitHub commit failed: ${res.status} ${body}`);
   }
+}
+
+interface CommitOptions {
+  recipe: Recipe;
+  path: string;
+  message: string;
+  sha?: string;
+}
+
+export async function commitRecipe({ recipe, path, message, sha }: CommitOptions): Promise<void> {
+  const content = encodeStringToBase64(recipeToJson(recipe));
+  await putFile({ path, message, contentBase64: content, sha });
 }
 
 export async function fetchFileSha(path: string): Promise<string | undefined> {

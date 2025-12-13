@@ -23,6 +23,12 @@ npm install
 npm run dev
 ```
 
+## Uploading images
+- Use the new “Recipe image” uploader in the editor to pick a JPG/PNG/WebP.
+- Files are committed via the GitHub Contents API to `public/images/uploads`, and the returned `/images/uploads/...` URL is injected into `imageUrl`.
+- Because uploads land in Git, you need the usual `GITHUB_*` env vars plus `ALLOWED_USERS` configured just like recipe commits.
+- Local previews might show the placeholder until you pull the new file or a fresh deploy finishes.
+
 ## Environment
 Set these for GitHub-backed reads/writes:
 - `GITHUB_OWNER`, `GITHUB_REPO`, `GITHUB_BRANCH` (default `main`)
