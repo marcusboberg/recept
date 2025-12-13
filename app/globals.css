@@ -514,13 +514,45 @@ button, input, textarea {
 }
 
 .back-button {
-  align-self: flex-start;
-  padding: 0.4rem 0.75rem;
+  padding: 0.4rem 0.8rem;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.2);
   color: #f8fafc;
   text-decoration: none;
   font-size: 0.95rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.recipe-hero__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.recipe-hero__actions .back-button {
+  margin: 0;
+}
+
+.recipe-edit-button {
+  padding: 0.4rem 0.95rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(0, 0, 0, 0.35);
+  color: #f8fafc;
+  text-decoration: none;
+  font-size: 0.95rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.recipe-edit-button:hover {
+  background: rgba(248, 250, 252, 0.15);
 }
 
 .recipe-hero__title {
@@ -785,10 +817,19 @@ button, input, textarea {
   }
 
   .back-button.desktop {
-    align-self: flex-start;
-    margin: 0 0 1.25rem;
+    margin: 0;
+    background: rgba(255, 255, 255, 0.2);
+  }
+
+  .recipe-hero__actions--desktop {
+    width: 100%;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+  }
+
+  .recipe-edit-button {
     background: rgba(255, 255, 255, 0.18);
-    text-align: left;
+    border-color: rgba(255, 255, 255, 0.4);
   }
 
   .recipe-desktop-hero {

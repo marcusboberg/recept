@@ -58,26 +58,31 @@ export function RecipeMobile({ recipe }: { recipe: Recipe }) {
     <div className="recipe-shell" style={heroStyle}>
       <div className="recipe-mobile-only">
         <div className="recipe-hero full-bleed">
-        <div className="recipe-hero__media">
-          <Image src={heroImage} alt={recipe.title} fill sizes="100vw" priority />
-        </div>
-        <div className="recipe-hero__overlay">
-          <Link href="/" className="back-button">
-            ← Back
-          </Link>
-          <div className="recipe-hero__title">{recipe.title}</div>
-          <div className="recipe-hero__meta">
-            <span className="pill">{recipe.servings} portioner</span>
-            <span className="pill">{formatMinutes(totalTime)} totalt</span>
-            {recipe.cookTimeMinutes > 0 && <span className="pill">{formatMinutes(recipe.cookTimeMinutes)} i värmen</span>}
-            {recipe.tags.slice(0, 2).map((tag) => (
-              <span key={tag} className="pill ghost">
-                {tag}
-              </span>
-            ))}
+          <div className="recipe-hero__media">
+            <Image src={heroImage} alt={recipe.title} fill sizes="100vw" priority />
+          </div>
+          <div className="recipe-hero__overlay">
+            <div className="recipe-hero__actions">
+              <Link href="/" className="back-button">
+                ← Back
+              </Link>
+              <Link href={`/edit/${recipe.slug}/`} className="recipe-edit-button">
+                Redigera
+              </Link>
+            </div>
+            <div className="recipe-hero__title">{recipe.title}</div>
+            <div className="recipe-hero__meta">
+              <span className="pill">{recipe.servings} portioner</span>
+              <span className="pill">{formatMinutes(totalTime)} totalt</span>
+              {recipe.cookTimeMinutes > 0 && <span className="pill">{formatMinutes(recipe.cookTimeMinutes)} i värmen</span>}
+              {recipe.tags.slice(0, 2).map((tag) => (
+                <span key={tag} className="pill ghost">
+                  {tag}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
 
         <div className="recipe-body">
         <div className={activeView === 'ingredients' ? 'recipe-section recipe-section--ingredients is-active' : 'recipe-section recipe-section--ingredients'}>
@@ -168,9 +173,14 @@ export function RecipeMobile({ recipe }: { recipe: Recipe }) {
         <div className="recipe-desktop-background" />
         <div className="recipe-desktop-content">
           <div className="recipe-desktop-hero">
-            <Link href="/" className="back-button desktop">
-              ← Tillbaka
-            </Link>
+            <div className="recipe-hero__actions recipe-hero__actions--desktop">
+              <Link href="/" className="back-button desktop">
+                ← Tillbaka
+              </Link>
+              <Link href={`/edit/${recipe.slug}/`} className="recipe-edit-button recipe-edit-button--desktop">
+                Redigera
+              </Link>
+            </div>
             <h1 className="recipe-desktop-title">{recipe.title}</h1>
             <p className="recipe-desktop-meta">
               {recipe.tags.slice(0, 3).join(', ')}
