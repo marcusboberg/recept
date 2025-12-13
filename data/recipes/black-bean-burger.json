@@ -1,0 +1,83 @@
+{
+  "title": "Black bean burger",
+  "slug": "black-bean-burger",
+  "description": "Svartbönburgare med kryddig dressing och klassiska tillbehör. Servera gärna med rostad sötpotatis.",
+  "imageUrl": "https://recept.marcusboberg.se/wp-content/uploads/2022/08/353623.jpg",
+  "tags": ["vegetarisk", "bonburgare", "hamburgare", "dressing", "sotpotatis"],
+  "prepTimeMinutes": 0,
+  "cookTimeMinutes": 16,
+  "servings": 4,
+  "ingredients": [
+    { "label": "Svarta bönor", "amount": "2 burkar" },
+    { "label": "Lök", "amount": "1 stor" },
+    { "label": "Vitlök", "amount": "3 klyftor" },
+    { "label": "Havregryn", "amount": "1,5 dl" },
+    { "label": "Ägg", "amount": "1" },
+    { "label": "Spiskummin", "amount": "2 msk" },
+    { "label": "Korianderfrön", "amount": "2 msk", "notes": "hela" },
+    { "label": "Kinesisk soja", "amount": "1 stor skvätt" },
+    { "label": "Salt" },
+    { "label": "Majonnäs", "amount": "1 dl" },
+    { "label": "Sambal oelek", "amount": "1-2 msk" },
+    { "label": "Hamburgarbröd" },
+    { "label": "Tomat" },
+    { "label": "Sallad" },
+    { "label": "Sötpotatis", "notes": "till servering (side-dish)" }
+  ],
+  "ingredientGroups": [
+    {
+      "title": "Burgare",
+      "items": [
+        { "label": "Svarta bönor", "amount": "2 burkar" },
+        { "label": "Lök", "amount": "1 stor" },
+        { "label": "Vitlök", "amount": "3 klyftor" },
+        { "label": "Havregryn", "amount": "1,5 dl" },
+        { "label": "Ägg", "amount": "1" },
+        { "label": "Spiskummin", "amount": "2 msk" },
+        { "label": "Korianderfrön", "amount": "2 msk", "notes": "hela" },
+        { "label": "Kinesisk soja", "amount": "1 stor skvätt" },
+        { "label": "Salt" }
+      ]
+    },
+    {
+      "title": "Dressing",
+      "items": [
+        { "label": "Majonnäs", "amount": "1 dl" },
+        { "label": "Sambal oelek", "amount": "1-2 msk" }
+      ]
+    },
+    {
+      "title": "Tillbehör",
+      "items": [
+        { "label": "Hamburgarbröd" },
+        { "label": "Tomat" },
+        { "label": "Sallad" },
+        { "label": "Sötpotatis", "notes": "till servering (side-dish)" }
+      ]
+    }
+  ],
+  "steps": [
+    {
+      "title": "Förbered",
+      "body": "Rosta sötpotatisen i ugnen. Mosa bönorna på en stor tallrik eller ett fat, lättast är med potatisstöten. Skär av två centimeter-tjocka runda skivor av lök (det ska på hamburgaren sen)."
+    },
+    {
+      "title": "Mixa smeten",
+      "body": "Mixa ner följande till en slät smet: lök (det som är kvar efter de två stora skivorna), vitlök, havregryn, ägg, spiskummin, koriander, soja, salt."
+    },
+    {
+      "title": "Blanda och forma",
+      "body": "Blanda sedan ihop de mosade bönorna med smeten. Det ska räcka till fyra stora biffar. Dela upp smeten i fyra delar så är det lättare att fördela lika."
+    },
+    {
+      "title": "Stek",
+      "body": "Hetta upp olja i stekpannan, klicka upp biffsmeten (den kommer vara rätt kladdig), forma dem lite och stek 8 min på varje sida. Lägg även i de tjocka lökringarna och stek på samma vis. Ett tips är att inte göra biffarna för breda eller stora, för då kan det vara svårt att vända dem utan att de faller sönder, gör dem tjockare istället."
+    },
+    {
+      "title": "Servera",
+      "body": "Servera gärna med rostad sötpotatis."
+    }
+  ],
+  "createdAt": "2025-12-13T12:00:00.000Z",
+  "updatedAt": "2025-12-13T12:00:00.000Z"
+}

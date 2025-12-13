@@ -1,6 +1,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
-import { fetchGitHubUser, isUserAllowed, putFile } from '@/lib/github';
+import { isLoginAllowed, putFile } from '@/lib/github';
+import { getSessionLogin } from '@/lib/session';
 
 export const runtime = 'nodejs';
 
@@ -49,8 +50,8 @@ export async function POST(request: Request) {
 
   let useGitHub = hasGitHubConfig;
   if (useGitHub) {
-    const user = await fetchGitHubUser();
-    if (!user || !isUserAllowed(user)) {
+    const login = getSessionLogin(request);
+    if (!isLoginAllowed(login)) {
       if (isDev) {
         useGitHub = false;
       } else {

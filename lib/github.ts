@@ -30,7 +30,12 @@ export async function fetchGitHubUser(): Promise<{ login: string } | null> {
 
 export function isUserAllowed(user: { login: string } | null): boolean {
   if (!user) return false;
-  return allowedUsers.length === 0 || allowedUsers.includes(user.login);
+  return isLoginAllowed(user.login);
+}
+
+export function isLoginAllowed(login: string | null | undefined): boolean {
+  if (!login) return false;
+  return allowedUsers.length === 0 || allowedUsers.includes(login);
 }
 
 export async function listRecipeFiles(): Promise<string[]> {

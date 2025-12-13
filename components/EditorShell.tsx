@@ -12,6 +12,16 @@ interface Props {
   mode: 'new' | 'edit';
 }
 
+async function parseErrorResponse(response: Response): Promise<{ error?: string }> {
+  const text = await response.text();
+  if (!text) return {};
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { error: text };
+  }
+}
+
 export function EditorShell({ initialJson, initialTitle, mode }: Props) {
   const [content, setContent] = useState(initialJson);
   const [errors, setErrors] = useState<string[]>([]);
@@ -43,7 +53,7 @@ export function EditorShell({ initialJson, initialTitle, mode }: Props) {
         body: JSON.stringify({ content, message: `${mode === 'new' ? 'Add' : 'Update'} recipe: ${initialTitle}` }),
       });
       if (!res.ok) {
-        const payload = await res.json();
+        const payload = await parseErrorResponse(res);
         throw new Error(payload.error ?? 'Unable to save');
       }
       setStatus('Saved to GitHub main branch.');

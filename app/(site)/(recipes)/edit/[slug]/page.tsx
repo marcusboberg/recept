@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { AuthGate } from '@/components/AuthGate';
 import { EditorShell } from '@/components/EditorShell';
 import { loadRecipe, listLocalRecipeSlugs } from '@/lib/data';
 import { recipeToJson } from '@/lib/recipes';
@@ -21,7 +22,9 @@ export default async function EditRecipePage({ params }: Params) {
         <h2 className="text-2xl font-semibold">Editing {recipe.title}</h2>
         <p className="text-muted">Paste updated JSON. Invalid files never reach main.</p>
       </div>
-      <EditorShell initialJson={recipeToJson(recipe)} initialTitle={recipe.title} mode="edit" />
+      <AuthGate>
+        <EditorShell initialJson={recipeToJson(recipe)} initialTitle={recipe.title} mode="edit" />
+      </AuthGate>
     </div>
   );
 }

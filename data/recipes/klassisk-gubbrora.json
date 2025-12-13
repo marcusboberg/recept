@@ -1,0 +1,25 @@
+{
+  "title": "Klassisk gubbröra",
+  "slug": "klassisk-gubbrora",
+  "description": "Hackad och krami(g) matjessillrora med agg, rodlok och dill. Serveras pa brod, garna med kokt potatis vid sidan.",
+  "imageUrl": "https://recept.marcusboberg.se/wp-content/uploads/2024/12/klassisk-gubbrora.jpg",
+  "tags": ["sill", "matjes", "rora", "smorgas", "snabbt"],
+  "prepTimeMinutes": 0,
+  "cookTimeMinutes": 0,
+  "servings": 4,
+  "ingredients": [
+    { "label": "Kokta agg", "amount": "4 st" },
+    { "label": "Rodlok", "notes": "Efter smak" },
+    { "label": "Matjesill", "amount": "200 g" },
+    { "label": "Smor", "amount": "1 msk" },
+    { "label": "Creme fraiche", "amount": "1 dl" },
+    { "label": "Dill", "notes": "Efter smak" },
+    { "label": "Brod", "notes": "Till servering" },
+    { "label": "Potatis", "amount": "3 st", "notes": "Kokt, till servering" }
+  ],
+  "steps": [
+    { "body": "Hacka upp och blanda ihop allt. Servera pa brod." }
+  ],
+  "createdAt": "2025-12-13T00:00:00.000Z",
+  "updatedAt": "2025-12-13T00:00:00.000Z"
+}

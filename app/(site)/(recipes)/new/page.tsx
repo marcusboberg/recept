@@ -1,8 +1,8 @@
 import Link from 'next/link';
-import { EditorShell } from '@/components/EditorShell';
-import { ChatPromptCard } from '@/components/ChatPromptCard';
 import { recipeToJson } from '@/lib/recipes';
 import { emptyRecipe } from '@/lib/templates';
+import { AuthGate } from '@/components/AuthGate';
+import { NewRecipeClient } from './NewRecipeClient';
 
 const chatGptPrompt = `Du är en formatkonverterare som tar ett recept i fritext och svarar med exakt JSON för webbplatsen Recept.
 
@@ -57,10 +57,15 @@ export default function NewRecipePage() {
       <Link href="/" className="button-ghost">← Back</Link>
       <div className="space-y-2">
         <h2 className="text-2xl font-semibold">New recipe</h2>
-        <p className="text-muted">Paste full JSON. Validation happens before committing to GitHub.</p>
+        <p className="text-muted">Importera från WordPress, kör ChatGPT-prompten eller klistra in JSON manuellt.</p>
       </div>
-      <ChatPromptCard prompt={chatGptPrompt} />
-      <EditorShell initialJson={recipeToJson(emptyRecipe)} initialTitle={emptyRecipe.title} mode="new" />
+      <AuthGate>
+        <NewRecipeClient
+          prompt={chatGptPrompt}
+          initialJson={recipeToJson(emptyRecipe)}
+          initialTitle={emptyRecipe.title}
+        />
+      </AuthGate>
     </div>
   );
 }
