@@ -114,3 +114,7 @@ export async function POST(request: Request) {
 export async function GET() {
   return jsonResponse({ ok: true, message: 'POST a multipart form with a file field named "file" to upload images.' });
 }
+
+export async function HEAD() {
+  return new Response(null, { status: 200 });
+}
