@@ -16,7 +16,7 @@ export default async function EditRecipePage({ params }: Params) {
   const recipe = await loadRecipe(params.slug);
   return (
     <div className="space-y-4">
-      <Link href={`/recipe/${recipe.slug}`} className="button-ghost">← Back</Link>
+      <Link href={`/${recipe.slug}`} className="button-ghost">← Back</Link>
       <div className="space-y-2">
         <h2 className="text-2xl font-semibold">Editing {recipe.title}</h2>
         <p className="text-muted">Paste updated JSON. Invalid files never reach main.</p>

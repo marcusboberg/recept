@@ -18,7 +18,7 @@ export function RecipeCard({ recipe }: Props) {
         ))}
       </div>
       <div className="flex" style={{ gap: '0.5rem' }}>
-        <Link className="button-primary" href={`/recipe/${recipe.slug}`}>
+        <Link className="button-primary" href={`/${recipe.slug}`}>
           View
         </Link>
         <Link className="button-ghost" href={`/edit/${recipe.slug}`}>
