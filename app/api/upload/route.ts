@@ -82,7 +82,7 @@ export async function POST(request: Request) {
 
   const extension = ALLOWED_MIME_TYPES[file.type];
   const filename = buildFilename(extension);
-  const path = `${UPLOAD_DIR}/${filename}`;
+  const filePath = `${UPLOAD_DIR}/${filename}`;
   const publicUrl = `${PUBLIC_PREFIX}/${filename}`;
   const buffer = await file.arrayBuffer();
 
@@ -90,7 +90,7 @@ export async function POST(request: Request) {
     const contentBase64 = arrayBufferToBase64(buffer);
     try {
       await putFile({
-        path,
+        path: filePath,
         message: `Upload recipe image: ${filename}`,
         contentBase64,
       });
@@ -108,5 +108,5 @@ export async function POST(request: Request) {
     }
   }
 
-  return jsonResponse({ url: publicUrl, path, mode: useGitHub ? 'github' : 'local' });
+  return jsonResponse({ url: publicUrl, path: filePath, mode: useGitHub ? 'github' : 'local' });
 }
