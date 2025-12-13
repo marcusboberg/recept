@@ -1,11 +1,31 @@
-import React from 'react';
-import Link from 'next/link';
 import type { Metadata } from 'next';
 import './globals.css';
 
+const defaultSiteUrl = 'http://localhost:3000';
+const rawSiteUrl = process.env.NEXT_PUBLIC_APP_URL ?? defaultSiteUrl;
+const appUrl = rawSiteUrl.startsWith('http') ? rawSiteUrl : `https://${rawSiteUrl}`;
+const siteTitle = 'Recept | Git-backed recipes';
+const siteDescription = 'Recipes stored as JSON and rendered with Next.js';
+
 export const metadata: Metadata = {
-  title: 'Recept | Git-backed recipes',
-  description: 'Recipes stored as JSON and rendered with Next.js',
+  metadataBase: new URL(appUrl),
+  title: {
+    default: siteTitle,
+    template: '%s | Recept',
+  },
+  description: siteDescription,
+  openGraph: {
+    title: siteTitle,
+    description: siteDescription,
+    url: appUrl,
+    siteName: 'Recept',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: siteTitle,
+    description: siteDescription,
+  },
 };
 
 export default function RootLayout({
@@ -17,14 +37,6 @@ export default function RootLayout({
     <html lang="en">
       <body className="bg-stone-50 text-stone-900">
         <div className="app-shell">
-          <header className="site-header">
-            <div className="site-header__inner">
-              <Link href="/" className="brand">Recept</Link>
-              <Link className="text-link" href="/new">
-                New recipe
-              </Link>
-            </div>
-          </header>
           <main className="site-main">{children}</main>
         </div>
       </body>

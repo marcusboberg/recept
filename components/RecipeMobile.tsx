@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { DEFAULT_RECIPE_IMAGE } from '@/lib/images';
 import type { Recipe } from '@/schema/recipeSchema';
 
@@ -33,13 +33,6 @@ export function RecipeMobile({ recipe }: { recipe: Recipe }) {
   const [activeView, setActiveView] = useState<ViewMode>('ingredients');
   const [checkedIngredients, setCheckedIngredients] = useState<Record<string, boolean>>({});
   const [checkedSteps, setCheckedSteps] = useState<Record<number, boolean>>({});
-
-  useEffect(() => {
-    document.body.classList.add('is-recipe-view');
-    return () => {
-      document.body.classList.remove('is-recipe-view');
-    };
-  }, []);
 
   const ingredientGroups = useMemo(() => toIngredientGroups(recipe), [recipe]);
   const heroImage = recipe.imageUrl?.trim() ? recipe.imageUrl : DEFAULT_RECIPE_IMAGE;
