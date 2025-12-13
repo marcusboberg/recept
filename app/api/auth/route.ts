@@ -1,4 +1,4 @@
-import { isLoginAllowed } from '@/lib/github';
+import { isLoginAllowed } from '@/lib/auth';
 import { getSessionLogin } from '@/lib/session';
 
 const isStaticExport = process.env.NEXT_STATIC_EXPORT === 'true';

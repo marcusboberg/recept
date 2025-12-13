@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { loadRecipe, listLocalRecipeSlugs } from '@/lib/data';
+import { loadRecipe, listRecipeSlugs } from '@/lib/data';
 import { RecipeMobile } from '@/components/RecipeMobile';
 
 interface Params {
@@ -7,7 +7,7 @@ interface Params {
 }
 
 export async function generateStaticParams() {
-  const slugs = await listLocalRecipeSlugs();
+  const slugs = await listRecipeSlugs();
   return slugs.map((slug) => ({ slug }));
 }
 

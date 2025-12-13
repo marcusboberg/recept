@@ -1,62 +1,33 @@
-import fs from 'fs/promises';
-import path from 'path';
-import { fetchAllRecipes, fetchRecipe as fetchRemote, listRecipeFiles } from '@/lib/github';
-import { parseRecipe } from '@/lib/recipes';
-import type { Recipe } from '@/schema/recipeSchema';
+import { getDb } from '@/lib/firebaseAdmin';
+import { recipeSchema, type Recipe } from '@/schema/recipeSchema';
 
-const hasGitHubConfig = Boolean(process.env.GITHUB_OWNER && process.env.GITHUB_REPO);
+const COLLECTION_NAME = 'recipes';
+
+function parseDoc(data: FirebaseFirestore.DocumentData): Recipe {
+  const parsed = recipeSchema.safeParse(data);
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues.map((issue) => issue.message).join(', '));
+  }
+  return parsed.data;
+}
 
 export async function loadAllRecipes(): Promise<Recipe[]> {
-  if (hasGitHubConfig) {
-    try {
-      return await fetchAllRecipes();
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.warn('Falling back to local recipes', error);
-    }
-  }
-  const dir = path.join(process.cwd(), 'data/recipes');
-  const files = await fs.readdir(dir);
-  const recipes: Recipe[] = [];
-  for (const file of files.filter((f) => f.endsWith('.json'))) {
-    const content = await fs.readFile(path.join(dir, file), 'utf8');
-    const parsed = parseRecipe(content);
-    if (parsed.recipe) {
-      recipes.push(parsed.recipe);
-    }
-  }
-  return recipes;
+  const db = getDb();
+  const snapshot = await db.collection(COLLECTION_NAME).orderBy('title').get();
+  return snapshot.docs.map((doc) => parseDoc(doc.data()));
 }
 
 export async function loadRecipe(slug: string): Promise<Recipe> {
-  if (hasGitHubConfig) {
-    try {
-      return await fetchRemote(slug);
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.warn('Remote fetch failed, using local', error);
-    }
+  const db = getDb();
+  const doc = await db.collection(COLLECTION_NAME).doc(slug).get();
+  if (!doc.exists) {
+    throw new Error('Recipe not found');
   }
-  const file = path.join(process.cwd(), 'data/recipes', `${slug}.json`);
-  const content = await fs.readFile(file, 'utf8');
-  const parsed = parseRecipe(content);
-  if (!parsed.recipe) {
-    throw new Error(parsed.errors?.join('\n') ?? 'Invalid recipe');
-  }
-  return parsed.recipe;
+  return parseDoc(doc.data()!);
 }
 
-export async function listLocalRecipeSlugs(): Promise<string[]> {
-  if (hasGitHubConfig) {
-    try {
-      const files = await listRecipeFiles();
-      return files.map((file) => file.replace('.json', ''));
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.warn('Remote listing failed, using local', error);
-    }
-  }
-  const dir = path.join(process.cwd(), 'data/recipes');
-  const files = await fs.readdir(dir);
-  return files.filter((file) => file.endsWith('.json')).map((file) => file.replace('.json', ''));
+export async function listRecipeSlugs(): Promise<string[]> {
+  const db = getDb();
+  const snapshot = await db.collection(COLLECTION_NAME).get();
+  return snapshot.docs.map((doc) => doc.id);
 }

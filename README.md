@@ -1,41 +1,42 @@
 # Recept
 
-A minimal Git-backed recipe site. JSON files in `data/recipes` are the single source of truth. The UI is optimized for pasting complete JSON blobs, validating them, previewing the result, and committing directly to GitHub.
+A Firebase-backed recipe site. Recipes live as JSON documents in Firestore and the editor lets you paste or generate complete JSON blobs with inline validation and preview before saving.
 
 ## Core ideas
-- **Git is the CMS.** Recipes live as JSON files on the `main` branch.
-- **Strict schema.** All recipes must pass the Zod schema in `schema/recipeSchema.ts`.
-- **Editing = paste.** The editor is a Monaco-based JSON surface with inline validation and a live preview.
-- **Two trusted editors.** GitHub OAuth is used to restrict writes to the users listed in `ALLOWED_USERS`.
+- **Firestore is the CMS.** The `recipes` collection stores every dish using the schema in `schema/recipeSchema.ts`.
+- **Strict schema.** All edits pass through the shared Zod schema before they are persisted.
+- **Editing = paste.** The editor surface supports manually pasting JSON, importing WordPress markup, or using the bundled ChatGPT prompt.
+- **Trusted editors.** Only people med en hemlig kod (se `AUTH_CODES`) kan logga in och spara recept.
 
 ## Project structure
-- `app/` – Next.js (App Router) pages for list, detail, edit, and new recipe flows plus GitHub + auth API route handlers.
-- `components/` – UI pieces including the Monaco editor wrapper, tag/search filters, and recipe preview.
-- `lib/` – Data loaders, GitHub helpers, templates, and recipe utilities.
+- `app/` – Next.js (App Router) pages plus API routes (OAuth + Firestore writes).
+- `components/` – UI pieces including the editor, WordPress importer, tag/search filters, and recipe preview.
+- `lib/` – Firestore helpers, auth/session utilities, templates, and recipe utilities.
 - `schema/recipeSchema.ts` – Canonical Zod schema for recipe JSON.
-- `data/recipes/` – Canonical recipe JSON files (one file per recipe).
-- `scripts/validate-recipes.ts` – Schema validation used locally and in CI.
-- `.github/workflows/ci.yml` – CI that validates JSON, lints, and builds.
+- `scripts/validate-recipes.ts` – Optional schema validation for local JSON blobs.
+- `.github/workflows/` – CI + deploy workflows.
 
 ## Running locally
 ```bash
 npm install
 npm run dev
 ```
+Make sure the environment variables below are present in `.env.local`.
 
-## Uploading images
-- Use the new “Recipe image” uploader in the editor to pick a JPG/PNG/WebP.
-- Files are committed via the GitHub Contents API to `public/images/uploads`, and the returned `/images/uploads/...` URL is injected into `imageUrl`.
-- Because uploads land in Git, you need the usual `GITHUB_*` env vars plus `ALLOWED_USERS` configured just like recipe commits.
-- Local previews might show the placeholder until you pull the new file or a fresh deploy finishes.
+## Images
+Set the `imageUrl` field in the JSON to any publicly reachable image (WordPress CDN, your own hosting, etc.). The current editor does not upload images; it only rewrites `imageUrl` if you paste a different link.
 
 ## Environment
-Set these for GitHub-backed reads/writes:
-- `GITHUB_OWNER`, `GITHUB_REPO`, `GITHUB_BRANCH` (default `main`)
-- `GITHUB_TOKEN` with `repo` scope
-- `ALLOWED_USERS` comma-separated GitHub usernames allowed to commit
+| Variable | Description |
+| --- | --- |
+| `AUTH_CODES` | Comma-separated `name:code` pairs (ex: `marcus:abc123,friend:xyz789`) |
+| `SESSION_SECRET` | Random string used to sign session cookies |
+| `FIREBASE_PROJECT_ID` | Firebase project ID |
+| `FIREBASE_CLIENT_EMAIL` | Service account client email |
+| `FIREBASE_PRIVATE_KEY` | Service account private key (use `\n` for newlines) |
+| `NEXT_BASE_PATH` (optional) | Base path for static exports (set to `/recept` for GitHub Pages project sites) |
 
-Without the env vars, the site falls back to the checked-in JSON files for read-only browsing.
+When deploying the static site (GitHub Pages), set `NEXT_STATIC_EXPORT=true` in the build step so Next.js emits `out/`. The Firebase env vars must also be available during the build so the recipes can be fetched at export time.
 
 ## CI
-`npm run validate` ensures every JSON file in `data/recipes` matches the schema. GitHub Actions runs validation, linting, and build on every push/PR to `main`.
+GitHub Actions installs deps, lints, builds, and exports the static site for GitHub Pages. Provide the same environment variables (including the Firebase credentials) as repository secrets so the build can read recipes while exporting.

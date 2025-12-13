@@ -1,33 +1,51 @@
-import { generateStateToken, sanitizeRedirectPath } from '@/lib/session';
+import { isLoginAllowed, verifyLoginCode } from '@/lib/auth';
+import { createSessionCookie } from '@/lib/session';
 
 const isStaticExport = process.env.NEXT_STATIC_EXPORT === 'true';
 
 export const runtime = 'nodejs';
 export const dynamic = isStaticExport ? 'force-static' : 'force-dynamic';
 
-export async function GET(request: Request) {
-  if (isStaticExport) {
-    return new Response('OAuth login disabled in static export.', { status: 503 });
-  }
-  const clientId = process.env.GITHUB_OAUTH_CLIENT_ID;
-  const baseUrl = new URL(request.url);
-  if (!clientId) {
-    return new Response('GitHub OAuth client ID is missing.', { status: 500 });
-  }
-  const nextParam = baseUrl.searchParams.get('next');
-  const redirectPath = sanitizeRedirectPath(nextParam);
-  const state = generateStateToken(redirectPath);
-  const callbackUrl = `${baseUrl.origin}/api/auth/callback`;
-  const authorize = new URL('https://github.com/login/oauth/authorize');
-  authorize.searchParams.set('client_id', clientId);
-  authorize.searchParams.set('scope', 'read:user');
-  authorize.searchParams.set('redirect_uri', callbackUrl);
-  authorize.searchParams.set('state', state);
+const jsonHeaders = { 'Content-Type': 'application/json' } as const;
 
-  return new Response(null, {
-    status: 302,
-    headers: {
-      Location: authorize.toString(),
-    },
-  });
+export async function POST(request: Request) {
+  if (isStaticExport) {
+    return new Response(JSON.stringify({ error: 'Login disabled in static export.' }), {
+      status: 503,
+      headers: jsonHeaders,
+    });
+  }
+
+  try {
+    const body = await request.json().catch(() => null) as { login?: string; code?: string } | null;
+    const login = body?.login?.trim();
+    const code = body?.code ?? '';
+    if (!login || !code) {
+      return new Response(JSON.stringify({ error: 'Login and code are required.' }), {
+        status: 400,
+        headers: jsonHeaders,
+      });
+    }
+
+    if (!isLoginAllowed(login) || !verifyLoginCode(login, code)) {
+      return new Response(JSON.stringify({ error: 'Invalid credentials.' }), {
+        status: 401,
+        headers: jsonHeaders,
+      });
+    }
+
+    const cookie = createSessionCookie(login);
+    return new Response(JSON.stringify({ ok: true, login }), {
+      status: 200,
+      headers: {
+        ...jsonHeaders,
+        'Set-Cookie': cookie,
+      },
+    });
+  } catch (error) {
+    return new Response(JSON.stringify({ error: (error as Error).message }), {
+      status: 500,
+      headers: jsonHeaders,
+    });
+  }
 }

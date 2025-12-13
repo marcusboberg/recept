@@ -1,7 +1,6 @@
 'use client';
 
-import { ReactNode, useEffect, useState } from 'react';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { FormEvent, ReactNode, useEffect, useState } from 'react';
 
 type Status = 'loading' | 'authenticated' | 'unauthenticated';
 
@@ -17,12 +16,10 @@ interface AuthResponse {
 export function AuthGate({ children }: Props) {
   const [status, setStatus] = useState<Status>('loading');
   const [login, setLogin] = useState<string | null>(null);
-  const pathname = usePathname() ?? '/';
-  const searchParams = useSearchParams();
-  const nextPath = searchParams && searchParams.toString().length > 0
-    ? `${pathname}?${searchParams.toString()}`
-    : pathname;
-  const loginUrl = `/api/auth/login?next=${encodeURIComponent(nextPath)}`;
+  const [nameInput, setNameInput] = useState('');
+  const [codeInput, setCodeInput] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -50,6 +47,28 @@ export function AuthGate({ children }: Props) {
     };
   }, []);
 
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setErrorMessage(null);
+    setSubmitting(true);
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ login: nameInput.trim(), code: codeInput }),
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? 'Kunde inte logga in.');
+      }
+      window.location.reload();
+    } catch (error) {
+      setErrorMessage((error as Error).message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   if (status === 'loading') {
     return (
       <div className="card">
@@ -62,8 +81,37 @@ export function AuthGate({ children }: Props) {
     return (
       <div className="card space-y-3">
         <h3 className="card-title">Inloggning krävs</h3>
-        <p className="card-subtitle">Endast godkända GitHub-konton kan skapa eller redigera recept.</p>
-        <a className="button-primary" href={loginUrl}>Logga in med GitHub</a>
+        <p className="card-subtitle">Endast personer med en hemlig kod kan skapa eller redigera recept.</p>
+        <form className="space-y-2" onSubmit={handleSubmit}>
+          <label className="space-y-1" style={{ display: 'block' }}>
+            <span className="text-sm text-muted">Namn</span>
+            <input
+              type="text"
+              className="input"
+              value={nameInput}
+              onChange={(event) => setNameInput(event.target.value)}
+              required
+            />
+          </label>
+          <label className="space-y-1" style={{ display: 'block' }}>
+            <span className="text-sm text-muted">Hemlig kod</span>
+            <input
+              type="password"
+              className="input"
+              value={codeInput}
+              onChange={(event) => setCodeInput(event.target.value)}
+              required
+            />
+          </label>
+          <button type="submit" className="button-primary" disabled={submitting}>
+            {submitting ? 'Loggar in…' : 'Logga in'}
+          </button>
+          {errorMessage && (
+            <p className="text-sm" style={{ color: '#b91c1c', margin: 0 }}>
+              {errorMessage}
+            </p>
+          )}
+        </form>
       </div>
     );
   }
