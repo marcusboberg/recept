@@ -110,3 +110,7 @@ export async function POST(request: Request) {
 
   return jsonResponse({ url: publicUrl, path: filePath, mode: useGitHub ? 'github' : 'local' });
 }
+
+export async function GET() {
+  return jsonResponse({ ok: true, message: 'POST a multipart form with a file field named "file" to upload images.' });
+}
