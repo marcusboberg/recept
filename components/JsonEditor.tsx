@@ -12,6 +12,9 @@ interface Props {
 }
 
 export function JsonEditor({ value, onChange, errors = [] }: Props) {
+  const editorRef = useRef<import('monaco-editor').editor.IStandaloneCodeEditor | null>(null);
+  const monacoRef = useRef<typeof import('monaco-editor') | null>(null);
+
   const markers = useMemo(
     () =>
       errors.map((message, index) => ({
@@ -24,9 +27,6 @@ export function JsonEditor({ value, onChange, errors = [] }: Props) {
       })),
     [errors],
   );
-
-  const editorRef = useRef<import('monaco-editor').editor.IStandaloneCodeEditor | null>(null);
-  const monacoRef = useRef<typeof import('monaco-editor') | null>(null);
 
   useEffect(() => {
     if (editorRef.current && monacoRef.current) {
