@@ -30,11 +30,20 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Cache Next.js build artifacts
+        uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-
+
       - name: Build static site
         run: npm run build
         env:
           NEXT_STATIC_EXPORT: "true"
           NEXT_BASE_PATH: "/recept"
+          NEXT_CACHE_DIR: ".next/cache"
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
           FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
           FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
