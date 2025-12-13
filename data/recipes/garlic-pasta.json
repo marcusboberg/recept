@@ -1,0 +1,23 @@
+{
+  "title": "Garlic Butter Pasta",
+  "slug": "garlic-butter-pasta",
+  "description": "A quick weeknight pasta with olive oil, garlic, and parsley.",
+  "tags": ["quick", "pasta", "vegetarian"],
+  "prepTimeMinutes": 10,
+  "cookTimeMinutes": 15,
+  "servings": 2,
+  "ingredients": [
+    { "label": "Spaghetti", "amount": "180 g" },
+    { "label": "Olive oil", "amount": "3 tbsp" },
+    { "label": "Garlic cloves", "amount": "3", "notes": "thinly sliced" },
+    { "label": "Parsley", "amount": "2 tbsp", "notes": "chopped" },
+    { "label": "Salt and pepper", "notes": "to taste" }
+  ],
+  "steps": [
+    { "title": "Boil pasta", "body": "Cook spaghetti in salted water until al dente." },
+    { "title": "Toast garlic", "body": "Warm olive oil in a pan and gently toast garlic until fragrant." },
+    { "title": "Combine", "body": "Toss drained pasta with oil, garlic, parsley, and seasoning." }
+  ],
+  "source": "https://example.com/garlic-pasta",
+  "createdAt": "2024-01-05T12:00:00.000Z"
+}
