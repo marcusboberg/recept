@@ -9,8 +9,9 @@
     "start": "next start",
     "lint": "next lint",
     "validate": "node --loader ts-node/esm scripts/validate-recipes.ts",
-    "validate:recipes": "node --loader ts-node/esm scripts/validate-recipes.ts"
-    
+    "validate:recipes": "node --loader ts-node/esm scripts/validate-recipes.ts",
+    "export": "next build"
+
   },
   "dependencies": {
     "@monaco-editor/react": "^4.6.0",
