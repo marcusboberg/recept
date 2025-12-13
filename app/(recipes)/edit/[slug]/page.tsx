@@ -15,7 +15,7 @@ export async function generateStaticParams() {
 export default async function EditRecipePage({ params }: Params) {
   const recipe = await loadRecipe(params.slug);
   return (
-    <div className="space-y-4">
+    <div className="page-shell space-y-4">
       <Link href={`/${recipe.slug}`} className="button-ghost">← Back</Link>
       <div className="space-y-2">
         <h2 className="text-2xl font-semibold">Editing {recipe.title}</h2>

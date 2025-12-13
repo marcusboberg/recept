@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { DEFAULT_RECIPE_IMAGE } from '@/lib/images';
 import type { Recipe } from '@/schema/recipeSchema';
 
@@ -33,6 +33,13 @@ export function RecipeMobile({ recipe }: { recipe: Recipe }) {
   const [activeView, setActiveView] = useState<ViewMode>('ingredients');
   const [checkedIngredients, setCheckedIngredients] = useState<Record<string, boolean>>({});
   const [checkedSteps, setCheckedSteps] = useState<Record<number, boolean>>({});
+
+  useEffect(() => {
+    document.body.classList.add('is-recipe-view');
+    return () => {
+      document.body.classList.remove('is-recipe-view');
+    };
+  }, []);
 
   const ingredientGroups = useMemo(() => toIngredientGroups(recipe), [recipe]);
   const heroImage = recipe.imageUrl?.trim() ? recipe.imageUrl : DEFAULT_RECIPE_IMAGE;
@@ -71,7 +78,7 @@ export function RecipeMobile({ recipe }: { recipe: Recipe }) {
       </div>
 
       <div className="recipe-body">
-        <div className={activeView === 'ingredients' ? 'recipe-section is-active' : 'recipe-section'}>
+        <div className={activeView === 'ingredients' ? 'recipe-section recipe-section--ingredients is-active' : 'recipe-section recipe-section--ingredients'}>
           {ingredientGroups.map((group, groupIndex) => (
             <div key={group.title ?? groupIndex} className="recipe-block">
               <div className="recipe-block__title">{group.title ?? 'Ingredienser'}</div>
@@ -79,7 +86,7 @@ export function RecipeMobile({ recipe }: { recipe: Recipe }) {
                 {group.items.map((item, itemIndex) => {
                   const id = `${groupIndex}-${item.label}-${itemIndex}`;
                   const isChecked = Boolean(checkedIngredients[id]);
-                  const detail = [item.amount, item.notes].filter(Boolean).join(' • ');
+                  const amount = item.amount?.trim();
                   return (
                     <li key={id} className={isChecked ? 'checklist__item is-checked' : 'checklist__item'}>
                       <label className="checklist__row">
@@ -90,8 +97,10 @@ export function RecipeMobile({ recipe }: { recipe: Recipe }) {
                           aria-label={item.label}
                         />
                         <div className="checklist__text">
-                          <span className="checklist__label">{item.label}</span>
-                          {detail && <span className="checklist__meta">{detail}</span>}
+                          <div className="checklist__line">
+                            <span className="checklist__label">{item.label}</span>
+                            {amount && <span className="checklist__amount">{amount}</span>}
+                          </div>
                         </div>
                       </label>
                     </li>
@@ -102,7 +111,7 @@ export function RecipeMobile({ recipe }: { recipe: Recipe }) {
           ))}
         </div>
 
-        <div className={activeView === 'steps' ? 'recipe-section is-active' : 'recipe-section'}>
+        <div className={activeView === 'steps' ? 'recipe-section recipe-section--steps is-active' : 'recipe-section recipe-section--steps'}>
           <div className="recipe-block">
             <div className="recipe-block__title">Gör så här</div>
             <ol className="checklist" aria-label="Gör så här">

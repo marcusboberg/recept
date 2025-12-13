@@ -5,6 +5,7 @@
   --card: #ffffff;
   --accent: #0f766e;
   --radius: 14px;
+  --header-height: 72px;
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
@@ -16,6 +17,41 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
+}
+
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.site-main {
+  flex: 1;
+  width: 100%;
+  padding-top: var(--header-height);
+  display: flex;
+  flex-direction: column;
+}
+
+body.is-recipe-view .site-header {
+  display: none;
+}
+
+body.is-recipe-view .site-main {
+  padding-top: 0;
+}
+
+body.is-recipe-view .recipe-shell {
+  margin-top: 0;
+}
+
+.page-shell {
+  width: 100%;
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: 2rem 1rem 3rem;
+  display: flex;
+  flex-direction: column;
 }
 
 a {
@@ -271,14 +307,24 @@ button, input, textarea {
 }
 
 .site-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 25;
+  background: rgba(247, 241, 232, 0.85);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(31, 21, 15, 0.08);
+}
+
+.site-header__inner {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  position: sticky;
-  top: 0;
-  background: var(--bg);
-  padding: 0.25rem 0;
-  z-index: 10;
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: 0.75rem 1rem;
+  gap: 1rem;
 }
 
 .brand {
@@ -405,11 +451,14 @@ button, input, textarea {
   background: var(--bg);
   color: var(--text);
   overflow: hidden;
+  margin-top: calc(-1 * var(--header-height));
+  display: flex;
+  flex-direction: column;
 }
 
 .recipe-hero {
   position: relative;
-  min-height: 60vh;
+  min-height: 65vh;
   overflow: hidden;
 }
 
@@ -431,7 +480,7 @@ button, input, textarea {
   flex-direction: column;
   justify-content: flex-end;
   gap: 0.75rem;
-  padding: 1.75rem 1.25rem;
+  padding: calc(var(--header-height) + 1rem) 1.5rem 2rem;
   background: linear-gradient(180deg, rgba(0, 0, 0, 0.15) 0%, rgba(0, 0, 0, 0.55) 100%);
   color: #f8fafc;
 }
@@ -476,23 +525,41 @@ button, input, textarea {
 }
 
 .recipe-body {
-  padding: 1.5rem 1.25rem 5rem;
-  display: grid;
-  gap: 1.25rem;
+  padding: 2.5rem 1.5rem 6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
 }
 
 .recipe-section {
   display: none;
+  width: 100%;
 }
 
 .recipe-section.is-active {
   display: block;
 }
 
+.recipe-section--ingredients,
+.recipe-section--steps {
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.recipe-section--ingredients {
+  max-width: 520px;
+}
+
 .recipe-block {
-  background: rgba(255, 255, 255, 0.65);
-  border-radius: 16px;
-  padding: 1rem 1rem 0.25rem;
+  background: transparent;
+  border-radius: 0;
+  padding: 1rem 0 0.5rem;
+  border-top: 1px solid rgba(31, 21, 15, 0.08);
+}
+
+.recipe-block:first-of-type {
+  border-top: none;
+  padding-top: 0;
 }
 
 .recipe-block__title {
@@ -504,27 +571,30 @@ button, input, textarea {
   list-style: none;
   padding: 0;
   margin: 0;
-  display: grid;
-  gap: 0.65rem;
+  display: flex;
+  flex-direction: column;
 }
 
 .checklist__item {
-  border-radius: 14px;
-  background: #efe7de;
-  transition: background 0.2s ease, transform 0.2s ease;
+  padding: 0.25rem 0;
+  border-bottom: 1px solid rgba(31, 21, 15, 0.12);
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+
+.checklist__item:last-child {
+  border-bottom: none;
 }
 
 .checklist__item.is-checked {
-  background: #dff4e6;
-  transform: translateY(-1px);
+  border-bottom-color: rgba(15, 118, 110, 0.35);
 }
 
 .checklist__row {
   display: grid;
   grid-template-columns: auto 1fr;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.75rem;
-  padding: 0.75rem 0.9rem;
+  padding: 0.65rem 0;
   cursor: pointer;
 }
 
@@ -538,12 +608,30 @@ button, input, textarea {
 .checklist__text {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.2rem;
+}
+
+.checklist__line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
 }
 
 .checklist__label {
   font-weight: 600;
   line-height: 1.4;
+}
+
+.checklist__item.is-checked .checklist__label {
+  color: var(--accent);
+}
+
+.checklist__amount {
+  font-weight: 600;
+  color: var(--muted);
+  text-align: right;
+  min-width: 4rem;
 }
 
 .checklist__meta {

@@ -5,7 +5,7 @@ import { RecipesShell } from '@/components/RecipesShell';
 export default async function Home() {
   const recipes = await loadAllRecipes();
   return (
-    <div className="space-y-6">
+    <div className="page-shell space-y-6">
       <section className="hero">
         <div className="hero__copy">
           <p className="eyebrow">Minimal recipes</p>

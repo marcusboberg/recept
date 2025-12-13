@@ -5,7 +5,7 @@ import { emptyRecipe } from '@/lib/templates';
 
 export default function NewRecipePage() {
   return (
-    <div className="space-y-4">
+    <div className="page-shell space-y-4">
       <Link href="/" className="button-ghost">← Back</Link>
       <div className="space-y-2">
         <h2 className="text-2xl font-semibold">New recipe</h2>

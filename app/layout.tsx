@@ -16,17 +16,17 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="bg-stone-50 text-stone-900">
-        <main className="min-h-screen flex flex-col">
-          <div className="max-w-5xl w-full mx-auto px-4 py-6 space-y-8">
-            <header className="site-header">
+        <div className="app-shell">
+          <header className="site-header">
+            <div className="site-header__inner">
               <Link href="/" className="brand">Recept</Link>
               <Link className="text-link" href="/new">
                 New recipe
               </Link>
-            </header>
-            {children}
-          </div>
-        </main>
+            </div>
+          </header>
+          <main className="site-main">{children}</main>
+        </div>
       </body>
     </html>
   );

@@ -12,9 +12,5 @@ export async function generateStaticParams() {
 
 export default async function RecipePage({ params }: Params) {
   const recipe = await loadRecipe(params.slug);
-  return (
-    <div className="space-y-4">
-      <RecipeMobile recipe={recipe} />
-    </div>
-  );
+  return <RecipeMobile recipe={recipe} />;
 }
