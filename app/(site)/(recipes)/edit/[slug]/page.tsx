@@ -23,11 +23,13 @@ export default async function EditRecipePage({ params }: Params) {
         <h2 className="text-2xl font-semibold">Editing {recipe.title}</h2>
         <p className="text-muted">Paste updated JSON. Invalid files never reach main.</p>
       </div>
-      <AuthGate>
-        <Suspense fallback={<div className="card"><p className="card-subtitle" style={{ marginBottom: 0 }}>Laddar editorn…</p></div>}>
-          <EditorShell initialJson={recipeToJson(recipe)} initialTitle={recipe.title} mode="edit" />
-        </Suspense>
-      </AuthGate>
+      <Suspense fallback={<div className="card"><p className="card-subtitle" style={{ marginBottom: 0 }}>Kontrollerar behörighet…</p></div>}>
+        <AuthGate>
+          <Suspense fallback={<div className="card"><p className="card-subtitle" style={{ marginBottom: 0 }}>Laddar editorn…</p></div>}>
+            <EditorShell initialJson={recipeToJson(recipe)} initialTitle={recipe.title} mode="edit" />
+          </Suspense>
+        </AuthGate>
+      </Suspense>
     </div>
   );
 }

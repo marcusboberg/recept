@@ -60,15 +60,17 @@ export default function NewRecipePage() {
         <h2 className="text-2xl font-semibold">New recipe</h2>
         <p className="text-muted">Importera från WordPress, kör ChatGPT-prompten eller klistra in JSON manuellt.</p>
       </div>
-      <AuthGate>
-        <Suspense fallback={<div className="card"><p className="card-subtitle" style={{ marginBottom: 0 }}>Laddar formuläret…</p></div>}>
-          <NewRecipeClient
-            prompt={chatGptPrompt}
-            initialJson={recipeToJson(emptyRecipe)}
-            initialTitle={emptyRecipe.title}
-          />
-        </Suspense>
-      </AuthGate>
+      <Suspense fallback={<div className="card"><p className="card-subtitle" style={{ marginBottom: 0 }}>Kontrollerar behörighet…</p></div>}>
+        <AuthGate>
+          <Suspense fallback={<div className="card"><p className="card-subtitle" style={{ marginBottom: 0 }}>Laddar formuläret…</p></div>}>
+            <NewRecipeClient
+              prompt={chatGptPrompt}
+              initialJson={recipeToJson(emptyRecipe)}
+              initialTitle={emptyRecipe.title}
+            />
+          </Suspense>
+        </AuthGate>
+      </Suspense>
     </div>
   );
 }
