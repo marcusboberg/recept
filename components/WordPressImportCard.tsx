@@ -224,7 +224,7 @@ function collectSteps(doc: Document): Recipe['steps'] {
         body: text,
       };
     })
-    .filter((step): step is Recipe['steps'][number] => Boolean(step));
+    .filter((step): step is { title: string | undefined; body: string } => Boolean(step));
 
   if (fromTabs.length > 0) {
     return fromTabs;
