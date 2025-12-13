@@ -1,7 +1,8 @@
 'use client';
 
+import Link from 'next/link';
 import Image from 'next/image';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { Recipe } from '@/schema/recipeSchema';
 
 const DEFAULT_HERO_IMAGE =
@@ -53,22 +54,12 @@ function toIngredientGroups(recipe: Recipe): IngredientGroup[] {
 
 export function RecipeMobile({ recipe }: { recipe: Recipe }) {
   const [activeView, setActiveView] = useState<ViewMode>('ingredients');
-  const [collapsedHero, setCollapsedHero] = useState(false);
   const [checkedIngredients, setCheckedIngredients] = useState<Record<string, boolean>>({});
   const [checkedSteps, setCheckedSteps] = useState<Record<number, boolean>>({});
 
   const ingredientGroups = useMemo(() => toIngredientGroups(recipe), [recipe]);
   const heroImage = recipe.imageUrl?.trim() ? recipe.imageUrl : DEFAULT_HERO_IMAGE;
   const totalTime = recipe.prepTimeMinutes + recipe.cookTimeMinutes;
-
-  useEffect(() => {
-    const onScroll = () => {
-      setCollapsedHero(window.scrollY > 80);
-    };
-    window.addEventListener('scroll', onScroll, { passive: true });
-    onScroll();
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
 
   const toggleIngredient = (key: string) => {
     setCheckedIngredients((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -80,18 +71,19 @@ export function RecipeMobile({ recipe }: { recipe: Recipe }) {
 
   return (
     <div className="recipe-shell">
-      <div className={`recipe-hero full-bleed ${collapsedHero ? 'is-collapsed' : ''}`}>
+      <div className="recipe-hero full-bleed">
         <div className="recipe-hero__media">
           <Image src={heroImage} alt={recipe.title} fill sizes="100vw" priority />
         </div>
         <div className="recipe-hero__overlay">
+          <Link href="/" className="back-button">
+            ← Back
+          </Link>
           <div className="recipe-hero__title">{recipe.title}</div>
           <div className="recipe-hero__meta">
             <span className="pill">{recipe.servings} portioner</span>
             <span className="pill">{formatMinutes(totalTime)} totalt</span>
-            {recipe.cookTimeMinutes > 0 && (
-              <span className="pill">{formatMinutes(recipe.cookTimeMinutes)} i värmen</span>
-            )}
+            {recipe.cookTimeMinutes > 0 && <span className="pill">{formatMinutes(recipe.cookTimeMinutes)} i värmen</span>}
             {recipe.tags.slice(0, 2).map((tag) => (
               <span key={tag} className="pill ghost">
                 {tag}

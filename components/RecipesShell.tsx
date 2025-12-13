@@ -23,22 +23,17 @@ export function RecipesShell({ recipes }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="space-y-4 card">
+      <div className="filters">
         <SearchBar value={query} onChange={setQuery} />
-        <div className="flex" style={{ alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-          <span className="text-sm text-muted">Tags</span>
-          <TagFilter
-            tags={tags}
-            active={activeTags}
-            onToggle={(tag) =>
-              setActiveTags((current) =>
-                current.includes(tag) ? current.filter((t) => t !== tag) : [...current, tag],
-              )
-            }
-          />
-        </div>
+        <TagFilter
+          tags={tags}
+          active={activeTags}
+          onToggle={(tag) =>
+            setActiveTags((current) => (current.includes(tag) ? current.filter((t) => t !== tag) : [...current, tag]))
+          }
+        />
       </div>
-      <div className="grid grid-3">
+      <div className="recipe-grid">
         {filtered.map((recipe) => (
           <RecipeCard key={recipe.slug} recipe={recipe} />
         ))}
