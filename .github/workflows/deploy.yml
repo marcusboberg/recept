@@ -42,7 +42,6 @@ jobs:
         run: npm run build
         env:
           NEXT_STATIC_EXPORT: "true"
-          NEXT_BASE_PATH: "/recept"
           NEXT_CACHE_DIR: ".next/cache"
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
           FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
