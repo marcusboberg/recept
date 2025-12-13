@@ -10,7 +10,7 @@
     "lint": "next lint",
     "validate": "node --loader ts-node/esm scripts/validate-recipes.ts",
     "validate:recipes": "node --loader ts-node/esm scripts/validate-recipes.ts",
-    "export": "next build"
+    "export": "next build && next export"
 
   },
   "dependencies": {
