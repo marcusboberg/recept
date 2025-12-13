@@ -6,6 +6,10 @@ interface Props {
 }
 
 export function RecipePreview({ recipe }: Props) {
+  const ingredientGroups = recipe.ingredientGroups?.length
+    ? recipe.ingredientGroups
+    : [{ title: undefined, items: recipe.ingredients }];
+
   return (
     <div className="card">
       <div className="flex" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
@@ -19,16 +23,21 @@ export function RecipePreview({ recipe }: Props) {
       <div className="two-col">
         <section className="stack">
           <h3 className="text-lg font-semibold">Ingredients</h3>
-          <ul className="stack" style={{ padding: 0, margin: 0, listStyle: 'none' }}>
-            {recipe.ingredients.map((item) => (
-              <li key={item.label} className="card" style={{ padding: '0.65rem 0.75rem' }}>
-                <div className="font-medium">{item.label}</div>
-                <div className="text-sm text-muted">
-                  {[item.amount, item.notes].filter(Boolean).join(' • ')}
-                </div>
-              </li>
-            ))}
-          </ul>
+          {ingredientGroups.map((group, idx) => (
+            <div key={group.title ?? idx} className="stack">
+              {group.title && <div className="font-medium text-muted">{group.title}</div>}
+              <ul className="stack" style={{ padding: 0, margin: 0, listStyle: 'none' }}>
+                {group.items.map((item) => (
+                  <li key={item.label} className="card" style={{ padding: '0.65rem 0.75rem' }}>
+                    <div className="font-medium">{item.label}</div>
+                    <div className="text-sm text-muted">
+                      {[item.amount, item.notes].filter(Boolean).join(' • ')}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </section>
         <section className="stack">
           <h3 className="text-lg font-semibold">Steps</h3>

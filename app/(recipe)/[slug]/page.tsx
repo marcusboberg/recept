@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { loadRecipe, listLocalRecipeSlugs } from '@/lib/data';
-import { RecipePreview } from '@/components/RecipePreview';
+import { RecipeMobile } from '@/components/RecipeMobile';
 
 interface Params {
   params: { slug: string };
@@ -16,7 +16,7 @@ export default async function RecipePage({ params }: Params) {
   return (
     <div className="space-y-4">
       <Link href="/" className="button-ghost">← Back</Link>
-      <RecipePreview recipe={recipe} />
+      <RecipeMobile recipe={recipe} />
       <div className="flex" style={{ gap: '0.5rem' }}>
         <Link className="button-primary" href={`/edit/${recipe.slug}`}>
           Edit JSON

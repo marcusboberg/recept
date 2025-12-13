@@ -8,11 +8,20 @@ export const recipeSchema = z.object({
   prepTimeMinutes: z.number().int().nonnegative(),
   cookTimeMinutes: z.number().int().nonnegative(),
   servings: z.number().int().positive(),
+  imageUrl: z.string().url().or(z.string().startsWith('/')).optional(),
   ingredients: z.array(z.object({
     label: z.string(),
     amount: z.string().optional(),
     notes: z.string().optional(),
   })).min(1, 'At least one ingredient'),
+  ingredientGroups: z.array(z.object({
+    title: z.string().optional(),
+    items: z.array(z.object({
+      label: z.string(),
+      amount: z.string().optional(),
+      notes: z.string().optional(),
+    })).min(1, 'Group must include ingredients'),
+  })).optional(),
   steps: z.array(z.object({
     title: z.string().optional(),
     body: z.string().min(1, 'Step text required'),
