@@ -285,6 +285,198 @@ button, input, textarea {
   gap: 0.75rem;
 }
 
+.full-bleed {
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+}
+
+.recipe-shell {
+  position: relative;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+}
+
+.recipe-hero {
+  position: sticky;
+  top: 0;
+  height: 320px;
+  transition: height 0.3s ease, box-shadow 0.3s ease;
+  z-index: 5;
+  overflow: hidden;
+  width: 100%;
+}
+
+.recipe-hero.is-collapsed {
+  height: 220px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.recipe-hero__media {
+  position: absolute;
+  inset: 0;
+}
+
+.recipe-hero__media img {
+  object-fit: cover;
+  width: 100%;
+  height: 100%;
+}
+
+.recipe-hero__overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 1.75rem 1.25rem;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 20%, rgba(0, 0, 0, 0.65) 100%);
+  color: #f8fafc;
+}
+
+.recipe-hero__title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+}
+
+.recipe-hero__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.5);
+  color: #f8fafc;
+  border: 1px solid rgba(248, 250, 252, 0.18);
+  font-size: 0.85rem;
+}
+
+.pill.ghost {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.recipe-body {
+  padding: 1.5rem 1.25rem 5rem;
+  display: grid;
+  gap: 1.25rem;
+}
+
+.recipe-section {
+  display: none;
+}
+
+.recipe-section.is-active {
+  display: block;
+}
+
+.recipe-block {
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.06);
+  padding: 1rem 1rem 0.25rem;
+}
+
+.recipe-block__title {
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+}
+
+.checklist {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.checklist__item {
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: white;
+  transition: background 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+}
+
+.checklist__item.is-checked {
+  background: #ecfdf3;
+  border-color: #bbf7d0;
+  transform: translateY(-1px);
+}
+
+.checklist__row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem 0.9rem;
+  cursor: pointer;
+}
+
+.checklist__row input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--accent);
+  margin-top: 0.2rem;
+}
+
+.checklist__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.checklist__label {
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.checklist__meta {
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.recipe-toggle {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  padding: 0.85rem 1.25rem env(safe-area-inset-bottom, 0.85rem);
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 -12px 30px rgba(0, 0, 0, 0.08);
+  z-index: 15;
+}
+
+.toggle-button {
+  border-radius: 14px;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--border);
+  background: white;
+  font-weight: 700;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.toggle-button.is-active {
+  background: #0f766e;
+  color: white;
+  border-color: #0f766e;
+}
+
 .two-col {
   display: grid;
   grid-template-columns: 1fr 1fr;
