@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { loadRecipe, listLocalRecipeSlugs } from '@/lib/data';
 import { RecipeMobile } from '@/components/RecipeMobile';
 
@@ -15,13 +14,7 @@ export default async function RecipePage({ params }: Params) {
   const recipe = await loadRecipe(params.slug);
   return (
     <div className="space-y-4">
-      <Link href="/" className="button-ghost">← Back</Link>
       <RecipeMobile recipe={recipe} />
-      <div className="flex" style={{ gap: '0.5rem' }}>
-        <Link className="button-primary" href={`/edit/${recipe.slug}`}>
-          Edit JSON
-        </Link>
-      </div>
     </div>
   );
 }
