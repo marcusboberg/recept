@@ -1,3 +1,5 @@
+import Image from 'next/image';
+import { DEFAULT_RECIPE_IMAGE } from '@/lib/images';
 import type { Recipe } from '@/schema/recipeSchema';
 import { summarizeRecipe } from '@/lib/recipes';
 
@@ -9,9 +11,13 @@ export function RecipePreview({ recipe }: Props) {
   const ingredientGroups = recipe.ingredientGroups?.length
     ? recipe.ingredientGroups
     : [{ title: undefined, items: recipe.ingredients }];
+  const hero = recipe.imageUrl?.trim() || DEFAULT_RECIPE_IMAGE;
 
   return (
     <div className="card">
+      <div className="recipe-preview__hero">
+        <Image src={hero} alt={recipe.title} fill sizes="640px" />
+      </div>
       <div className="flex" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <div className="text-2xl font-semibold">{recipe.title}</div>
