@@ -1,7 +1,10 @@
 import { createSessionCookie, decodeStateToken, sanitizeRedirectPath } from '@/lib/session';
 import { isLoginAllowed } from '@/lib/github';
 
+const isStaticExport = process.env.NEXT_STATIC_EXPORT === 'true';
+
 export const runtime = 'nodejs';
+export const dynamic = isStaticExport ? 'force-static' : 'force-dynamic';
 
 interface GitHubUserResponse {
   login: string;
@@ -48,6 +51,9 @@ async function fetchGitHubProfile(token: string): Promise<GitHubUserResponse> {
 }
 
 export async function GET(request: Request) {
+  if (isStaticExport) {
+    return new Response('OAuth callback disabled in static export.', { status: 503 });
+  }
   const url = new URL(request.url);
   const error = url.searchParams.get('error');
   if (error) {

@@ -1,8 +1,14 @@
 import { generateStateToken, sanitizeRedirectPath } from '@/lib/session';
 
+const isStaticExport = process.env.NEXT_STATIC_EXPORT === 'true';
+
 export const runtime = 'nodejs';
+export const dynamic = isStaticExport ? 'force-static' : 'force-dynamic';
 
 export async function GET(request: Request) {
+  if (isStaticExport) {
+    return new Response('OAuth login disabled in static export.', { status: 503 });
+  }
   const clientId = process.env.GITHUB_OAUTH_CLIENT_ID;
   const baseUrl = new URL(request.url);
   if (!clientId) {

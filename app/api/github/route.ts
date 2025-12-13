@@ -2,12 +2,21 @@ import { commitRecipe, fetchFileSha, isLoginAllowed } from '@/lib/github';
 import { parseRecipe } from '@/lib/recipes';
 import { getSessionLogin } from '@/lib/session';
 
+const isStaticExport = process.env.NEXT_STATIC_EXPORT === 'true';
+
 export const runtime = 'nodejs';
+export const dynamic = isStaticExport ? 'force-static' : 'force-dynamic';
 
 const jsonHeaders = { 'Content-Type': 'application/json' };
 
 export async function POST(request: Request) {
   try {
+    if (isStaticExport) {
+      return new Response(JSON.stringify({ error: 'GitHub commits disabled in static export.' }), {
+        status: 503,
+        headers: jsonHeaders,
+      });
+    }
     const body = await request.json();
     const { content, message } = body as { content?: string; message?: string };
     if (!content) {

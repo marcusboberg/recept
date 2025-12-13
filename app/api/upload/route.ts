@@ -3,7 +3,10 @@ import path from 'path';
 import { isLoginAllowed, putFile } from '@/lib/github';
 import { getSessionLogin } from '@/lib/session';
 
+const isStaticExport = process.env.NEXT_STATIC_EXPORT === 'true';
+
 export const runtime = 'nodejs';
+export const dynamic = isStaticExport ? 'force-static' : 'force-dynamic';
 
 const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4MB
 const ALLOWED_MIME_TYPES: Record<string, string> = {
@@ -44,6 +47,9 @@ function buildFilename(extension: string) {
 }
 
 export async function POST(request: Request) {
+  if (isStaticExport) {
+    return jsonResponse({ error: 'Uploads disabled in static export.' }, 503);
+  }
   if (!hasGitHubConfig && !isDev) {
     return jsonResponse({ error: 'Image upload requires GitHub configuration. Set GITHUB_* env vars.' }, 500);
   }
