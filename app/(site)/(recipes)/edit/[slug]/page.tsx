@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { AuthGate } from '@/components/AuthGate';
 import { EditorShell } from '@/components/EditorShell';
@@ -23,7 +24,9 @@ export default async function EditRecipePage({ params }: Params) {
         <p className="text-muted">Paste updated JSON. Invalid files never reach main.</p>
       </div>
       <AuthGate>
-        <EditorShell initialJson={recipeToJson(recipe)} initialTitle={recipe.title} mode="edit" />
+        <Suspense fallback={<div className="card"><p className="card-subtitle" style={{ marginBottom: 0 }}>Laddar editorn…</p></div>}>
+          <EditorShell initialJson={recipeToJson(recipe)} initialTitle={recipe.title} mode="edit" />
+        </Suspense>
       </AuthGate>
     </div>
   );

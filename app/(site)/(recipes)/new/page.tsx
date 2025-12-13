@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { recipeToJson } from '@/lib/recipes';
 import { emptyRecipe } from '@/lib/templates';
@@ -60,11 +61,13 @@ export default function NewRecipePage() {
         <p className="text-muted">Importera från WordPress, kör ChatGPT-prompten eller klistra in JSON manuellt.</p>
       </div>
       <AuthGate>
-        <NewRecipeClient
-          prompt={chatGptPrompt}
-          initialJson={recipeToJson(emptyRecipe)}
-          initialTitle={emptyRecipe.title}
-        />
+        <Suspense fallback={<div className="card"><p className="card-subtitle" style={{ marginBottom: 0 }}>Laddar formuläret…</p></div>}>
+          <NewRecipeClient
+            prompt={chatGptPrompt}
+            initialJson={recipeToJson(emptyRecipe)}
+            initialTitle={emptyRecipe.title}
+          />
+        </Suspense>
       </AuthGate>
     </div>
   );
