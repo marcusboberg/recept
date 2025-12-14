@@ -10,6 +10,7 @@ export function ChatPromptCard({ prompt }: Props) {
   const [message, setMessage] = useState<string | null>(null);
   const [isError, setIsError] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [customText, setCustomText] = useState('');
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -34,8 +35,10 @@ export function ChatPromptCard({ prompt }: Props) {
 
   const copyPrompt = async () => {
     try {
-      await navigator.clipboard.writeText(prompt);
-      showMessage('Prompt kopierad!');
+      const trimmed = customText.trim();
+      const fullPrompt = trimmed.length > 0 ? `${prompt}\n\nText att konvertera:\n${trimmed}` : prompt;
+      await navigator.clipboard.writeText(fullPrompt);
+      showMessage(trimmed.length > 0 ? 'Prompt + text kopierad!' : 'Prompt kopierad!');
     } catch (error) {
       showMessage('Kunde inte kopiera prompten. Kopiera manuellt.', true);
     }
@@ -55,6 +58,15 @@ export function ChatPromptCard({ prompt }: Props) {
       {isOpen && (
         <>
           <pre className="code-block" style={{ whiteSpace: 'pre-wrap', maxHeight: '220px' }}>{prompt}</pre>
+          <label className="space-y-1" style={{ display: 'block' }}>
+            <span className="text-sm text-muted">Valfri fritext att skicka med</span>
+            <textarea
+              rows={5}
+              value={customText}
+              onChange={(event) => setCustomText(event.target.value)}
+              placeholder="Klistra in recepttext som du vill att ChatGPT ska konvertera."
+            />
+          </label>
           <div className="flex" style={{ gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
             <button type="button" className="button-primary" onClick={copyPrompt}>
               Kopiera prompt
