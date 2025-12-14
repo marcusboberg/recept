@@ -1,30 +1,50 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { matchQuery } from '@/lib/recipes';
-import type { Recipe } from '@/schema/recipeSchema';
+import { getFirestoreClient } from '@/lib/firebaseClient';
+import { recipeSchema, type Recipe } from '@/schema/recipeSchema';
 import { RecipeCard } from './RecipeCard';
 import { SearchBar } from './SearchBar';
 import { TagFilter } from './TagFilter';
 
 interface Props {
-  recipes: Recipe[];
+  initialRecipes?: Recipe[];
 }
 
-export function RecipesShell({ recipes }: Props) {
-  const [query, setQuery] = useState('');
+export function RecipesShell({ initialRecipes = [] }: Props = {}) {
+  const [liveRecipes, setLiveRecipes] = useState<Recipe[]>(initialRecipes);
+  const [searchQuery, setSearchQuery] = useState('');
   const [activeTags, setActiveTags] = useState<string[]>([]);
 
-  const tags = useMemo(() => recipes.flatMap((recipe) => recipe.tags), [recipes]);
+  useEffect(() => {
+    const db = getFirestoreClient();
+    const recipesRef = collection(db, 'recipes');
+    const recipesQuery = query(recipesRef, orderBy('title'));
+    const unsubscribe = onSnapshot(recipesQuery, (snapshot) => {
+      const next: Recipe[] = [];
+      snapshot.forEach((docSnapshot) => {
+        const parsed = recipeSchema.safeParse(docSnapshot.data());
+        if (parsed.success) {
+          next.push(parsed.data);
+        }
+      });
+      setLiveRecipes(next);
+    });
+    return unsubscribe;
+  }, []);
+
+  const tags = useMemo(() => liveRecipes.flatMap((recipe) => recipe.tags), [liveRecipes]);
   const filtered = useMemo(
-    () => recipes.filter((recipe) => matchQuery(recipe, query, activeTags)),
-    [recipes, query, activeTags],
+    () => liveRecipes.filter((recipe) => matchQuery(recipe, searchQuery, activeTags)),
+    [liveRecipes, searchQuery, activeTags],
   );
 
   return (
     <div className="space-y-4">
       <div className="filters">
-        <SearchBar value={query} onChange={setQuery} />
+        <SearchBar value={searchQuery} onChange={setSearchQuery} />
         <TagFilter
           tags={tags}
           active={activeTags}

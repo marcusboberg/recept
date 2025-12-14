@@ -1,11 +1,28 @@
-import { Suspense } from 'react';
-import Link from 'next/link';
-import { recipeToJson } from '@/lib/recipes';
-import { emptyRecipe } from '@/lib/templates';
-import { AuthGate } from '@/components/AuthGate';
-import { NewRecipeClient } from './NewRecipeClient';
+'use client';
 
-const chatGptPrompt = `Du är en formatkonverterare som tar ett recept i fritext och svarar med exakt JSON för webbplatsen Recept.
+import { useState } from 'react';
+import { ChatPromptCard } from './ChatPromptCard';
+import { EditorShell } from './EditorShell';
+import { WordPressImportCard } from './WordPressImportCard';
+
+interface Props {
+  initialJson: string;
+  initialTitle: string;
+}
+
+export function NewRecipeSection({ initialJson, initialTitle }: Props) {
+  const [editorPayload, setEditorPayload] = useState({ json: initialJson, title: initialTitle });
+  const [editorKey, setEditorKey] = useState(0);
+
+  const handleImport = (json: string, title: string) => {
+    setEditorPayload({ json, title });
+    setEditorKey((value) => value + 1);
+  };
+
+  return (
+    <>
+      <ChatPromptCard
+        prompt={`Du är en formatkonverterare som tar ett recept i fritext och svarar med exakt JSON för webbplatsen Recept.
 
 1. Läs texten och hämta titel, beskrivning, tid, portioner, ingredienser, ev. grupper och steg.
 2. Ge mig giltig JSON och INGEN annan text. Använd följande struktur och fyll alla fält:
@@ -47,30 +64,10 @@ Regler:
 - "steps" är i rätt ordning. "title" är valfri, "body" ska alltid fyllas.
 - "source" ska vara en URL om den finns, annars utelämna fältet.
 - "createdAt" och "updatedAt" är ISO 8601 i UTC (t.ex. 2024-01-05T12:00:00.000Z). Använd dagens datum om texten saknar datum.
-- Svara aldrig med kommentarer eller Markdown, endast ren JSON.
-
-Text att konvertera:
-{{RECIPE_TEXT}}`;
-
-export default function NewRecipePage() {
-  return (
-    <div className="page-shell space-y-4">
-      <Link href="/" className="button-ghost">← Back</Link>
-      <div className="space-y-2">
-        <h2 className="text-2xl font-semibold">New recipe</h2>
-        <p className="text-muted">Importera från WordPress, kör ChatGPT-prompten eller klistra in JSON manuellt.</p>
-      </div>
-      <Suspense fallback={<div className="card"><p className="card-subtitle" style={{ marginBottom: 0 }}>Kontrollerar behörighet…</p></div>}>
-        <AuthGate>
-          <Suspense fallback={<div className="card"><p className="card-subtitle" style={{ marginBottom: 0 }}>Laddar formuläret…</p></div>}>
-            <NewRecipeClient
-              prompt={chatGptPrompt}
-              initialJson={recipeToJson(emptyRecipe)}
-              initialTitle={emptyRecipe.title}
-            />
-          </Suspense>
-        </AuthGate>
-      </Suspense>
-    </div>
+- Svara aldrig med kommentarer eller Markdown, endast ren JSON.`}
+      />
+      <WordPressImportCard onImport={handleImport} />
+      <EditorShell key={editorKey} initialJson={editorPayload.json} initialTitle={editorPayload.title} mode="new" />
+    </>
   );
 }

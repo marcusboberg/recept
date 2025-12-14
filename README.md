@@ -4,14 +4,14 @@ A Firebase-backed recipe site. Recipes live as JSON documents in Firestore and t
 
 ## Core ideas
 - **Firestore is the CMS.** The `recipes` collection stores every dish using the schema in `schema/recipeSchema.ts`.
-- **Strict schema.** All edits pass through the shared Zod schema before they are persisted.
-- **Editing = paste.** The editor surface supports manually pasting JSON, importing WordPress markup, or using the bundled ChatGPT prompt.
-- **Trusted editors.** Only people med en hemlig kod (se `AUTH_CODES`) kan logga in och spara recept.
+- **Strict schema.** All edits pass genom den delade Zod-schemat innan de sparas.
+- **Editing = paste.** Editorn låter dig klistra in JSON, importera WordPress-HTML eller använda den färdiga ChatGPT-prompten.
+- **Firebase Auth.** Endast personer med ett konto i Firebase Authentication kan logga in och spara recept.
 
 ## Project structure
-- `app/` – Next.js (App Router) pages plus API routes (OAuth + Firestore writes).
-- `components/` – UI pieces including the editor, WordPress importer, tag/search filters, and recipe preview.
-- `lib/` – Firestore helpers, auth/session utilities, templates, and recipe utilities.
+- `app/` – Next.js (App Router) pages. Data laddas på klienten via Firebase SDK.
+- `components/` – UI-komponenter (editor, WordPress-import, sök/taggar, preview, receptvisning).
+- `lib/` – Firestore-klient + admin helpers, templates och recipe utilities.
 - `schema/recipeSchema.ts` – Canonical Zod schema for recipe JSON.
 - `scripts/validate-recipes.ts` – Optional schema validation for local JSON blobs.
 - `.github/workflows/` – CI + deploy workflows.
@@ -27,16 +27,19 @@ Make sure the environment variables below are present in `.env.local`.
 Set the `imageUrl` field in the JSON to any publicly reachable image (WordPress CDN, your own hosting, etc.). The current editor does not upload images; it only rewrites `imageUrl` if you paste a different link.
 
 ## Environment
+Add the Firebase client config so webbläsaren kan logga in och prata med Firestore:
+
 | Variable | Description |
 | --- | --- |
-| `AUTH_CODES` | Comma-separated `name:code` pairs (ex: `marcus:abc123,friend:xyz789`) |
-| `SESSION_SECRET` | Random string used to sign session cookies |
-| `FIREBASE_PROJECT_ID` | Firebase project ID |
-| `FIREBASE_CLIENT_EMAIL` | Service account client email |
-| `FIREBASE_PRIVATE_KEY` | Service account private key (use `\n` for newlines) |
-| `NEXT_BASE_PATH` (optional) | Base path for static exports (set to `/recept` for GitHub Pages project sites) |
+| `NEXT_PUBLIC_FIREBASE_API_KEY` | Firebase Web API key |
+| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | Auth domain (ex: `project.firebaseapp.com`) |
+| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | Project ID |
+| `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | Storage bucket URL |
+| `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | Messaging sender ID |
+| `NEXT_PUBLIC_FIREBASE_APP_ID` | Web app ID |
+| `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID` | (Optional) GA4 measurement ID |
 
-When deploying the static site (GitHub Pages), set `NEXT_STATIC_EXPORT=true` in the build step so Next.js emits `out/`. The Firebase env vars must also be available during the build so the recipes can be fetched at export time.
+When deploying the static site (GitHub Pages), set `NEXT_STATIC_EXPORT=true` i byggsteget så Next.js exporterar `out/`. Samma `NEXT_PUBLIC_FIREBASE_*` variabler måste finnas i CI (GitHub Secrets) eftersom klienten annars inte kan ansluta till Firebase Auth/Firestore.
 
 ## CI
 GitHub Actions installs deps, lints, builds, and exports the static site for GitHub Pages. Provide the same environment variables (including the Firebase credentials) as repository secrets so the build can read recipes while exporting.

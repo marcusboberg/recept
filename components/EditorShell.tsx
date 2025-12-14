@@ -1,25 +1,17 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { doc, setDoc } from 'firebase/firestore';
 import { JsonEditor } from '@/components/JsonEditor';
 import { RecipePreview } from '@/components/RecipePreview';
 import { parseRecipe } from '@/lib/recipes';
 import type { Recipe } from '@/schema/recipeSchema';
+import { getFirestoreClient } from '@/lib/firebaseClient';
 
 interface Props {
   initialJson: string;
   initialTitle: string;
   mode: 'new' | 'edit';
-}
-
-async function parseErrorResponse(response: Response): Promise<{ error?: string }> {
-  const text = await response.text();
-  if (!text) return {};
-  try {
-    return JSON.parse(text);
-  } catch {
-    return { error: text };
-  }
 }
 
 export function EditorShell({ initialJson, initialTitle, mode }: Props) {
@@ -44,15 +36,18 @@ export function EditorShell({ initialJson, initialTitle, mode }: Props) {
     setSaving(true);
     setStatus(null);
     try {
-      const res = await fetch('/api/recipes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content }),
-      });
-      if (!res.ok) {
-        const payload = await parseErrorResponse(res);
-        throw new Error(payload.error ?? 'Unable to save');
+      const parsed = parseRecipe(content);
+      if (parsed.errors || !parsed.recipe) {
+        throw new Error('Fix validation errors before saving.');
       }
+      const db = getFirestoreClient();
+      const now = new Date().toISOString();
+      const payload: Recipe = {
+        ...parsed.recipe,
+        createdAt: parsed.recipe.createdAt ?? now,
+        updatedAt: now,
+      };
+      await setDoc(doc(db, 'recipes', payload.slug), payload);
       setStatus('Recipe saved to Firebase.');
     } catch (error) {
       setStatus((error as Error).message);

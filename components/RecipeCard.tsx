@@ -1,5 +1,4 @@
 import Image from 'next/image';
-import Link from 'next/link';
 import { DEFAULT_RECIPE_IMAGE } from '@/lib/images';
 import type { Recipe } from '@/schema/recipeSchema';
 
@@ -11,7 +10,7 @@ export function RecipeCard({ recipe }: Props) {
   const hero = recipe.imageUrl?.trim() || DEFAULT_RECIPE_IMAGE;
 
   return (
-    <Link href={`/${recipe.slug}`} className="recipe-card">
+    <a href={`#/recipe/${recipe.slug}`} className="recipe-card">
       <div className="recipe-card__image">
         <div className="recipe-card__media">
           <Image src={hero} alt={recipe.title} fill sizes="320px" />
@@ -21,6 +20,6 @@ export function RecipeCard({ recipe }: Props) {
           {recipe.description && <p className="recipe-card__subtitle">{recipe.description}</p>}
         </div>
       </div>
-    </Link>
+    </a>
   );
 }

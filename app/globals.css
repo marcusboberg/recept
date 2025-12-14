@@ -361,6 +361,9 @@ button, input, textarea {
   padding: 2rem 1rem;
   background: linear-gradient(120deg, #f3e9dd, #f8f5f0);
   border-radius: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
 }
 
 .hero__copy {
@@ -368,6 +371,15 @@ button, input, textarea {
   flex-direction: column;
   gap: 0.5rem;
   max-width: 48rem;
+}
+
+.hero__cta {
+  display: flex;
+}
+
+.hero__cta .button-primary {
+  width: 100%;
+  justify-content: center;
 }
 
 .eyebrow {
@@ -384,6 +396,22 @@ button, input, textarea {
 
 .hero__subtitle {
   color: var(--muted);
+}
+
+@media (min-width: 768px) {
+  .hero {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .hero__cta {
+    width: auto;
+  }
+
+  .hero__cta .button-primary {
+    width: auto;
+  }
 }
 
 .filters {

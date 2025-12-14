@@ -1,10 +1,11 @@
 'use client';
 
-import Link from 'next/link';
 import Image from 'next/image';
-import { useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { DEFAULT_RECIPE_IMAGE } from '@/lib/images';
-import type { Recipe } from '@/schema/recipeSchema';
+import { getFirestoreClient } from '@/lib/firebaseClient';
+import { recipeSchema, type Recipe } from '@/schema/recipeSchema';
 
 interface IngredientGroup {
   title?: string;
@@ -33,14 +34,45 @@ function getIngredientKey(groupIndex: number, item: Recipe['ingredients'][number
   return `${groupIndex}-${item.label}-${itemIndex}`;
 }
 
-export function RecipeMobile({ recipe }: { recipe: Recipe }) {
+interface Props {
+  slug: string;
+  initialRecipe?: Recipe;
+}
+
+export function RecipeMobile({ slug, initialRecipe }: Props) {
+  const [liveRecipe, setLiveRecipe] = useState<Recipe | null>(initialRecipe ?? null);
+  const [error, setError] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<ViewMode>('ingredients');
   const [checkedIngredients, setCheckedIngredients] = useState<Record<string, boolean>>({});
   const [checkedSteps, setCheckedSteps] = useState<Record<number, boolean>>({});
 
-  const ingredientGroups = useMemo(() => toIngredientGroups(recipe), [recipe]);
-  const heroImage = recipe.imageUrl?.trim() ? recipe.imageUrl : DEFAULT_RECIPE_IMAGE;
-  const totalTime = recipe.prepTimeMinutes + recipe.cookTimeMinutes;
+  useEffect(() => {
+    if (!slug) return undefined;
+    setLiveRecipe(initialRecipe ?? null);
+    setError(null);
+    const db = getFirestoreClient();
+    const ref = doc(db, 'recipes', slug);
+    const unsubscribe = onSnapshot(ref, (snapshot) => {
+      if (!snapshot.exists()) {
+        setError('Receptet hittades inte.');
+        setLiveRecipe(null);
+        return;
+      }
+      const parsed = recipeSchema.safeParse(snapshot.data());
+      if (parsed.success) {
+        setLiveRecipe(parsed.data);
+        setError(null);
+      } else {
+        setError('Receptet kunde inte läsas.');
+        setLiveRecipe(null);
+      }
+    });
+    return unsubscribe;
+  }, [slug, initialRecipe]);
+
+  const ingredientGroups = useMemo(() => (liveRecipe ? toIngredientGroups(liveRecipe) : []), [liveRecipe]);
+  const heroImage = liveRecipe?.imageUrl?.trim() ? liveRecipe.imageUrl : DEFAULT_RECIPE_IMAGE;
+  const totalTime = liveRecipe ? liveRecipe.prepTimeMinutes + liveRecipe.cookTimeMinutes : 0;
 
   const toggleIngredient = (key: string) => {
     setCheckedIngredients((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -54,28 +86,41 @@ export function RecipeMobile({ recipe }: { recipe: Recipe }) {
     '--recipe-hero-image': `url(${heroImage})`,
   } as CSSProperties;
 
+  if (!liveRecipe) {
+    return (
+      <div className="page-shell space-y-4">
+        <a href="#/" className="button-ghost">← Tillbaka</a>
+        <div className="card">
+          <p className="card-subtitle" style={{ marginBottom: 0 }}>
+            {error ?? 'Laddar recept…'}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="recipe-shell" style={heroStyle}>
       <div className="recipe-mobile-only">
         <div className="recipe-hero full-bleed">
           <div className="recipe-hero__media">
-            <Image src={heroImage} alt={recipe.title} fill sizes="100vw" priority />
+            <Image src={heroImage} alt={liveRecipe.title} fill sizes="100vw" priority />
           </div>
           <div className="recipe-hero__overlay">
             <div className="recipe-hero__actions">
-              <Link href="/" className="back-button">
-                ← Back
-              </Link>
-              <Link href={`/edit/${recipe.slug}/`} className="recipe-edit-button">
+              <a href="#/" className="back-button">
+                ← Tillbaka
+              </a>
+              <a href={`#/edit/${liveRecipe.slug}`} className="recipe-edit-button">
                 Redigera
-              </Link>
+              </a>
             </div>
-            <div className="recipe-hero__title">{recipe.title}</div>
+            <div className="recipe-hero__title">{liveRecipe.title}</div>
             <div className="recipe-hero__meta">
-              <span className="pill">{recipe.servings} portioner</span>
+              <span className="pill">{liveRecipe.servings} portioner</span>
               <span className="pill">{formatMinutes(totalTime)} totalt</span>
-              {recipe.cookTimeMinutes > 0 && <span className="pill">{formatMinutes(recipe.cookTimeMinutes)} i värmen</span>}
-              {recipe.tags.slice(0, 2).map((tag) => (
+              {liveRecipe.cookTimeMinutes > 0 && <span className="pill">{formatMinutes(liveRecipe.cookTimeMinutes)} i värmen</span>}
+              {liveRecipe.tags.slice(0, 2).map((tag) => (
                 <span key={tag} className="pill ghost">
                   {tag}
                 </span>
@@ -122,7 +167,7 @@ export function RecipeMobile({ recipe }: { recipe: Recipe }) {
           <div className="recipe-block">
             <div className="recipe-block__title">Gör så här</div>
             <ol className="checklist" aria-label="Gör så här">
-              {recipe.steps.map((step, index) => {
+              {liveRecipe.steps.map((step, index) => {
                 const isChecked = Boolean(checkedSteps[index]);
                 return (
                   <li key={index} className={isChecked ? 'checklist__item is-checked' : 'checklist__item'}>
@@ -174,18 +219,18 @@ export function RecipeMobile({ recipe }: { recipe: Recipe }) {
         <div className="recipe-desktop-content">
           <div className="recipe-desktop-hero">
             <div className="recipe-hero__actions recipe-hero__actions--desktop">
-              <Link href="/" className="back-button desktop">
+              <a href="#/" className="back-button desktop">
                 ← Tillbaka
-              </Link>
-              <Link href={`/edit/${recipe.slug}/`} className="recipe-edit-button recipe-edit-button--desktop">
+              </a>
+              <a href={`#/edit/${liveRecipe.slug}`} className="recipe-edit-button recipe-edit-button--desktop">
                 Redigera
-              </Link>
+              </a>
             </div>
-            <h1 className="recipe-desktop-title">{recipe.title}</h1>
+            <h1 className="recipe-desktop-title">{liveRecipe.title}</h1>
             <p className="recipe-desktop-meta">
-              {recipe.tags.slice(0, 3).join(', ')}
-              {recipe.tags.length > 0 && ' · '}
-              {recipe.servings} portioner · {formatMinutes(totalTime)}
+              {liveRecipe.tags.slice(0, 3).join(', ')}
+              {liveRecipe.tags.length > 0 && ' · '}
+              {liveRecipe.servings} portioner · {formatMinutes(totalTime)}
             </p>
           </div>
           <div className="recipe-desktop-card">
@@ -222,13 +267,13 @@ export function RecipeMobile({ recipe }: { recipe: Recipe }) {
               ))}
             </div>
             <div className="recipe-desktop-card__image">
-              <Image src={heroImage} alt={recipe.title} fill sizes="50vw" priority className="desk-image" />
+              <Image src={heroImage} alt={liveRecipe.title} fill sizes="50vw" priority className="desk-image" />
             </div>
           </div>
           <div className="recipe-desktop-steps">
             <h2>Gör så här</h2>
             <ol className="recipe-desktop-steps__list">
-              {recipe.steps.map((step, index) => {
+              {liveRecipe.steps.map((step, index) => {
                 const isChecked = Boolean(checkedSteps[index]);
                 return (
                   <li key={index} className={isChecked ? 'recipe-desktop-step is-checked' : 'recipe-desktop-step'}>
