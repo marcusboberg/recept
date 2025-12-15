@@ -35,13 +35,14 @@ export function WordPressImportCard({ onImport, className }: Props) {
       setError('Ange en WordPress-länk att importera.');
       return;
     }
+    const normalizedUrl = /^https?:\/\//i.test(trimmedUrl) ? trimmedUrl : `https://${trimmedUrl}`;
     try {
       setIsProcessing(true);
       const proxyUrl = process.env.NEXT_PUBLIC_WORDPRESS_PROXY_URL ?? '/api/fetch-wordpress';
       const response = await fetch(proxyUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: trimmedUrl }),
+        body: JSON.stringify({ url: normalizedUrl }),
       });
       const payload = (await response.json()) as { html?: string; error?: string };
       if (!response.ok) {
