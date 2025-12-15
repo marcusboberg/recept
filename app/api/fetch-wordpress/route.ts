@@ -14,7 +14,8 @@ function normalizeUrl(input: string) {
 
 export async function POST(request: Request) {
   try {
-    const { url } = await request.json();
+    const body = (await request.json()) as { url?: string };
+    const { url } = body;
     if (!url || typeof url !== 'string') {
       return NextResponse.json({ error: 'Saknar url-parameter.' }, { status: 400 });
     }
