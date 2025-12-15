@@ -30,6 +30,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install worker dependencies
+        run: npm ci --prefix wordpress-proxy
+
+      - name: Lint and typecheck
+        run: npm run check
+
       - name: Cache Next.js build artifacts
         uses: actions/cache@v4
         with:
