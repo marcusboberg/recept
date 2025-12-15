@@ -24,7 +24,7 @@ export default {
 		}
 
 		try {
-			const { url } = await request.json();
+			const { url } = (await request.json()) as { url?: string };
 			if (!url || typeof url !== 'string') {
 				return new Response(JSON.stringify({ error: 'Saknar url-parameter.' }), { status: 400, headers: corsHeaders });
 			}
