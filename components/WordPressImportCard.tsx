@@ -6,6 +6,7 @@ import { recipeToJson } from '@/lib/recipes';
 
 interface Props {
   onImport: (json: string, title: string) => void;
+  className?: string;
 }
 
 interface IngredientItem {
@@ -19,24 +20,38 @@ interface IngredientGroup {
   items: IngredientItem[];
 }
 
-export function WordPressImportCard({ onImport }: Props) {
-  const [html, setHtml] = useState('');
+export function WordPressImportCard({ onImport, className }: Props) {
+  const [url, setUrl] = useState('');
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [preview, setPreview] = useState<Recipe | null>(null);
 
-  const handleConvert = () => {
+  const handleConvert = async () => {
     setStatus(null);
     setError(null);
-    setIsProcessing(true);
+    const trimmedUrl = url.trim();
+    if (!trimmedUrl) {
+      setError('Ange en WordPress-länk att importera.');
+      return;
+    }
     try {
-      const recipe = convertWordPressHtml(html);
+      setIsProcessing(true);
+      const response = await fetch('/api/fetch-wordpress', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: trimmedUrl }),
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload.error ?? 'Kunde inte hämta sidan.');
+      }
+      const recipe = convertWordPressHtml(payload.html ?? '');
       const parsed = recipeSchema.parse(recipe);
       const json = recipeToJson(parsed);
       onImport(json, parsed.title);
       setPreview(parsed);
-      setStatus('WordPress-innehållet konverterades och laddades i editorn. Dubbelkolla tider, portioner och text.');
+      setStatus('WordPress-länken importerades och receptet laddades i editorn.');
     } catch (conversionError) {
       setPreview(null);
       setError((conversionError as Error).message);
@@ -46,19 +61,28 @@ export function WordPressImportCard({ onImport }: Props) {
   };
 
   return (
-    <div className="card space-y-3">
+    <div className={`card space-y-3 ${className ?? ''}`}>
       <div className="space-y-1">
         <h3 className="card-title">WordPress-import</h3>
-        <p className="card-subtitle">Klistra in hela HTML-sidan från WordPress så konverteras den till Recept-JSON.</p>
+        <p className="card-subtitle">Klistra in en WordPress-URL så hämtar vi HTML och bygger JSON åt dig.</p>
       </div>
-      <textarea
-        rows={10}
-        placeholder="Klistra in WordPress-HTML här"
-        value={html}
-        onChange={(event) => setHtml(event.target.value)}
-      />
+      <label className="stack">
+        <span className="text-sm text-muted">WordPress-länk</span>
+        <input
+          type="url"
+          className="input"
+          placeholder="https://recept.marcusboberg.se/vegetariskt/black-bean-burger/"
+          value={url}
+          onChange={(event) => setUrl(event.target.value)}
+        />
+      </label>
       <div className="flex" style={{ gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-        <button type="button" className="button-primary" onClick={handleConvert} disabled={isProcessing || html.trim().length === 0}>
+        <button
+          type="button"
+          className="button-primary"
+          onClick={handleConvert}
+          disabled={isProcessing || url.trim().length === 0}
+        >
           {isProcessing ? 'Analyserar…' : 'Konvertera och fyll editor'}
         </button>
         {status && <span className="text-sm">{status}</span>}
@@ -82,7 +106,7 @@ export function WordPressImportCard({ onImport }: Props) {
 
 function convertWordPressHtml(html: string): Recipe {
   if (!html || html.trim().length === 0) {
-    throw new Error('Klistra in HTML innan du kör importen.');
+    throw new Error('Kunde inte läsa HTML från WordPress-länken.');
   }
 
   if (typeof DOMParser === 'undefined') {
@@ -202,9 +226,30 @@ function parseIngredientLine(raw: string): IngredientItem {
     text = text.replace(noteMatch[0], '').trim();
   }
 
-  const parts = text.split(/\sx\s/i);
-  const label = cleanText(parts[0]) ?? '';
-  const amount = parts[1] ? cleanText(parts.slice(1).join(' x ')) : undefined;
+  const looksLikeAmount = (candidate: string) => {
+    const normalized = candidate.trim().toLowerCase();
+    if (!normalized) return false;
+    if (/^[0-9¼½¾]/.test(normalized)) return true;
+    return /^(en|ett|halv)/.test(normalized);
+  };
+
+  let label = text;
+  let amount: string | undefined;
+
+  const multiplierMatch = text.match(/^(.*?)\s*[×x]\s*(.+)$/i);
+  if (multiplierMatch) {
+    label = multiplierMatch[1];
+    amount = multiplierMatch[2];
+  } else {
+    const dashMatch = text.match(/^(.*?)\s*[-–—:]\s*(.+)$/);
+    if (dashMatch && looksLikeAmount(dashMatch[2])) {
+      label = dashMatch[1];
+      amount = dashMatch[2];
+    }
+  }
+
+  label = cleanText(label) ?? '';
+  amount = amount ? cleanText(amount) : undefined;
 
   return {
     label,

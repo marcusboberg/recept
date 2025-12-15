@@ -4,9 +4,10 @@ import { useEffect, useRef, useState } from 'react';
 
 interface Props {
   prompt: string;
+  className?: string;
 }
 
-export function ChatPromptCard({ prompt }: Props) {
+export function ChatPromptCard({ prompt, className }: Props) {
   const [message, setMessage] = useState<string | null>(null);
   const [isError, setIsError] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -45,7 +46,7 @@ export function ChatPromptCard({ prompt }: Props) {
   };
 
   return (
-    <div className="card space-y-3">
+    <div className={`card space-y-3 ${className ?? ''}`}>
       <div className="flex" style={{ justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
         <div>
           <h3 className="card-title" style={{ marginBottom: 0 }}>ChatGPT prompt</h3>

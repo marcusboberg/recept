@@ -169,6 +169,9 @@ export function RecipeMobile({ slug, initialRecipe }: Props) {
             <ol className="checklist" aria-label="Gör så här">
               {liveRecipe.steps.map((step, index) => {
                 const isChecked = Boolean(checkedSteps[index]);
+                const fallback = `Steg ${index + 1}`;
+                const customTitle = step.title?.trim();
+                const displayTitle = customTitle && customTitle.length > 0 ? customTitle : fallback;
                 return (
                   <li key={index} className={isChecked ? 'checklist__item is-checked' : 'checklist__item'}>
                     <label className="checklist__row">
@@ -176,13 +179,10 @@ export function RecipeMobile({ slug, initialRecipe }: Props) {
                         type="checkbox"
                         checked={isChecked}
                         onChange={() => toggleStep(index)}
-                        aria-label={`Steg ${index + 1}`}
+                        aria-label={displayTitle}
                       />
                       <div className="checklist__text">
-                        <span className="checklist__label">
-                          Steg {index + 1}
-                          {step.title ? `: ${step.title}` : ''}
-                        </span>
+                        <span className="checklist__label">{displayTitle}</span>
                         <span className="checklist__meta">{step.body}</span>
                       </div>
                     </label>

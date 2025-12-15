@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { doc, setDoc } from 'firebase/firestore';
 import { JsonEditor } from '@/components/JsonEditor';
 import { RecipePreview } from '@/components/RecipePreview';
-import { parseRecipe } from '@/lib/recipes';
+import { parseRecipe, recipeToJson } from '@/lib/recipes';
 import type { Recipe } from '@/schema/recipeSchema';
 import { getFirestoreClient } from '@/lib/firebaseClient';
 
@@ -14,12 +14,13 @@ interface Props {
   mode: 'new' | 'edit';
 }
 
-export function EditorShell({ initialJson, initialTitle, mode }: Props) {
+export function EditorShell({ initialJson, initialTitle, mode: _mode }: Props) {
   const [content, setContent] = useState(initialJson);
   const [errors, setErrors] = useState<string[]>([]);
   const [preview, setPreview] = useState<Recipe | null>(null);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+  const [imageInput, setImageInput] = useState('');
 
   useEffect(() => {
     const parsed = parseRecipe(content);
@@ -31,6 +32,15 @@ export function EditorShell({ initialJson, initialTitle, mode }: Props) {
       setPreview(parsed.recipe);
     }
   }, [content]);
+
+  useEffect(() => {
+    if (preview?.imageUrl && preview.imageUrl !== imageInput) {
+      setImageInput(preview.imageUrl);
+    }
+    if (!preview?.imageUrl && imageInput) {
+      setImageInput('');
+    }
+  }, [preview?.imageUrl, imageInput]);
 
   const submit = async () => {
     setSaving(true);
@@ -56,27 +66,67 @@ export function EditorShell({ initialJson, initialTitle, mode }: Props) {
     }
   };
 
+  const handleImageUpdate = (value: string) => {
+    setImageInput(value);
+    const parsed = parseRecipe(content);
+    if (parsed.recipe) {
+      const updated: Recipe = {
+        ...parsed.recipe,
+        imageUrl: value,
+      };
+      setContent(recipeToJson(updated));
+    }
+  };
+
+  const saveDisabled = saving || errors.length > 0;
+
   return (
-    <div className="space-y-4">
-      <div className="flex" style={{ gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-        <button className="button-primary" onClick={submit} disabled={saving || errors.length > 0}>
-          {saving ? 'Saving…' : 'Save recipe'}
-        </button>
-        {errors.length > 0 && <span className="text-sm text-muted">Fix validation errors before saving.</span>}
-        {status && <span className="text-sm">{status}</span>}
+    <div className="preview-grid">
+      <div className="preview-grid__left">
+        <div className="preview-grid__copy">
+          <p className="eyebrow">Preview</p>
+          <h2>Finjustera JSON och se exakt mobilvy innan du sparar.</h2>
+          <p>JSON-editorn till vänster är bredare, och förhandsvisningen visar hur receptsidan ser ut på en liten skärm.</p>
+        </div>
+        <div className="preview-grid__editor">
+          <div className="editor-toolbar">
+            <div className="editor-toolbar__meta">
+              <label className="stack" style={{ width: '100%', maxWidth: '360px' }}>
+                <span className="text-sm text-muted">Bild-URL</span>
+                <input
+                  className="input"
+                  type="url"
+                  placeholder="https://example.com/bild.jpg"
+                  value={imageInput}
+                  onChange={(event) => handleImageUpdate(event.target.value)}
+                />
+              </label>
+              <div className="text-sm text-muted">
+                {errors.length > 0 ? 'Åtgärda valideringsfel innan du sparar.' : status ?? 'Skicka ändringar till Firebase när allt ser rätt ut.'}
+              </div>
+            </div>
+          </div>
+          <div className="preview-grid__json">
+            <JsonEditor value={content} onChange={setContent} errors={errors} />
+          </div>
+        </div>
       </div>
-      <div className="two-col">
-        <JsonEditor value={content} onChange={setContent} errors={errors} />
-        <div className="space-y-4">
-          <div className="card">
-            <h3 className="card-title">Live preview</h3>
-            <p className="card-subtitle">Paste full JSON. Invalid JSON is rejected before saving.</p>
-          </div>
-          <div className="card space-y-2">
-            <h3 className="card-title">Images</h3>
-            <p className="card-subtitle">Sätt fältet imageUrl till en publik bildadress (t.ex. från egen hosting eller WordPress). Uppladdningar hanteras externt.</p>
-          </div>
-          {preview ? <RecipePreview recipe={preview} /> : <div className="alert error">Invalid JSON</div>}
+      <div className="preview-grid__right">
+        <button className="button-primary button-hero preview-grid__save" onClick={submit} disabled={saveDisabled}>
+          {saving ? 'Sparar…' : 'Spara recept'}
+        </button>
+        <div className="preview-grid__device">
+          {preview ? (
+            <div className="phone-preview">
+              <div className="phone-preview__frame">
+                <RecipePreview recipe={preview} />
+              </div>
+            </div>
+          ) : (
+            <div className="alert error" style={{ width: '100%' }}>
+              Invalid JSON
+            </div>
+          )}
         </div>
       </div>
     </div>

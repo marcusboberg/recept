@@ -73,14 +73,7 @@ export function AppView() {
   }
 
   if (view.type === 'new') {
-    return (
-      <div className="page-shell space-y-4">
-        <a href="#/" className="button-ghost">← Tillbaka</a>
-        <AuthGate>
-          <NewRecipeSection initialJson={recipeToJson(emptyRecipe)} initialTitle={emptyRecipe.title} />
-        </AuthGate>
-      </div>
-    );
+    return <NewRecipeSection initialJson={recipeToJson(emptyRecipe)} initialTitle={emptyRecipe.title} />;
   }
 
   return (
