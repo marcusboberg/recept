@@ -43,7 +43,7 @@ export function WordPressImportCard({ onImport, className }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: trimmedUrl }),
       });
-      const payload = await response.json();
+      const payload = (await response.json()) as { html?: string; error?: string };
       if (!response.ok) {
         throw new Error(payload.error ?? 'Kunde inte hämta sidan.');
       }
