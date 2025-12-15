@@ -46,6 +46,25 @@ export function AppView() {
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof document === 'undefined') {
+      return;
+    }
+    const className = 'is-recipe-view';
+    const shell = document.querySelector('.app-shell');
+    if (!shell) {
+      return;
+    }
+    if (view.type === 'recipe') {
+      shell.classList.add(className);
+    } else {
+      shell.classList.remove(className);
+    }
+    return () => {
+      shell.classList.remove(className);
+    };
+  }, [view.type]);
+
   const hero = useMemo(
     () => (
       <section className="hero">

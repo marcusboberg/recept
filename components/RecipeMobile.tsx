@@ -74,6 +74,16 @@ export function RecipeMobile({ slug, initialRecipe }: Props) {
   const heroImage = liveRecipe?.imageUrl?.trim() ? liveRecipe.imageUrl : DEFAULT_RECIPE_IMAGE;
   const totalTime = liveRecipe ? liveRecipe.prepTimeMinutes + liveRecipe.cookTimeMinutes : 0;
 
+  useEffect(() => {
+    if (!heroImage || typeof document === 'undefined') {
+      return;
+    }
+    document.documentElement.style.setProperty('--recipe-blur-image', `url(${heroImage})`);
+    return () => {
+      document.documentElement.style.removeProperty('--recipe-blur-image');
+    };
+  }, [heroImage]);
+
   const toggleIngredient = (key: string) => {
     setCheckedIngredients((prev) => ({ ...prev, [key]: !prev[key] }));
   };
@@ -115,16 +125,18 @@ export function RecipeMobile({ slug, initialRecipe }: Props) {
                 Redigera
               </a>
             </div>
-            <div className="recipe-hero__title">{liveRecipe.title}</div>
-            <div className="recipe-hero__meta">
-              <span className="pill">{liveRecipe.servings} portioner</span>
-              <span className="pill">{formatMinutes(totalTime)} totalt</span>
-              {liveRecipe.cookTimeMinutes > 0 && <span className="pill">{formatMinutes(liveRecipe.cookTimeMinutes)} i värmen</span>}
-              {liveRecipe.tags.slice(0, 2).map((tag) => (
-                <span key={tag} className="pill ghost">
-                  {tag}
-                </span>
-              ))}
+            <div className="recipe-hero__summary">
+              <div className="recipe-hero__title">{liveRecipe.title}</div>
+              <div className="recipe-hero__meta">
+                <span className="pill">{liveRecipe.servings} portioner</span>
+                <span className="pill">{formatMinutes(totalTime)} totalt</span>
+                {liveRecipe.cookTimeMinutes > 0 && <span className="pill">{formatMinutes(liveRecipe.cookTimeMinutes)} i värmen</span>}
+                {liveRecipe.tags.slice(0, 2).map((tag) => (
+                  <span key={tag} className="pill ghost">
+                    {tag}
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
         </div>

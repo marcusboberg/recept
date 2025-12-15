@@ -10,6 +10,7 @@
   --header-height: 72px;
   --font-heading: 'Momo Trust Display', 'Montserrat Alternates', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-body: 'Montserrat Alternates', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --recipe-blur-image: none;
   font-family: var(--font-body);
 }
 
@@ -344,6 +345,16 @@ button, input, textarea {
   margin: 0 auto;
   padding: 0.75rem 1rem;
   gap: 1rem;
+}
+
+@media (max-width: 768px) {
+  .app-shell.is-recipe-view .site-header {
+    display: none;
+  }
+
+  .app-shell.is-recipe-view .site-layout__content {
+    padding-top: 0;
+  }
 }
 
 .brand {
@@ -1172,13 +1183,75 @@ button, input, textarea {
 
 .recipe-shell {
   position: relative;
-  background: var(--bg);
+  background: transparent;
   color: var(--text);
-  overflow: hidden;
+  overflow: visible;
   margin-top: 0;
   display: flex;
   flex-direction: column;
+  isolation: isolate;
   --recipe-hero-image: none;
+}
+
+@media (max-width: 1023px) {
+  .app-shell.is-recipe-view {
+    background: transparent;
+  }
+
+  .app-shell.is-recipe-view .recipe-shell::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image: var(--recipe-blur-image);
+    background-size: cover;
+    background-position: center;
+    transform: scale(1.15);
+    filter: blur(55px) saturate(1.85) brightness(0.85);
+    opacity: 0.95;
+  }
+
+  .app-shell.is-recipe-view .recipe-body {
+    color: #f8fafc;
+  }
+
+  .app-shell.is-recipe-view .recipe-section--ingredients,
+  .app-shell.is-recipe-view .recipe-section--steps {
+    max-width: none;
+    margin: 0;
+  }
+
+  .app-shell.is-recipe-view .recipe-block {
+    border-top-color: rgba(248, 250, 252, 0.25);
+  }
+
+  .app-shell.is-recipe-view .checklist__item {
+    border-bottom-color: rgba(248, 250, 252, 0.25);
+  }
+
+  .app-shell.is-recipe-view .checklist__label,
+  .app-shell.is-recipe-view .recipe-block__title,
+  .app-shell.is-recipe-view .checklist__amount,
+  .app-shell.is-recipe-view .checklist__meta {
+    color: #f8fafc;
+  }
+
+  .app-shell.is-recipe-view .checklist__item.is-checked .checklist__label,
+  .app-shell.is-recipe-view .checklist__item.is-checked .checklist__amount,
+  .app-shell.is-recipe-view .checklist__item.is-checked .checklist__meta {
+    color: rgba(248, 250, 252, 0.65);
+    text-decoration-color: rgba(248, 250, 252, 0.45);
+  }
+
+  .app-shell.is-recipe-view .checklist__row input {
+    border-color: rgba(248, 250, 252, 0.75);
+  }
+
+  .app-shell.is-recipe-view .checklist__row input:checked {
+    background: rgba(248, 250, 252, 0.2);
+    border-color: #f8fafc;
+  }
 }
 
 .recipe-mobile-only {
@@ -1211,11 +1284,26 @@ button, input, textarea {
   inset: 0;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 0.75rem;
-  padding: 2.75rem 1.5rem 2rem;
+  padding: 1.5rem 1.5rem 2rem;
   background: linear-gradient(180deg, rgba(0, 0, 0, 0.15) 0%, rgba(0, 0, 0, 0.55) 100%);
   color: #f8fafc;
+}
+
+.app-shell.is-recipe-view .recipe-hero {
+  margin-top: calc(-1 * env(safe-area-inset-top, 0px));
+}
+
+.app-shell.is-recipe-view .recipe-hero__overlay {
+  padding-top: calc(env(safe-area-inset-top, 0px) + 1.5rem);
+}
+
+.recipe-hero__summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin-top: auto;
 }
 
 .back-button {
@@ -1266,10 +1354,19 @@ button, input, textarea {
   letter-spacing: -0.01em;
 }
 
+.recipe-mobile-only .recipe-hero__title {
+  font-size: 3rem;
+  line-height: 1.05;
+}
+
 .recipe-hero__meta {
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
+}
+
+.recipe-mobile-only .recipe-hero__meta {
+  display: none;
 }
 
 .pill {
@@ -1290,7 +1387,7 @@ button, input, textarea {
 }
 
 .recipe-body {
-  padding: 2.5rem 1.5rem 6rem;
+  padding: 2.5rem 1.5rem calc(4rem + env(safe-area-inset-bottom, 0px));
   display: flex;
   flex-direction: column;
   gap: 1.75rem;
@@ -1449,14 +1546,14 @@ button, input, textarea {
 
 .recipe-toggle {
   position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  left: env(safe-area-inset-left, 0px);
+  right: env(safe-area-inset-right, 0px);
+  bottom: env(safe-area-inset-bottom, 0px);
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.5rem;
-  padding: 0.85rem 1.25rem env(safe-area-inset-bottom, 0.85rem);
-  background: rgba(255, 255, 255, 0.95);
+  padding: 0.85rem 1.25rem 0.65rem;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.65));
   box-shadow: none;
   z-index: 15;
 }

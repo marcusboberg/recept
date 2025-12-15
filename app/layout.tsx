@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
 const defaultSiteUrl = 'http://localhost:3000';
@@ -26,6 +26,17 @@ export const metadata: Metadata = {
     title: siteTitle,
     description: siteDescription,
   },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+  },
+  themeColor: 'rgba(0,0,0,0)',
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({

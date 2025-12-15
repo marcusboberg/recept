@@ -73,16 +73,18 @@ export function RecipePreview({ recipe }: Props) {
                 Redigera
               </span>
             </div>
-            <div className="recipe-hero__title">{recipe.title}</div>
-            <div className="recipe-hero__meta">
-              <span className="pill">{recipe.servings} portioner</span>
-              <span className="pill">{formatMinutes(totalTime)} totalt</span>
-              {recipe.cookTimeMinutes > 0 && <span className="pill">{formatMinutes(recipe.cookTimeMinutes)} i värmen</span>}
-              {recipe.tags.slice(0, 2).map((tag) => (
-                <span key={tag} className="pill ghost">
-                  {tag}
-                </span>
-              ))}
+            <div className="recipe-hero__summary">
+              <div className="recipe-hero__title">{recipe.title}</div>
+              <div className="recipe-hero__meta">
+                <span className="pill">{recipe.servings} portioner</span>
+                <span className="pill">{formatMinutes(totalTime)} totalt</span>
+                {recipe.cookTimeMinutes > 0 && <span className="pill">{formatMinutes(recipe.cookTimeMinutes)} i värmen</span>}
+                {recipe.tags.slice(0, 2).map((tag) => (
+                  <span key={tag} className="pill ghost">
+                    {tag}
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
         </div>
