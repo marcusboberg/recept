@@ -46,10 +46,11 @@ export function WordPressImportCard({ onImport, className }: Props) {
       });
       const contentType = response.headers.get('content-type') ?? '';
       const payload = contentType.includes('application/json')
-        ? ((await response.json()) as { html?: string; error?: string })
+        ? ((await response.json()) as { html?: string; error?: string; details?: string })
         : { error: await response.text() };
       if (!response.ok) {
-        throw new Error(payload.error ?? 'Kunde inte hämta sidan.');
+          const detail = payload.details ? `\n${payload.details}` : '';
+        throw new Error((payload.error ?? 'Kunde inte hämta sidan.') + detail);
       }
       const recipe = convertWordPressHtml(payload.html ?? '');
       const parsed = recipeSchema.parse(recipe);

@@ -40,19 +40,28 @@ export default {
 				return new Response(JSON.stringify({ error: 'Endast http/https tillåtet.' }), { status: 400, headers: corsHeaders });
 			}
 
-			const response = await fetch(parsed.toString(), {
+			const upstream = await fetch(parsed.toString(), {
 				headers: {
-					'user-agent': 'ReceptImporter/1.0 (+https://recept2.marcusboberg.se)',
+					'user-agent': 'Mozilla/5.0 (compatible; ReceptImporter/1.0; +https://recept2.marcusboberg.se)',
 					accept: 'text/html,application/xhtml+xml',
+					'accept-language': 'sv-SE,sv;q=0.9,en;q=0.8',
 				},
 				redirect: 'follow',
 			});
 
-			if (!response.ok) {
-				return new Response(JSON.stringify({ error: `Kunde inte hämta sidan (${response.status}).` }), { status: 400, headers: corsHeaders });
+			const upstreamBody = await upstream.text();
+
+			if (!upstream.ok) {
+				return new Response(
+					JSON.stringify({
+						error: `Kunde inte hämta sidan (${upstream.status} ${upstream.statusText}).`,
+						details: upstreamBody.slice(0, 1000),
+					}),
+					{ status: upstream.status, headers: corsHeaders },
+				);
 			}
 
-			const html = await response.text();
+			const html = upstreamBody;
 			return new Response(JSON.stringify({ html }), {
 				headers: { 'content-type': 'application/json', ...corsHeaders },
 			});
