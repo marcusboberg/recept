@@ -37,7 +37,8 @@ export function WordPressImportCard({ onImport, className }: Props) {
     }
     try {
       setIsProcessing(true);
-      const response = await fetch('/api/fetch-wordpress', {
+      const proxyUrl = process.env.NEXT_PUBLIC_WORDPRESS_PROXY_URL ?? '/api/fetch-wordpress';
+      const response = await fetch(proxyUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: trimmedUrl }),
