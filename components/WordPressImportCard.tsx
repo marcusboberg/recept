@@ -22,6 +22,7 @@ interface IngredientGroup {
 
 export function WordPressImportCard({ onImport, className }: Props) {
   const [url, setUrl] = useState('');
+  const [categoriesInput, setCategoriesInput] = useState('');
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -53,6 +54,10 @@ export function WordPressImportCard({ onImport, className }: Props) {
         throw new Error((payload.error ?? 'Kunde inte hämta sidan.') + detail);
       }
       const recipe = convertWordPressHtml(payload.html ?? '');
+      const categories = categoriesInput.split(',').map((c) => c.trim()).filter(Boolean);
+      if (categories.length > 0) {
+        recipe.categories = categories;
+      }
       const parsed = recipeSchema.parse(recipe);
       const json = recipeToJson(parsed);
       onImport(json, parsed.title);
@@ -82,6 +87,16 @@ export function WordPressImportCard({ onImport, className }: Props) {
           onChange={(event) => setUrl(event.target.value)}
         />
       </label>
+      <label className="stack">
+        <span className="text-sm text-muted">Kategorier (komma-separerade, valfritt)</span>
+        <input
+          type="text"
+          className="input"
+          placeholder="Middag, Vegetariskt"
+          value={categoriesInput}
+          onChange={(event) => setCategoriesInput(event.target.value)}
+        />
+      </label>
       <div className="flex" style={{ gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
         <button
           type="button"
@@ -103,7 +118,10 @@ export function WordPressImportCard({ onImport, className }: Props) {
           <p style={{ marginBottom: '0.25rem' }}>
             {preview.title} • {preview.ingredients.length} ingredienser • {preview.steps.length} steg
           </p>
-          <p style={{ marginBottom: 0 }}>Tags: {preview.tags.length === 0 ? '—' : preview.tags.join(', ')}</p>
+          <p style={{ marginBottom: 0 }}>
+            Tags: {preview.tags.length === 0 ? '—' : preview.tags.join(', ')} • Kategorier:{' '}
+            {preview.categories?.length ? preview.categories.join(', ') : '—'}
+          </p>
         </div>
       )}
     </div>
@@ -168,6 +186,7 @@ function convertWordPressHtml(html: string): Recipe {
     description: cleanText(description),
     imageUrl,
     tags: collectTags(doc),
+    categories: [],
     prepTimeMinutes: 0,
     cookTimeMinutes: 0,
     servings: 4,

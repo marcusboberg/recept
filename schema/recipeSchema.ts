@@ -9,6 +9,7 @@ export const recipeSchema = z.object({
   cookTimeMinutes: z.number().int().nonnegative(),
   servings: z.number().int().positive(),
   imageUrl: z.string().url().or(z.string().startsWith('/')).optional(),
+  categories: z.array(z.string()).default([]),
   ingredients: z.array(z.object({
     label: z.string(),
     amount: z.string().optional(),

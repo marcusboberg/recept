@@ -1,4 +1,5 @@
 import { recipeSchema, type Recipe } from '@/schema/recipeSchema';
+import { toCategorySlug } from './categories';
 
 export function parseRecipe(jsonString: string): { recipe?: Recipe; errors?: string[] } {
   try {
@@ -24,10 +25,16 @@ export function summarizeRecipe(recipe: Recipe): string {
   return `${recipe.servings} servings • ${totalTime} mins total`;
 }
 
-export function matchQuery(recipe: Recipe, query: string, activeTags: string[]): boolean {
+export function matchQuery(recipe: Recipe, query: string, activeTags: string[], categorySlug?: string): boolean {
   const search = query.toLowerCase();
-  const matchesText = [recipe.title, recipe.description, recipe.tags.join(' ')]
-    .some((value) => value.toLowerCase().includes(search));
+  const categorySlugs = (recipe.categories ?? []).map(toCategorySlug);
+  const matchesText = [
+    recipe.title,
+    recipe.description,
+    recipe.tags.join(' '),
+    (recipe.categories ?? []).join(' '),
+  ].some((value) => value.toLowerCase().includes(search));
   const matchesTags = activeTags.length === 0 || activeTags.every((tag) => recipe.tags.includes(tag));
-  return matchesText && matchesTags;
+  const matchesCategory = !categorySlug || categorySlugs.includes(categorySlug);
+  return matchesText && matchesTags && matchesCategory;
 }

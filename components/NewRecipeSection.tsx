@@ -328,6 +328,7 @@ export function NewRecipeSection({ initialJson, initialTitle }: Props) {
   "slug": "",
   "description": "",
   "imageUrl": "/images/recipes/new-recipe.jpg",
+  "categories": [],
   "tags": [],
   "prepTimeMinutes": 0,
   "cookTimeMinutes": 0,
@@ -351,6 +352,7 @@ export function NewRecipeSection({ initialJson, initialTitle }: Props) {
 
 Regler:
 - "slug" ska vara titeln i kebab-case (små bokstäver, siffror och bindestreck).
+- "categories" är breda kategorier för startsidan (t.ex. “Middag”, “Vegetariskt”). Lista 1–3 relevanta.
 - "tags" är 3–5 korta etiketter, skrivna i engelska eller svenska beroende på texten.
 - Tider anges i heltal minuter. Sätt 0 om texten saknar information.
 - "imageUrl" är en URL. Behåll default-värdet om inget anges.

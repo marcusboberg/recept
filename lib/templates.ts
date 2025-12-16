@@ -5,6 +5,7 @@ export const emptyRecipe: Recipe = recipeSchema.parse({
   slug: 'new-recipe-slug',
   description: 'Describe the dish in one or two sentences.',
   tags: ['quick', 'weekday'],
+  categories: ['Middag'],
   prepTimeMinutes: 10,
   cookTimeMinutes: 15,
   servings: 2,

@@ -10,6 +10,8 @@ import { emptyRecipe } from '@/lib/templates';
 import { recipeToJson } from '@/lib/recipes';
 
 type View =
+  | { type: 'categories' }
+  | { type: 'category'; slug: string }
   | { type: 'list' }
   | { type: 'recipe'; slug: string }
   | { type: 'edit'; slug: string }
@@ -19,17 +21,23 @@ function parseHash(hash: string): View {
   const trimmed = hash.startsWith('#') ? hash.slice(1) : hash;
   const [segment, slug] = trimmed.split('/').filter(Boolean);
   if (!segment) {
-    return { type: 'list' };
+    return { type: 'categories' };
   }
   switch (segment) {
+    case 'categories':
+      return { type: 'categories' };
+    case 'category':
+      return slug ? { type: 'category', slug } : { type: 'categories' };
+    case 'recipes':
+      return { type: 'list' };
     case 'recipe':
-      return slug ? { type: 'recipe', slug } : { type: 'list' };
+      return slug ? { type: 'recipe', slug } : { type: 'categories' };
     case 'edit':
-      return slug ? { type: 'edit', slug } : { type: 'list' };
+      return slug ? { type: 'edit', slug } : { type: 'categories' };
     case 'new':
       return { type: 'new' };
     default:
-      return { type: 'list' };
+      return { type: 'categories' };
   }
 }
 
@@ -77,6 +85,9 @@ export function AppView() {
           <a href="#/new" className="button-primary">
             + Nytt recept
           </a>
+          <a href="#/recipes" className="button-ghost">
+            Visa alla recept
+          </a>
         </div>
       </section>
     ),
@@ -98,7 +109,9 @@ export function AppView() {
   return (
     <div className="page-shell space-y-6">
       {hero}
-      <RecipesShell />
+      {view.type === 'categories' && <RecipesShell showCategories />}
+      {view.type === 'category' && <RecipesShell categorySlug={view.slug} />}
+      {view.type === 'list' && <RecipesShell />}
     </div>
   );
 }
