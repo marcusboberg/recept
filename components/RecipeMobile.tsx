@@ -111,13 +111,15 @@ export function RecipeMobile({ slug, initialRecipe }: Props) {
 
   return (
     <div className="recipe-shell" style={heroStyle}>
-      <div className="recipe-mobile-only">
-        <div className="recipe-hero full-bleed">
-          <div className="recipe-hero__media">
-            <Image src={heroImage} alt={liveRecipe.title} fill sizes="100vw" priority />
+      <div className="recipe-mobile-only recipe-mobile-simple">
+        <div className="recipe-cover__media2">
+        <Image src={heroImage} alt={liveRecipe.title} fill sizes="100vw" priority className="recipe-cover__image-background"/>
+        <section className="recipe-cover">
+          <div className="recipe-cover__media">
+            <Image src={heroImage} alt={liveRecipe.title} fill sizes="100vw" priority className="recipe-cover__image" />
           </div>
-          <div className="recipe-hero__overlay">
-            <div className="recipe-hero__actions">
+          <div className="recipe-cover__overlay">
+            <div className="recipe-cover__actions">
               <a href="#/" className="back-button">
                 ← Tillbaka
               </a>
@@ -125,104 +127,103 @@ export function RecipeMobile({ slug, initialRecipe }: Props) {
                 Redigera
               </a>
             </div>
-            <div className="recipe-hero__summary">
-              <div className="recipe-hero__title">{liveRecipe.title}</div>
-              <div className="recipe-hero__meta">
-                <span className="pill">{liveRecipe.servings} portioner</span>
-                <span className="pill">{formatMinutes(totalTime)} totalt</span>
-                {liveRecipe.cookTimeMinutes > 0 && <span className="pill">{formatMinutes(liveRecipe.cookTimeMinutes)} i värmen</span>}
-                {liveRecipe.tags.slice(0, 2).map((tag) => (
-                  <span key={tag} className="pill ghost">
-                    {tag}
-                  </span>
-                ))}
+            <div className="recipe-cover__summary">
+              <div className="recipe-cover__title">{liveRecipe.title}</div>
+              <div className="recipe-cover__meta">
+                <span>{liveRecipe.servings} portioner</span>
+                <span>{formatMinutes(totalTime)} totalt</span>
+                {liveRecipe.cookTimeMinutes > 0 && <span>{formatMinutes(liveRecipe.cookTimeMinutes)} i värmen</span>}
               </div>
             </div>
           </div>
-        </div>
+        </section>
 
-        <div className="recipe-body">
-        <div className={activeView === 'ingredients' ? 'recipe-section recipe-section--ingredients is-active' : 'recipe-section recipe-section--ingredients'}>
-          {ingredientGroups.map((group, groupIndex) => (
-            <div key={group.title ?? groupIndex} className="recipe-block">
-              <div className="recipe-block__title">{group.title ?? 'Ingredienser'}</div>
-              <ul className="checklist" aria-label={`${group.title ?? 'Ingredienser'}`}>
-                {group.items.map((item, itemIndex) => {
-                  const id = getIngredientKey(groupIndex, item, itemIndex);
-                  const isChecked = Boolean(checkedIngredients[id]);
-                  const amount = item.amount?.trim();
-                  return (
-                    <li key={id} className={isChecked ? 'checklist__item is-checked' : 'checklist__item'}>
-                      <label className="checklist__row">
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => toggleIngredient(id)}
-                          aria-label={item.label}
-                        />
-                        <div className="checklist__text">
-                          <div className="checklist__line">
-                            <span className="checklist__label">{item.label}</span>
-                            {amount && <span className="checklist__amount">{amount}</span>}
-                          </div>
-                        </div>
-                      </label>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          ))}
-        </div>
-
-        <div className={activeView === 'steps' ? 'recipe-section recipe-section--steps is-active' : 'recipe-section recipe-section--steps'}>
-          <div className="recipe-block">
-            <div className="recipe-block__title">Gör så här</div>
-            <ol className="checklist" aria-label="Gör så här">
-              {liveRecipe.steps.map((step, index) => {
-                const isChecked = Boolean(checkedSteps[index]);
-                const fallback = `Steg ${index + 1}`;
-                const customTitle = step.title?.trim();
-                const displayTitle = customTitle && customTitle.length > 0 ? customTitle : fallback;
-                return (
-                  <li key={index} className={isChecked ? 'checklist__item is-checked' : 'checklist__item'}>
-                    <label className="checklist__row">
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={() => toggleStep(index)}
-                        aria-label={displayTitle}
-                      />
-                      <div className="checklist__text">
-                        <span className="checklist__label">{displayTitle}</span>
-                        <span className="checklist__meta">{step.body}</span>
-                      </div>
-                    </label>
-                  </li>
-                );
-              })}
-            </ol>
+        <section className="recipe-mobile-main">
+          <div className="recipe-mobile-content">
+            {activeView === 'ingredients' ? (
+              <div className="recipe-panel">
+                {ingredientGroups.map((group, groupIndex) => (
+                  <div key={group.title ?? groupIndex} className="recipe-block">
+                    <div className="recipe-block__title">{group.title ?? 'Ingredienser'}</div>
+                    <ul className="checklist" aria-label={`${group.title ?? 'Ingredienser'}`}>
+                      {group.items.map((item, itemIndex) => {
+                        const id = getIngredientKey(groupIndex, item, itemIndex);
+                        const isChecked = Boolean(checkedIngredients[id]);
+                        const amount = item.amount?.trim();
+                        return (
+                          <li key={id} className={isChecked ? 'checklist__item is-checked' : 'checklist__item'}>
+                            <label className="checklist__row">
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => toggleIngredient(id)}
+                                aria-label={item.label}
+                              />
+                              <div className="checklist__text">
+                                <div className="checklist__line">
+                                  <span className="checklist__label">{item.label}</span>
+                                  {amount && <span className="checklist__amount">{amount}</span>}
+                                </div>
+                              </div>
+                            </label>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="recipe-panel">
+                <div className="recipe-block">
+                  <div className="recipe-block__title">Gör så här</div>
+                  <ol className="checklist" aria-label="Gör så här">
+                    {liveRecipe.steps.map((step, index) => {
+                      const isChecked = Boolean(checkedSteps[index]);
+                      const fallback = `Steg ${index + 1}`;
+                      const customTitle = step.title?.trim();
+                      const displayTitle = customTitle && customTitle.length > 0 ? customTitle : fallback;
+                      return (
+                        <li key={index} className={isChecked ? 'checklist__item is-checked' : 'checklist__item'}>
+                          <label className="checklist__row">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => toggleStep(index)}
+                              aria-label={displayTitle}
+                            />
+                            <div className="checklist__text">
+                              <span className="checklist__label">{displayTitle}</span>
+                              <span className="checklist__meta">{step.body}</span>
+                            </div>
+                          </label>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                </div>
+              </div>
+            )}
           </div>
-        </div>
-      </div>
-
-        <div className="recipe-toggle full-bleed" role="tablist" aria-label="Visa innehåll">
-        <button
-          className={activeView === 'ingredients' ? 'toggle-button is-active' : 'toggle-button'}
-          onClick={() => setActiveView('ingredients')}
-          role="tab"
-          aria-selected={activeView === 'ingredients'}
-        >
-          Ingredienser
-        </button>
-        <button
-          className={activeView === 'steps' ? 'toggle-button is-active' : 'toggle-button'}
-          onClick={() => setActiveView('steps')}
-          role="tab"
-          aria-selected={activeView === 'steps'}
-        >
-          Gör så här
-        </button>
+          <div className="recipe-floating-tabs" role="tablist" aria-label="Visa innehåll">
+            <button
+              className={activeView === 'ingredients' ? 'recipe-tab is-active' : 'recipe-tab'}
+              onClick={() => setActiveView('ingredients')}
+              role="tab"
+              aria-selected={activeView === 'ingredients'}
+            >
+              Ingredienser
+            </button>
+            <button
+              className={activeView === 'steps' ? 'recipe-tab is-active' : 'recipe-tab'}
+              onClick={() => setActiveView('steps')}
+              role="tab"
+              aria-selected={activeView === 'steps'}
+            >
+              Gör så här
+            </button>
+          </div>
+        </section>
         </div>
       </div>
 
