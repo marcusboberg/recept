@@ -46,7 +46,7 @@ export function ChatPromptCard({ prompt, className }: Props) {
   };
 
   return (
-    <div className={`card space-y-3 ${className ?? ''}`}>
+    <div className={`card space-y-3 studio-card ${className ?? ''}`}>
       <div className="flex" style={{ justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
         <div>
           <h3 className="card-title" style={{ marginBottom: 0 }}>ChatGPT prompt</h3>

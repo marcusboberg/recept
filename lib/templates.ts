@@ -2,10 +2,15 @@ import { recipeSchema, type Recipe } from '@/schema/recipeSchema';
 
 export const emptyRecipe: Recipe = recipeSchema.parse({
   title: 'New recipe title',
+  titlePrefix: '',
+  titleSuffix: '',
   slug: 'new-recipe-slug',
   description: 'Describe the dish in one or two sentences.',
   tags: ['quick', 'weekday'],
-  categories: ['Middag'],
+  categoryPlace: 'Sverige',
+  categoryBase: 'Kyckling',
+  categoryType: 'Gryta',
+  categories: ['Sverige', 'Kyckling', 'Gryta'],
   prepTimeMinutes: 10,
   cookTimeMinutes: 15,
   servings: 2,

@@ -15,9 +15,12 @@ export function RecipeCard({ recipe }: Props) {
         <div className="recipe-card__media">
           <Image src={hero} alt={recipe.title} fill sizes="320px" />
         </div>
-        <div className="recipe-card__overlay">
-          <h3 className="recipe-card__title">{recipe.title}</h3>
-          {recipe.description && <p className="recipe-card__subtitle">{recipe.description}</p>}
+        <div className="recipe-card__overlay recipe-card__overlay--center">
+          <div className="recipe-card__titleblock">
+            {recipe.titlePrefix && <div className="recipe-card__title-small">{recipe.titlePrefix}</div>}
+            <h3 className="recipe-card__title-main">{recipe.title}</h3>
+            {recipe.titleSuffix && <div className="recipe-card__title-small">{recipe.titleSuffix}</div>}
+          </div>
         </div>
       </div>
     </a>

@@ -9,7 +9,12 @@ export const recipeSchema = z.object({
   cookTimeMinutes: z.number().int().nonnegative(),
   servings: z.number().int().positive(),
   imageUrl: z.string().url().or(z.string().startsWith('/')).optional(),
+  categoryPlace: z.string().min(1, 'Platskategori krävs').catch(''),
+  categoryBase: z.string().min(1, 'Basvarukategori krävs').catch(''),
+  categoryType: z.string().min(1, 'Typkategori krävs').catch(''),
   categories: z.array(z.string()).default([]),
+  titlePrefix: z.string().optional(),
+  titleSuffix: z.string().optional(),
   ingredients: z.array(z.object({
     label: z.string(),
     amount: z.string().optional(),
@@ -30,6 +35,15 @@ export const recipeSchema = z.object({
   source: z.string().url().optional(),
   createdAt: z.string().datetime().optional(),
   updatedAt: z.string().datetime().optional(),
-});
+}).transform((data) => ({
+  ...data,
+  categories: Array.from(
+    new Set(
+      [data.categoryPlace, data.categoryBase, data.categoryType, ...data.categories]
+        .map((c) => c?.trim())
+        .filter((c): c is string => Boolean(c && c.length > 0)),
+    ),
+  ),
+}));
 
 export type Recipe = z.infer<typeof recipeSchema>;

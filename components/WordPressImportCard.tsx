@@ -22,7 +22,9 @@ interface IngredientGroup {
 
 export function WordPressImportCard({ onImport, className }: Props) {
   const [url, setUrl] = useState('');
-  const [categoriesInput, setCategoriesInput] = useState('');
+  const [categoryPlace, setCategoryPlace] = useState('');
+  const [categoryBase, setCategoryBase] = useState('');
+  const [categoryType, setCategoryType] = useState('');
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -54,8 +56,11 @@ export function WordPressImportCard({ onImport, className }: Props) {
         throw new Error((payload.error ?? 'Kunde inte hämta sidan.') + detail);
       }
       const recipe = convertWordPressHtml(payload.html ?? '');
-      const categories = categoriesInput.split(',').map((c) => c.trim()).filter(Boolean);
-      if (categories.length > 0) {
+      const categories = [categoryPlace, categoryBase, categoryType].map((c) => c.trim()).filter(Boolean);
+      if (categories.length === 3) {
+        recipe.categoryPlace = categoryPlace.trim();
+        recipe.categoryBase = categoryBase.trim();
+        recipe.categoryType = categoryType.trim();
         recipe.categories = categories;
       }
       const parsed = recipeSchema.parse(recipe);
@@ -72,7 +77,7 @@ export function WordPressImportCard({ onImport, className }: Props) {
   };
 
   return (
-    <div className={`card space-y-3 ${className ?? ''}`}>
+    <div className={`card space-y-3 studio-card ${className ?? ''}`}>
       <div className="space-y-1">
         <h3 className="card-title">WordPress-import</h3>
         <p className="card-subtitle">Klistra in en WordPress-URL så hämtar vi HTML och bygger JSON åt dig.</p>
@@ -87,16 +92,38 @@ export function WordPressImportCard({ onImport, className }: Props) {
           onChange={(event) => setUrl(event.target.value)}
         />
       </label>
-      <label className="stack">
-        <span className="text-sm text-muted">Kategorier (komma-separerade, valfritt)</span>
-        <input
-          type="text"
-          className="input"
-          placeholder="Middag, Vegetariskt"
-          value={categoriesInput}
-          onChange={(event) => setCategoriesInput(event.target.value)}
-        />
-      </label>
+      <div className="studio-row">
+        <label className="stack">
+          <span className="text-sm text-muted">Plats</span>
+          <input
+            type="text"
+            className="input"
+            placeholder="t.ex. Italien"
+            value={categoryPlace}
+            onChange={(event) => setCategoryPlace(event.target.value)}
+          />
+        </label>
+        <label className="stack">
+          <span className="text-sm text-muted">Basvara</span>
+          <input
+            type="text"
+            className="input"
+            placeholder="t.ex. Kyckling"
+            value={categoryBase}
+            onChange={(event) => setCategoryBase(event.target.value)}
+          />
+        </label>
+        <label className="stack">
+          <span className="text-sm text-muted">Typ</span>
+          <input
+            type="text"
+            className="input"
+            placeholder="t.ex. Gryta"
+            value={categoryType}
+            onChange={(event) => setCategoryType(event.target.value)}
+          />
+        </label>
+      </div>
       <div className="flex" style={{ gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
         <button
           type="button"
@@ -186,6 +213,9 @@ function convertWordPressHtml(html: string): Recipe {
     description: cleanText(description),
     imageUrl,
     tags: collectTags(doc),
+    categoryPlace: '',
+    categoryBase: '',
+    categoryType: '',
     categories: [],
     prepTimeMinutes: 0,
     cookTimeMinutes: 0,

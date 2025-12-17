@@ -48,8 +48,6 @@ export function RecipeMobile({ slug, initialRecipe }: Props) {
 
   useEffect(() => {
     if (!slug) return undefined;
-    setLiveRecipe(initialRecipe ?? null);
-    setError(null);
     const db = getFirestoreClient();
     const ref = doc(db, 'recipes', slug);
     const unsubscribe = onSnapshot(ref, (snapshot) => {
@@ -68,7 +66,7 @@ export function RecipeMobile({ slug, initialRecipe }: Props) {
       }
     });
     return unsubscribe;
-  }, [slug, initialRecipe]);
+  }, [slug]);
 
   const ingredientGroups = useMemo(() => (liveRecipe ? toIngredientGroups(liveRecipe) : []), [liveRecipe]);
   const heroImage = liveRecipe?.imageUrl?.trim() ? liveRecipe.imageUrl : DEFAULT_RECIPE_IMAGE;
@@ -128,11 +126,10 @@ export function RecipeMobile({ slug, initialRecipe }: Props) {
               </a>
             </div>
             <div className="recipe-cover__summary">
-              <div className="recipe-cover__title">{liveRecipe.title}</div>
-              <div className="recipe-cover__meta">
-                <span>{liveRecipe.servings} portioner</span>
-                <span>{formatMinutes(totalTime)} totalt</span>
-                {liveRecipe.cookTimeMinutes > 0 && <span>{formatMinutes(liveRecipe.cookTimeMinutes)} i värmen</span>}
+              <div className="recipe-cover__title">
+                {liveRecipe.titlePrefix && <div className="recipe-cover__title-small">{liveRecipe.titlePrefix}</div>}
+                <div className="recipe-cover__title-main">{liveRecipe.title}</div>
+                {liveRecipe.titleSuffix && <div className="recipe-cover__title-small">{liveRecipe.titleSuffix}</div>}
               </div>
             </div>
           </div>

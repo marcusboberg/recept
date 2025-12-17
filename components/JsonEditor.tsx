@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false });
 
@@ -14,6 +14,7 @@ interface Props {
 export function JsonEditor({ value, onChange, errors = [] }: Props) {
   const editorRef = useRef<import('monaco-editor').editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<typeof import('monaco-editor') | null>(null);
+  const [markerSeverity, setMarkerSeverity] = useState<number>(8);
 
   const markers = useMemo(
     () =>
@@ -23,9 +24,9 @@ export function JsonEditor({ value, onChange, errors = [] }: Props) {
         startColumn: 1,
         endLineNumber: index + 1,
         endColumn: 120,
-        severity: monacoRef.current?.MarkerSeverity.Error ?? 8,
+        severity: markerSeverity,
       })),
-    [errors],
+    [errors, markerSeverity],
   );
 
   useEffect(() => {
@@ -46,6 +47,7 @@ export function JsonEditor({ value, onChange, errors = [] }: Props) {
         onMount={(editor, monaco) => {
           editorRef.current = editor;
           monacoRef.current = monaco;
+          setMarkerSeverity(monaco?.MarkerSeverity.Error ?? 8);
           monaco.editor.setModelMarkers(editor.getModel()!, 'owner', markers);
         }}
         onValidate={() => {

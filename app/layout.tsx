@@ -30,13 +30,13 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: 'black-translucent',
   },
-  themeColor: 'rgba(0,0,0,0)',
 };
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
+  themeColor: 'rgba(0,0,0,0)',
 };
 
 export default function RootLayout({
@@ -55,7 +55,7 @@ export default function RootLayout({
           referrerPolicy="no-referrer"
         />
       </head>
-      <body className="bg-stone-50 text-stone-900">
+      <body className="bg-stone-50 text-stone-900" suppressHydrationWarning>
         <div className="app-shell">
           <main className="site-main">{children}</main>
         </div>

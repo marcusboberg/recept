@@ -6,13 +6,15 @@ import { ChatPromptCard } from './ChatPromptCard';
 import { EditorShell } from './EditorShell';
 import { WordPressImportCard } from './WordPressImportCard';
 import { getFirebaseAuth } from '@/lib/firebaseClient';
+import { getUserDisplay } from '@/lib/userDisplay';
+import { StudioSidebar } from './StudioSidebar';
 
 interface Props {
   initialJson: string;
   initialTitle: string;
 }
 
-type ImportView = 'wordpress' | 'chatgpt' | 'manual' | 'preview';
+type ImportView = 'wordpress' | 'chatgpt' | 'manual' | 'preview' | 'json';
 
 function ManualJsonCard({ onImport }: { onImport: (json: string, title: string) => void }) {
   const [value, setValue] = useState('');
@@ -28,7 +30,7 @@ function ManualJsonCard({ onImport }: { onImport: (json: string, title: string) 
   };
 
   return (
-    <div className="workspace-card stack">
+    <div className="workspace-card stack studio-card">
       <div>
         <h3 className="card-title">Klistra in JSON</h3>
         <p className="card-subtitle">Hoppa över importflöden och klistra in JSON direkt.</p>
@@ -55,7 +57,14 @@ export function NewRecipeSection({ initialJson, initialTitle }: Props) {
   const [activeView, setActiveView] = useState<ImportView>('wordpress');
   const [authStatus, setAuthStatus] = useState<'loading' | 'authenticated' | 'unauthenticated'>('loading');
   const [user, setUser] = useState<User | null>(null);
-  const [email, setEmail] = useState('');
+  const quickAccounts = [
+    { id: 'philip', label: 'Philip', value: 'philip.ottosson@gmail.com' },
+    { id: 'marcus', label: 'Marcus', value: 'marcusboberg@icloud.com' },
+  ] as const;
+  type QuickId = typeof quickAccounts[number]['id'] | 'custom';
+  const [activeQuick, setActiveQuick] = useState<QuickId>('philip');
+  const [email, setEmail] = useState<string>(quickAccounts[0].value);
+  const [showCustomEmail, setShowCustomEmail] = useState(false);
   const [password, setPassword] = useState('');
   const [authSubmitting, setAuthSubmitting] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -97,30 +106,30 @@ export function NewRecipeSection({ initialJson, initialTitle }: Props) {
         id: 'workspace',
         label: 'Workspace',
         iconClass: 'fa-solid fa-laptop-code',
-        children: [{ id: 'preview' as const, label: 'Preview', description: 'Redigera & spara' }],
+        children: [
+          { id: 'preview' as const, label: 'Review', description: 'Redigera & spara' },
+          { id: 'json' as const, label: 'JSON', description: 'Rådata' },
+        ],
       },
     ],
     [],
   );
 
-  const userAliases: Record<string, string> = {
-    'marcusboberg@icloud.com': 'Marcus',
-    'philip.ottosson@gmail.com': 'Philip',
-  };
-
-  const quickEmails = [
-    { label: 'Marcus', value: 'marcusboberg@icloud.com' },
-    { label: 'Philip', value: 'philip.ottosson@gmail.com' },
-  ];
-
-  const currentAlias = userAliases[user?.email ?? ''];
-  const profileName = currentAlias ?? user?.email ?? user?.uid ?? 'User';
-  const profileInitial = profileName.charAt(0).toUpperCase();
+  const { name: profileName, initial: profileInitial } = getUserDisplay(user);
 
   const handleBack = () => {
     if (typeof window !== 'undefined') {
       window.location.hash = '#/';
     }
+  };
+
+  const handleSelectQuick = (id: Extract<QuickId, 'philip' | 'marcus'>) => {
+    const account = quickAccounts.find((item) => item.id === id);
+    if (!account) return;
+    setActiveQuick(id);
+    setShowCustomEmail(false);
+    setEmail(account.value);
+    setPassword('');
   };
 
   const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
@@ -147,133 +156,177 @@ export function NewRecipeSection({ initialJson, initialTitle }: Props) {
   const isAuthenticated = authStatus === 'authenticated';
 
   const contentClass =
-    activeView === 'preview' ? 'new-recipe-shell__content new-recipe-shell__content--locked' : 'new-recipe-shell__content';
+    activeView === 'preview' || activeView === 'json'
+      ? 'new-recipe-shell__content new-recipe-shell__content--locked'
+      : 'new-recipe-shell__content';
+
+  const sidebarFooter = (
+    <>
+      {authStatus === 'loading' && (
+        <div className="new-recipe-auth">
+          <p className="text-sm text-muted" style={{ marginBottom: 0 }}>Kontrollerar behörighet…</p>
+        </div>
+      )}
+      {authStatus === 'unauthenticated' && (
+        <div className="new-recipe-auth">
+          <p className="text-sm text-muted" style={{ marginBottom: 0 }}>Logga in i huvudrutan för att låsa upp studion.</p>
+          <button type="button" className="nav-action" onClick={handleBack}>
+            <i className="fa-solid fa-right-left" aria-hidden="true"></i>
+            <span>Tillbaka</span>
+          </button>
+        </div>
+      )}
+      {authStatus === 'authenticated' && (
+        <div className="new-recipe-auth">
+          <div className="new-recipe-profile">
+            <div className="new-recipe-profile__avatar">{profileInitial}</div>
+            <div className="new-recipe-profile__meta">
+              <p>{profileName}</p>
+              <span>{user?.email ?? ''}</span>
+            </div>
+          </div>
+          <div className="new-recipe-footer__divider" />
+          <div className="new-recipe-footer__actions">
+            <button type="button" className="nav-action" onClick={handleBack}>
+              <i className="fa-solid fa-right-left" aria-hidden="true"></i>
+              <span>Tillbaka</span>
+            </button>
+            <button type="button" className="nav-action" onClick={handleLogout}>
+              <i className="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i>
+              <span>Logga ut</span>
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
 
   return (
     <div className="new-recipe-shell">
-      <aside className="new-recipe-shell__sidebar">
-        <div className="new-recipe-brand">
-          <div className="new-recipe-brand__logo">R</div>
-          <div className="new-recipe-brand__copy">
-            <p className="new-recipe-brand__name">Recept</p>
-            <p className="new-recipe-brand__section">Studio</p>
-          </div>
-          <span className="new-recipe-brand__pill">v1.0</span>
-        </div>
-        <h1 className="new-recipe-title">Ny rätt</h1>
-        <nav className="new-recipe-nav">
-          {navSections.map((section) => (
-            <div key={section.id} className="new-recipe-nav__section">
-              <div className="new-recipe-nav__parent">
-                <span className="nav-icon-badge">
-                  <i className={`nav-icon ${section.iconClass}`} aria-hidden="true"></i>
-                </span>
-                <span className="nav-copy">
-                  <span className="nav-label">{section.label}</span>
-                </span>
-              </div>
-              <div className="new-recipe-nav__children">
-                {section.children.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => setActiveView(item.id)}
-                    className={activeView === item.id ? 'new-recipe-nav__child is-active' : 'new-recipe-nav__child'}
-                  >
-                    <span>{item.label}</span>
-                    <span className="nav-description">{item.description}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
-        </nav>
-        <div className="new-recipe-footer">
-          {authStatus === 'loading' && (
-            <div className="new-recipe-auth">
-              <p className="text-sm text-muted" style={{ marginBottom: 0 }}>Kontrollerar behörighet…</p>
-            </div>
-          )}
-          {authStatus === 'unauthenticated' && (
-            <form className="new-recipe-auth" onSubmit={handleLogin}>
-              <p className="nav-label">Logga in</p>
-              <label className="space-y-1" style={{ width: '100%' }}>
-                <span className="text-sm text-muted">E-post</span>
-                <input
-                  className="input"
-                  type="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  required
-                  ref={emailInputRef}
-                />
-              </label>
-              <label className="space-y-1" style={{ width: '100%' }}>
-                <span className="text-sm text-muted">Lösenord</span>
-                <input className="input" type="password" value={password} onChange={(event) => setPassword(event.target.value)} required />
-              </label>
-              <div className="new-recipe-quicklogins">
-                {quickEmails.map((account) => (
-                  <button
-                    type="button"
-                    key={account.value}
-                    className="chip-button"
-                    onClick={() => {
-                      setEmail(account.value);
-                      setPassword('');
-                      emailInputRef.current?.focus();
-                    }}
-                  >
-                    {account.label}
-                  </button>
-                ))}
-              </div>
-              <button type="submit" className="button-primary" disabled={authSubmitting}>
-                {authSubmitting ? 'Loggar in…' : 'Logga in'}
-              </button>
-              {authError && (
-                <p className="text-sm" style={{ color: '#b91c1c', margin: 0 }}>
-                  {authError}
-                </p>
-              )}
-              <button type="button" className="nav-action" onClick={handleBack}>
-                <i className="fa-solid fa-right-left" aria-hidden="true"></i>
-                <span>Tillbaka</span>
-              </button>
-            </form>
-          )}
-          {authStatus === 'authenticated' && (
-            <div className="new-recipe-auth">
-              <div className="new-recipe-profile">
-                <div className="new-recipe-profile__avatar">{profileInitial}</div>
-                <div className="new-recipe-profile__meta">
-                  <p>{profileName}</p>
-                  <span>{user?.email ?? ''}</span>
-                </div>
-              </div>
-              <div className="new-recipe-footer__divider" />
-              <div className="new-recipe-footer__actions">
-                <button type="button" className="nav-action" onClick={handleBack}>
-                  <i className="fa-solid fa-right-left" aria-hidden="true"></i>
-                  <span>Tillbaka</span>
-                </button>
-                <button type="button" className="nav-action" onClick={handleLogout}>
-                  <i className="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i>
-                  <span>Logga ut</span>
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </aside>
+      <StudioSidebar
+        title="Ny rätt"
+        navSections={navSections}
+        activeId={activeView}
+        onSelect={(id) => setActiveView(id as ImportView)}
+        footer={sidebarFooter}
+      />
       <div className={contentClass}>
         {!isAuthenticated && (
           <div className="new-recipe-locked">
-            <div className="workspace-card stack" style={{ maxWidth: '520px', textAlign: 'center' }}>
-              <h3 className="card-title">Logga in för att använda studion</h3>
-              <p className="card-subtitle" style={{ marginBottom: 0 }}>
-                Använd fälten i sidopanelen för att logga in med ditt Firebase-konto. Import- och preview-verktygen låses upp direkt.
-              </p>
+            <div className="workspace-card login-card">
+              <div className="login-grid">
+                <div className="login-pane">
+                  <div className="login-header">
+                    <h3 className="card-title">Logga in för att använda studion</h3>
+                    <p className="card-subtitle" style={{ marginBottom: 0 }}>
+                      Snabbinloggning med färdiga konton eller valfri e-post. Lösenord krävs alltid.
+                    </p>
+                  </div>
+                  {authStatus === 'loading' ? (
+                    <p className="text-sm text-muted" style={{ margin: 0 }}>Kontrollerar behörighet…</p>
+                  ) : (
+                    <form
+                      className="new-recipe-auth login-form"
+                      onSubmit={handleLogin}
+                    >
+                      <div className="login-block login-block--quick">
+                        <div className="login-toggle" role="tablist" aria-label="Snabbinloggning">
+                          {quickAccounts.map((account) => (
+                            <button
+                              key={account.id}
+                              type="button"
+                              role="tab"
+                              aria-selected={activeQuick === account.id}
+                              className={activeQuick === account.id ? 'login-toggle__item is-active' : 'login-toggle__item'}
+                              onClick={() => handleSelectQuick(account.id)}
+                            >
+                              {account.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="login-block login-block--fields">
+                        <label className="space-y-1" style={{ width: '100%' }}>
+                          <span className="text-sm text-muted">Lösenord</span>
+                          <input
+                            className="input"
+                            type="password"
+                            value={password}
+                            onChange={(event) => setPassword(event.target.value)}
+                            required
+                          />
+                        </label>
+                      </div>
+                      <button type="submit" className="button-primary login-submit" disabled={authSubmitting}>
+                        {authSubmitting ? 'Loggar in…' : 'Logga in'}
+                      </button>
+                      {authError && (
+                        <p className="text-sm" style={{ color: '#b91c1c', margin: 0 }}>
+                          {authError}
+                        </p>
+                      )}
+                      <div className="login-divider">
+                        <span>eller</span>
+                      </div>
+                      {showCustomEmail ? (
+                        <div className="login-block login-block--custom">
+                          <label className="space-y-1" style={{ width: '100%' }}>
+                            <span className="text-sm text-muted">Annan e-postadress</span>
+                            <input
+                              className="input"
+                              type="email"
+                              value={email}
+                              onChange={(event) => setEmail(event.target.value)}
+                              required
+                              ref={emailInputRef}
+                            />
+                          </label>
+                          <div className="login-secondary">
+                            <button
+                              type="button"
+                              className="nav-action login-back"
+                              onClick={() => {
+                                handleSelectQuick('philip');
+                                setShowCustomEmail(false);
+                              }}
+                            >
+                              <i className="fa-solid fa-xmark" aria-hidden="true"></i>
+                              <span>Avbryt annan adress</span>
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="login-secondary">
+                          <p className="text-sm text-muted" style={{ margin: 0 }}>Behöver du en annan e-postadress?</p>
+                          <button
+                            type="button"
+                            className="nav-action login-secondary__link"
+                            onClick={() => {
+                              setShowCustomEmail(true);
+                              setActiveQuick('custom');
+                              setEmail('');
+                              setPassword('');
+                              setTimeout(() => emailInputRef.current?.focus(), 0);
+                            }}
+                          >
+                            <i className="fa-solid fa-envelope" aria-hidden="true"></i>
+                            <span>Annan e-postadress</span>
+                          </button>
+                        </div>
+                      )}
+                      <div className="new-recipe-footer__actions login-footer" style={{ alignItems: 'center' }}>
+                        <button type="button" className="nav-action login-back" onClick={handleBack}>
+                          <i className="fa-solid fa-right-left" aria-hidden="true"></i>
+                          <span>Tillbaka</span>
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </div>
+                <div className="login-visual" aria-hidden="true">
+                  <div className="login-visual__blur"></div>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -290,7 +343,7 @@ export function NewRecipeSection({ initialJson, initialTitle }: Props) {
                   </p>
                 </header>
                 <div className="workspace-single">
-                  <WordPressImportCard onImport={handleImport} className="workspace-card stack" />
+                  <WordPressImportCard onImport={handleImport} className="workspace-card stack studio-card" />
                 </div>
               </section>
             )}
@@ -308,7 +361,7 @@ export function NewRecipeSection({ initialJson, initialTitle }: Props) {
                   </div>
                 </header>
                 <div className="workspace-grid">
-                  <article className="workspace-card stack">
+                  <article className="workspace-card stack studio-card">
                     <h3>Workflow</h3>
                     <ol className="workspace-list workspace-list--numbered">
                       <li>Klistra in originaltexten i promptkortet här.</li>
@@ -318,7 +371,7 @@ export function NewRecipeSection({ initialJson, initialTitle }: Props) {
                     <p className="text-sm text-muted">Be GPT alltid svara som ren JSON utan kommentarer.</p>
                   </article>
                   <ChatPromptCard
-                    className="workspace-card stack"
+                    className="workspace-card stack studio-card"
                     prompt={`Du är en formatkonverterare som tar ett recept i fritext och svarar med exakt JSON för webbplatsen Recept.
 
 1. Läs texten och hämta titel, beskrivning, tid, portioner, ingredienser, ev. grupper och steg.
@@ -328,6 +381,9 @@ export function NewRecipeSection({ initialJson, initialTitle }: Props) {
   "slug": "",
   "description": "",
   "imageUrl": "/images/recipes/new-recipe.jpg",
+  "categoryPlace": "",
+  "categoryBase": "",
+  "categoryType": "",
   "categories": [],
   "tags": [],
   "prepTimeMinutes": 0,
@@ -352,7 +408,8 @@ export function NewRecipeSection({ initialJson, initialTitle }: Props) {
 
 Regler:
 - "slug" ska vara titeln i kebab-case (små bokstäver, siffror och bindestreck).
-- "categories" är breda kategorier för startsidan (t.ex. “Middag”, “Vegetariskt”). Lista 1–3 relevanta.
+- "categoryPlace" är plats (land/region/kontinent), "categoryBase" är basvara (t.ex. kyckling, köttfärs, vegetariskt, pasta) och "categoryType" är typ (t.ex. gryta, paj, ugnsbakat, soppa, plockmat). Alla tre måste fyllas.
+- "categories" ska innehålla dessa tre värden (plus ev. extra).
 - "tags" är 3–5 korta etiketter, skrivna i engelska eller svenska beroende på texten.
 - Tider anges i heltal minuter. Sätt 0 om texten saknar information.
 - "imageUrl" är en URL. Behåll default-värdet om inget anges.
@@ -383,7 +440,7 @@ Regler:
                 </header>
                 <div className="workspace-grid">
                   <ManualJsonCard onImport={handleImport} />
-                  <article className="workspace-card stack">
+                  <article className="workspace-card stack studio-card">
                     <h3>Tips</h3>
                     <ul className="workspace-list">
                       <li>Fyll alltid i <code>createdAt</code> och <code>updatedAt</code> med ISO-datum.</li>
@@ -398,7 +455,13 @@ Regler:
 
             {activeView === 'preview' && (
               <section className="preview-wall">
-                <EditorShell key={editorKey} initialJson={editorPayload.json} initialTitle={editorPayload.title} mode="new" />
+                <EditorShell key={editorKey} initialJson={editorPayload.json} initialTitle={editorPayload.title} mode="new" forcedTab="form" />
+              </section>
+            )}
+
+            {activeView === 'json' && (
+              <section className="preview-wall">
+                <EditorShell key={`${editorKey}-json`} initialJson={editorPayload.json} initialTitle={editorPayload.title} mode="new" forcedTab="json" />
               </section>
             )}
           </>

@@ -42,12 +42,12 @@ function parseHash(hash: string): View {
 }
 
 export function AppView() {
-  const [view, setView] = useState<View>(() => (typeof window === 'undefined' ? { type: 'list' } : parseHash(window.location.hash)));
+  // Start with a deterministic view for SSR; hydrate with the real hash once the client is available.
+  const [view, setView] = useState<View>({ type: 'categories' });
 
   useEffect(() => {
-    const handleHashChange = () => {
-      setView(parseHash(window.location.hash));
-    };
+    setView(parseHash(window.location.hash));
+    const handleHashChange = () => setView(parseHash(window.location.hash));
     window.addEventListener('hashchange', handleHashChange);
     return () => {
       window.removeEventListener('hashchange', handleHashChange);

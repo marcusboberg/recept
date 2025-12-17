@@ -7,6 +7,18 @@ export interface CategoryInfo {
   count: number;
 }
 
+export function deriveCategoriesArray(input: { categories?: string[]; categoryPlace?: string; categoryBase?: string; categoryType?: string; imageUrl?: string }): string[] {
+  const items = [
+    input.categoryPlace,
+    input.categoryBase,
+    input.categoryType,
+    ...(input.categories ?? []),
+  ]
+    .map((c) => c?.trim())
+    .filter((c): c is string => Boolean(c && c.length > 0));
+  return Array.from(new Set(items));
+}
+
 export function toCategorySlug(name: string): string {
   return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 }
@@ -15,7 +27,8 @@ export function buildCategories(recipes: Recipe[], fallbackImage: string): Categ
   const map = new Map<string, CategoryInfo>();
 
   recipes.forEach((recipe) => {
-    (recipe.categories ?? []).forEach((name) => {
+    const derived = deriveCategoriesArray(recipe);
+    derived.forEach((name) => {
       const slug = toCategorySlug(name);
       if (!slug) return;
       const existing = map.get(slug);
@@ -33,11 +46,14 @@ export function buildCategories(recipes: Recipe[], fallbackImage: string): Categ
         count: 1,
       });
     });
+
+    // ensure recipes reflect derived categories for downstream usage
+    recipe.categories = derived;
   });
 
   return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name, 'sv'));
 }
 
 export function recipeInCategory(recipe: Recipe, slug: string): boolean {
-  return (recipe.categories ?? []).some((name) => toCategorySlug(name) === slug);
+  return deriveCategoriesArray(recipe).some((name) => toCategorySlug(name) === slug);
 }
