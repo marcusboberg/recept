@@ -363,6 +363,10 @@ button, input, textarea {
   font-weight: 600;
 }
 
+.text-danger {
+  color: #b91c1c;
+}
+
 .hero {
   padding: 2rem 1rem;
   background: linear-gradient(120deg, #f3e9dd, #f8f5f0);
@@ -1249,9 +1253,23 @@ button, input, textarea {
 
 .workspace-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: 1fr;
   gap: 1.5rem;
   align-items: flex-start;
+}
+
+.three-col {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  align-items: start;
+}
+
+@media (max-width: 720px) {
+  .three-col {
+    grid-template-columns: 1fr;
+    gap: 0.6rem;
+  }
 }
 
 .workspace-single {
@@ -1322,7 +1340,8 @@ button, input, textarea {
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(360px, 0.9fr);
   align-items: flex-start;
-  min-height: calc(100vh - 120px);
+  min-height: 100vh;
+  max-height: 100vh;
   background: #f5f4f1;
 }
 
@@ -1330,13 +1349,13 @@ button, input, textarea {
 .preview-grid__right {
   display: flex;
   flex-direction: column;
-  min-height: 0;
+  min-height: 100vh;
 }
 
 .preview-grid__left {
   padding: 2.5rem 3rem;
   gap: 1.25rem;
-  max-height: calc(100vh - 120px);
+  max-height: 100vh;
   overflow-y: auto;
 }
 
@@ -1389,6 +1408,19 @@ button, input, textarea {
   width: 100%;
 }
 
+.preview-grid__delete {
+  align-self: center;
+  margin-top: 0.5rem;
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+  background: none;
+  border: none;
+  padding: 0;
+  font-weight: 500;
+  cursor: pointer;
+}
+
 .preview-form-stack {
   gap: 1rem !important;
 }
@@ -1411,6 +1443,49 @@ button, input, textarea {
 .new-recipe-shell label.stack .input,
 .new-recipe-shell label.stack textarea {
   margin-top: 0.6rem;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 1.5rem;
+}
+
+.modal {
+  background: white;
+  border-radius: 16px;
+  padding: 1.25rem 1.5rem;
+  max-width: 420px;
+  width: 100%;
+  box-shadow: 0 30px 80px rgba(15, 23, 42, 0.3);
+  display: grid;
+  gap: 0.75rem;
+}
+
+.modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.button-danger {
+  background: #b91c1c;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 0.65rem 1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.button-danger:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
 .preview-column {
@@ -1489,8 +1564,7 @@ button, input, textarea {
   background: linear-gradient(180deg, #ffffff, #f2f4fd);
   border: 1px solid rgba(148, 163, 184, 0.35);
   box-shadow: 0 25px 60px rgba(15, 23, 42, 0.12);
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -1506,8 +1580,12 @@ button, input, textarea {
   height: 100%;
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
-  padding-bottom: 5.5rem;
+}
+
+.phone-preview__frame .recipe-shell--preview .recipe-cover,
+.phone-preview__frame .recipe-shell--preview .recipe-mobile-main {
+  border-radius: 24px;
+  overflow: hidden;
 }
 
 .phone-preview__frame .full-bleed {
@@ -1525,6 +1603,23 @@ button, input, textarea {
   display: flex !important;
   flex-direction: column;
   min-height: 100%;
+}
+
+.phone-preview__frame .recipe-shell--preview {
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-bottom: 2rem;
+  height: 100%;
+}
+
+.phone-preview__frame .recipe-shell--preview .recipe-panel--scroll {
+  max-height: none;
+  overflow: visible;
+  padding-right: 0;
+}
+
+.phone-preview__frame .recipe-shell--preview .recipe-mobile-main {
+  overflow: hidden;
 }
 
 .phone-preview__frame .recipe-toggle {
@@ -1825,15 +1920,24 @@ button, input, textarea {
 
 .ingredient-row {
   position: relative;
-  padding: 0.15rem 0;
+  padding: 0.35rem 0.15rem;
+  border-radius: 0;
   border: none;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.12);
+  background: #fff;
+  transition: background 0.12s ease;
+}
+
+.ingredient-row:first-of-type {
+  border-top: 1px solid rgba(15, 23, 42, 0.12);
 }
 
 .ingredient-row--heading {
   position: relative;
-  border-top: none;
-  padding-top: 0.4rem;
-  margin-top: 1.5rem;
+  padding-top: 0.7rem;
+  padding-bottom: 0.65rem;
+  background: #f9fafb;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.12);
 }
 
 .ingredient-row--heading::before {
@@ -1843,22 +1947,28 @@ button, input, textarea {
   right: 0;
   height: 1px;
   background: rgba(15, 23, 42, 0.12);
-  top: -0.75rem; /* center of the 1.5rem gap */
+  top: -1px;
 }
 
 .ingredient-row__grid {
   display: grid;
-  grid-template-columns: 40px 1fr minmax(110px, 0.4fr) auto auto;
+  grid-template-columns: 22px 1fr minmax(90px, 0.3fr) auto auto;
   align-items: center;
-  gap: 0.25rem;
+  gap: 1rem;
 }
 
 .ingredient-row__name {
   width: 100%;
+  font-size: 1rem;
+  padding: 0.1rem 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .ingredient-row__name--heading {
-  font-family: 'Montserrat Alternates', 'Montserrat', sans-serif;
+  font-family: var(--font-heading);
   font-size: 1.05rem;
   font-weight: 700;
   grid-column: 2 / span 2;
@@ -1871,13 +1981,40 @@ button, input, textarea {
 }
 
 .ingredient-row__amount {
-  max-width: 160px;
+  max-width: 130px;
+  padding: 0.1rem 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.ingredient-row input:focus {
+  outline: none;
+  box-shadow: none;
+  background: transparent;
+}
+.ingredient-row .input,
+.ingredient-row input,
+.ingredient-row textarea {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0.1rem 0;
+  box-shadow: none;
+}
+.ingredient-row .input:focus,
+.ingredient-row input:focus,
+.ingredient-row textarea:focus {
+  outline: none;
+  border: none;
+  box-shadow: none;
+  background: transparent;
 }
 
 .ingredient-drag {
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  background: #f8fafc;
-  border-radius: 10px;
+  border: none;
+  background: transparent;
   height: 36px;
   width: 36px;
   display: inline-flex;
@@ -1891,24 +2028,24 @@ button, input, textarea {
 }
 
 .ingredient-drag i {
-  color: #0f172a;
-  font-size: 1rem;
+  color: rgba(107, 114, 128, 0.9);
+  font-size: 1.05rem;
 }
 
 .ingredient-row--dragover {
-  background: rgba(15, 23, 42, 0.02);
-  border-radius: 12px;
+  background: #f8fafc;
 }
 
-.ingredient-row--dropped {
-  animation: ingredientDropFlash 0.9s ease forwards;
+.ingredient-row--dragging {
+  background: #eef2ff;
 }
 
 .ingredient-drop-indicator {
-  height: 3px;
-  background: #0f172a;
-  border-radius: 999px;
-  margin: 0.12rem 0;
+  display: none;
+}
+
+.ingredient-row:hover {
+  background: #f9fafb;
 }
 
 @keyframes ingredientDropFlash {
@@ -1927,9 +2064,9 @@ button, input, textarea {
 }
 
 .ingredient-kind-toggle {
-  border: 1px solid rgba(15, 23, 42, 0.14);
-  background: #f8fafc;
-  border-radius: 10px;
+  border: none;
+  background: transparent;
+  border-radius: 0;
   padding: 0.5rem 0.65rem;
   display: inline-flex;
   align-items: center;
@@ -2385,6 +2522,38 @@ button, input, textarea {
 
 .recipe-shell .recipe-title-segment--small {
   font-size: 1.7rem;
+}
+
+.recipe-shell--preview .recipe-cover {
+  min-height: min(60vh, 460px);
+}
+
+.recipe-shell--preview .recipe-cover__summary {
+  gap: 0.5rem;
+}
+
+.recipe-shell--preview .recipe-cover__title {
+  margin-bottom: 1.1rem;
+  max-width: 80vw;
+}
+
+.recipe-shell--preview .recipe-cover__title-main {
+  font-size: clamp(2.3rem, 5.8vw, 3.1rem);
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+
+.recipe-shell--preview .recipe-cover__title-small {
+  font-size: clamp(1rem, 3vw, 1.5rem);
+}
+
+.recipe-shell--preview .recipe-title-segment--big {
+  font-size: 2.5rem;
+  letter-spacing: 0.015em;
+}
+
+.recipe-shell--preview .recipe-title-segment--small {
+  font-size: 1.3rem;
 }
 
 .recipe-cover__meta {

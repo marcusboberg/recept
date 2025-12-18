@@ -1,7 +1,19 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { doc, setDoc } from 'firebase/firestore';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  type DragEndEvent,
+  type DragOverEvent,
+  type DragStartEvent,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { deleteDoc, doc, setDoc } from 'firebase/firestore';
 import { deriveCategoriesArray } from '@/lib/categories';
 import { JsonEditor } from '@/components/JsonEditor';
 import { RecipePreview } from '@/components/RecipePreview';
@@ -29,10 +41,12 @@ export function EditorShell({ initialJson, initialTitle, mode: _mode, forcedTab 
   const [formRecipe, setFormRecipe] = useState<Recipe | null>(null);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [insertMenu, setInsertMenu] = useState<{ index: number; x: number; y: number } | null>(null);
   const [flatIngredients, setFlatIngredients] = useState<Array<{ id: string; label: string; amount?: string; kind: 'ingredient' | 'heading' }>>([]);
-  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
   const [dropIndicatorIndex, setDropIndicatorIndex] = useState<number | null>(null);
   const [focusIngredientId, setFocusIngredientId] = useState<string | null>(null);
   const [justDroppedId, setJustDroppedId] = useState<string | null>(null);
@@ -40,6 +54,12 @@ export function EditorShell({ initialJson, initialTitle, mode: _mode, forcedTab 
   const formUpdateRef = useRef(false);
   const ingredientRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const dropFlashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  const indexById = useMemo(
+    () => new Map(flatIngredients.map((item, idx) => [item.id, idx] as const)),
+    [flatIngredients],
+  );
 
   useEffect(() => {
     if (!insertMenu) return;
@@ -194,14 +214,12 @@ export function EditorShell({ initialJson, initialTitle, mode: _mode, forcedTab 
 
   const moveIngredient = (from: number, to: number) => {
     setFlatAndRecipe((prev) => {
-      const next = [...prev];
-      const [item] = next.splice(from, 1);
-      next.splice(to, 0, item);
-
+      const next = arrayMove(prev, from, to);
+      const item = next[to];
       if (dropFlashTimer.current) {
         clearTimeout(dropFlashTimer.current);
       }
-      setJustDroppedId(item.id);
+      setJustDroppedId(item?.id);
       dropFlashTimer.current = setTimeout(() => setJustDroppedId(null), 900);
 
       return next;
@@ -250,6 +268,22 @@ export function EditorShell({ initialJson, initialTitle, mode: _mode, forcedTab 
 
   const saveDisabled = saving || errors.length > 0;
   const formReady = Boolean(formRecipe);
+
+  const handleDelete = async () => {
+    if (!formRecipe) return;
+    setDeleting(true);
+    setStatus(null);
+    try {
+      const db = getFirestoreClient();
+      await deleteDoc(doc(db, 'recipes', formRecipe.slug));
+      setStatus('Receptet har raderats.');
+      setShowDeleteModal(false);
+    } catch (error) {
+      setStatus((error as Error).message);
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const renderTitleComposer = () => {
     if (!formRecipe) return null;
@@ -380,35 +414,7 @@ export function EditorShell({ initialJson, initialTitle, mode: _mode, forcedTab 
               onChange={(e) => updateRecipe((prev) => ({ ...prev, imageUrl: e.target.value }))}
             />
           </label>
-          <div className="two-col">
-            <label className="stack">
-              <span className="text-sm text-muted">Portioner</span>
-              <input
-                className="input"
-                type="number"
-                value={formRecipe.servings}
-                onChange={(e) => updateRecipe((prev) => ({ ...prev, servings: Number(e.target.value) || 0 }))}
-              />
-            </label>
-            <label className="stack">
-              <span className="text-sm text-muted">Förberedelsetid (min)</span>
-              <input
-                className="input"
-                type="number"
-                value={formRecipe.prepTimeMinutes}
-                onChange={(e) => updateRecipe((prev) => ({ ...prev, prepTimeMinutes: Number(e.target.value) || 0 }))}
-              />
-            </label>
-            <label className="stack">
-              <span className="text-sm text-muted">Tillagningstid (min)</span>
-              <input
-                className="input"
-                type="number"
-                value={formRecipe.cookTimeMinutes}
-                onChange={(e) => updateRecipe((prev) => ({ ...prev, cookTimeMinutes: Number(e.target.value) || 0 }))}
-              />
-            </label>
-          </div>
+          <div className="two-col" />
           <div className="stack" style={{ gap: '0.5rem' }}>
             <p className="text-sm text-muted" style={{ marginBottom: '-0.25rem' }}>
               Kategorier
@@ -449,87 +455,64 @@ export function EditorShell({ initialJson, initialTitle, mode: _mode, forcedTab 
               + Ny ingrediens
             </button>
           </div>
-          <div className="stack" style={{ gap: '0.5rem' }}>
-            {flatIngredients.map((item, index) => (
-              <div
-                key={item.id}
-                className={`ingredient-row ${item.kind === 'heading' ? 'ingredient-row--heading' : 'ingredient-row--item'} ${
-                  dragOverIndex === index ? 'ingredient-row--dragover' : ''
-                } ${justDroppedId === item.id ? 'ingredient-row--dropped' : ''}`}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  if (draggingIndex !== null) {
-                    const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
-                    const isAfter = e.clientY > rect.top + rect.height / 2;
-                    setDragOverIndex(index);
-                    setDropIndicatorIndex(isAfter ? index + 1 : index);
-                  }
-                }}
-                onDragLeave={() => {
-                  setDragOverIndex(null);
-                  setDropIndicatorIndex(null);
-                }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  if (draggingIndex !== null && dropIndicatorIndex !== null) {
-                    const targetIndex = dropIndicatorIndex > draggingIndex ? dropIndicatorIndex - 1 : dropIndicatorIndex;
-                    moveIngredient(draggingIndex, targetIndex);
-                  }
-                  setDraggingIndex(null);
-                  setDragOverIndex(null);
-                  setDropIndicatorIndex(null);
-                }}
-              >
-                {dropIndicatorIndex === index && draggingIndex !== null && (
-                  <div className="ingredient-drop-indicator" aria-hidden="true" />
-                )}
-                <div className="ingredient-row__grid">
-                  <button
-                    type="button"
-                    className="ingredient-drag"
-                    draggable
-                    onDragStart={(e) => {
-                      e.dataTransfer?.setData('text/plain', item.id);
-                      e.dataTransfer?.setDragImage?.(new Image(), 0, 0);
-                      setDraggingIndex(index);
-                      setDragOverIndex(index);
-                      setDropIndicatorIndex(index);
-                    }}
-                    onDragEnd={() => {
-                      setDraggingIndex(null);
-                      setDragOverIndex(null);
-                      setDropIndicatorIndex(null);
-                    }}
-                    aria-label="Dra för att flytta"
-                  >
-                    <i className="fa-solid fa-up-down-left-right" aria-hidden="true"></i>
-                  </button>
-                  <input
-                    className={
-                      item.kind === 'heading'
-                        ? 'input ingredient-row__name ingredient-row__name--heading'
-                        : 'input ingredient-row__name'
-                    }
-                    ref={(el) => {
-                      ingredientRefs.current[item.id] = el;
-                    }}
-                    value={item.label}
-                    onChange={(e) => updateIngredient(index, 'label', e.target.value)}
-                    placeholder={item.kind === 'heading' ? 'Rubrik' : 't.ex. Smör'}
-                  />
-                  {item.kind !== 'heading' && (
-                    <input
-                      className="input ingredient-row__amount"
-                      value={item.amount ?? ''}
-                      onChange={(e) => updateIngredient(index, 'amount', e.target.value)}
-                      placeholder="1 dl"
-                    />
-                  )}
-                  <button
-                    type="button"
-                    className="ingredient-kind-toggle"
-                    aria-label={item.kind === 'heading' ? 'Gör till ingrediens' : 'Gör till rubrik'}
-                    onClick={() =>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={(event: DragStartEvent) => {
+              const id = event.active.id as string;
+              setActiveDragId(id);
+              setOverId(id);
+              const currentIndex = indexById.get(id);
+              setDropIndicatorIndex(currentIndex ?? null);
+            }}
+            onDragOver={(event: DragOverEvent) => {
+              const over = event.over?.id as string | undefined;
+              if (!over) {
+                setOverId(null);
+                setDropIndicatorIndex(null);
+                return;
+              }
+              setOverId(over);
+              const activeId = event.active.id as string;
+              const activeIndex = indexById.get(activeId);
+              const overIndex = indexById.get(over);
+              if (activeIndex == null || overIndex == null) {
+                setDropIndicatorIndex(null);
+                return;
+              }
+              const insertionIndex = activeIndex < overIndex ? overIndex + 1 : overIndex;
+              setDropIndicatorIndex(insertionIndex);
+            }}
+            onDragEnd={(event: DragEndEvent) => {
+              const over = event.over?.id as string | undefined;
+              const activeId = event.active.id as string;
+              const activeIndex = indexById.get(activeId);
+              const overIndex = over ? indexById.get(over) : null;
+              setActiveDragId(null);
+              setOverId(null);
+              setDropIndicatorIndex(null);
+              if (activeIndex == null || overIndex == null || activeIndex === overIndex) return;
+              const targetIndex = activeIndex < overIndex ? overIndex : overIndex;
+              moveIngredient(activeIndex, targetIndex);
+            }}
+            onDragCancel={() => {
+              setActiveDragId(null);
+              setOverId(null);
+              setDropIndicatorIndex(null);
+            }}
+          >
+            <SortableContext items={flatIngredients.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+              <div className="stack" style={{ gap: 0 }}>
+                {flatIngredients.map((item, index) => (
+                  <SortableIngredientRow
+                    key={item.id}
+                    item={item}
+                    index={index}
+                    dropIndicatorIndex={dropIndicatorIndex}
+                    justDroppedId={justDroppedId}
+                    overId={overId}
+                    onUpdateIngredient={updateIngredient}
+                    onToggleKind={() =>
                       setFlatAndRecipe((prev) => {
                         const next = [...prev];
                         const nextKind = next[index].kind === 'heading' ? 'ingredient' : 'heading';
@@ -537,30 +520,24 @@ export function EditorShell({ initialJson, initialTitle, mode: _mode, forcedTab 
                         return next;
                       })
                     }
-                  >
-                    <i className={item.kind === 'heading' ? 'fa-solid fa-heading' : 'fa-solid fa-list-ul'} aria-hidden="true"></i>
-                  </button>
-                  <button
-                    type="button"
-                    className="chip-button chip-button--icon chip-button--danger"
-                    aria-label="Ta bort"
-                    onClick={() =>
+                    onDelete={() =>
                       setFlatAndRecipe((prev) => {
                         const next = [...prev];
                         next.splice(index, 1);
                         return next.length > 0 ? next : [{ id: crypto.randomUUID(), label: '', amount: '', kind: 'ingredient' }];
                       })
                     }
-                  >
-                    <i className="fa-solid fa-trash-can" aria-hidden="true"></i>
-                  </button>
-                </div>
+                    setInputRef={(el) => {
+                      ingredientRefs.current[item.id] = el;
+                    }}
+                  />
+                ))}
+                {dropIndicatorIndex === flatIngredients.length && activeDragId && (
+                  <div className="ingredient-drop-indicator" aria-hidden="true" />
+                )}
               </div>
-            ))}
-            {dropIndicatorIndex === flatIngredients.length && draggingIndex !== null && (
-              <div className="ingredient-drop-indicator" aria-hidden="true" />
-            )}
-          </div>
+            </SortableContext>
+          </DndContext>
         </article>
 
         <article className="workspace-card stack">
@@ -595,8 +572,8 @@ export function EditorShell({ initialJson, initialTitle, mode: _mode, forcedTab 
   };
 
   return (
-    <div className="preview-grid">
-      <div className="preview-grid__left">
+      <div className="preview-grid">
+        <div className="preview-grid__left">
         <div className="preview-grid__copy">
           <p className="eyebrow">Redigera</p>
           <h2>Arbeta i formulär eller JSON – allt synkas med mobilen till höger.</h2>
@@ -619,15 +596,24 @@ export function EditorShell({ initialJson, initialTitle, mode: _mode, forcedTab 
           )}
         </div>
       </div>
-      <div className="preview-grid__right">
-        <button className="button-primary button-hero preview-grid__save" onClick={submit} disabled={saveDisabled}>
-          {saving ? 'Sparar…' : 'Spara recept'}
-        </button>
-        {status && (
-          <div className="text-sm text-muted" style={{ marginTop: '-0.35rem' }}>
-            {status}
-          </div>
-        )}
+        <div className="preview-grid__right">
+          <button className="button-primary button-hero preview-grid__save" onClick={submit} disabled={saveDisabled}>
+            {saving ? 'Sparar…' : 'Spara recept'}
+          </button>
+          {formReady && (
+            <button
+              type="button"
+              className="text-link text-danger preview-grid__delete"
+              onClick={() => setShowDeleteModal(true)}
+            >
+              <i className="fa-solid fa-trash-can" aria-hidden="true" /> Radera recept
+            </button>
+          )}
+          {status && (
+            <div className="text-sm text-muted" style={{ marginTop: '-0.35rem' }}>
+              {status}
+            </div>
+          )}
         <div className="preview-grid__device">
           {preview ? (
             <div className="phone-preview">
@@ -642,6 +628,127 @@ export function EditorShell({ initialJson, initialTitle, mode: _mode, forcedTab 
           )}
         </div>
       </div>
+      {showDeleteModal && formRecipe && (
+        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="delete-modal-title">
+          <div className="modal">
+            <h4 id="delete-modal-title">Radera recept</h4>
+            <p>Detta kommer att radera &quot;{formRecipe.title}&quot;. Är du säker?</p>
+            <div className="modal__actions">
+              <button type="button" className="button-secondary" onClick={() => setShowDeleteModal(false)}>
+                Avbryt
+              </button>
+              <button
+                type="button"
+                className="button-danger"
+                onClick={handleDelete}
+                disabled={deleting}
+              >
+                {deleting ? 'Raderar…' : 'Radera'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+type SortableIngredientRowProps = {
+  item: { id: string; label: string; amount?: string; kind: 'ingredient' | 'heading' };
+  index: number;
+  dropIndicatorIndex: number | null;
+  overId: string | null;
+  justDroppedId: string | null;
+  onUpdateIngredient: (index: number, field: 'label' | 'amount', value: string) => void;
+  onToggleKind: () => void;
+  onDelete: () => void;
+  setInputRef: (el: HTMLInputElement | null) => void;
+};
+
+function SortableIngredientRow({
+  item,
+  index,
+  dropIndicatorIndex,
+  overId,
+  justDroppedId,
+  onUpdateIngredient,
+  onToggleKind,
+  onDelete,
+  setInputRef,
+}: SortableIngredientRowProps) {
+  const { attributes, listeners, setActivatorNodeRef, setNodeRef, transform, transition, isOver, isDragging } = useSortable({
+    id: item.id,
+    animateLayoutChanges: () => false,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  const showDropIndicatorBefore = dropIndicatorIndex === index;
+  const rowClass = [
+    'ingredient-row',
+    item.kind === 'heading' ? 'ingredient-row--heading' : 'ingredient-row--item',
+    isOver ? 'ingredient-row--dragover' : '',
+    isDragging ? 'ingredient-row--dragging' : '',
+    justDroppedId === item.id ? 'ingredient-row--dropped' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  return (
+    <>
+      {showDropIndicatorBefore && <div className="ingredient-drop-indicator" aria-hidden="true" />}
+      <div ref={setNodeRef} className={rowClass} style={style} data-over={overId === item.id}>
+        <div className="ingredient-row__grid">
+          <button
+            type="button"
+            className="ingredient-drag"
+            ref={setActivatorNodeRef}
+            {...listeners}
+            {...attributes}
+            aria-label="Dra för att flytta"
+          >
+            <i className="fa-solid fa-grip-vertical" aria-hidden="true"></i>
+          </button>
+          <input
+            className={
+              item.kind === 'heading'
+                ? 'input ingredient-row__name ingredient-row__name--heading'
+                : 'input ingredient-row__name'
+            }
+            ref={setInputRef}
+            value={item.label}
+            onChange={(e) => onUpdateIngredient(index, 'label', e.target.value)}
+            placeholder={item.kind === 'heading' ? 'Rubrik' : 't.ex. Smör'}
+          />
+          {item.kind !== 'heading' && (
+            <input
+              className="input ingredient-row__amount"
+              value={item.amount ?? ''}
+              onChange={(e) => onUpdateIngredient(index, 'amount', e.target.value)}
+              placeholder="1 dl"
+            />
+          )}
+          <button
+            type="button"
+            className="ingredient-kind-toggle"
+            aria-label={item.kind === 'heading' ? 'Gör till ingrediens' : 'Gör till rubrik'}
+            onClick={onToggleKind}
+          >
+            <i className={item.kind === 'heading' ? 'fa-solid fa-heading' : 'fa-solid fa-list-ul'} aria-hidden="true"></i>
+          </button>
+          <button
+            type="button"
+            className="chip-button chip-button--icon chip-button--danger"
+            aria-label="Ta bort"
+            onClick={onDelete}
+          >
+            <i className="fa-solid fa-trash-can" aria-hidden="true"></i>
+          </button>
+        </div>
+      </div>
+    </>
   );
 }

@@ -45,6 +45,17 @@ export function RecipePreview({ recipe }: Props) {
   const heroImage = recipe.imageUrl?.trim() ? recipe.imageUrl : DEFAULT_RECIPE_IMAGE;
   const totalTime = recipe.prepTimeMinutes + recipe.cookTimeMinutes;
 
+  const titleSegments = useMemo(() => {
+    if (recipe.titleSegments && recipe.titleSegments.length > 0) {
+      return recipe.titleSegments;
+    }
+    return [
+      ...(recipe.titlePrefix ? [{ text: recipe.titlePrefix, size: 'small' as const }] : []),
+      { text: recipe.title, size: 'big' as const },
+      ...(recipe.titleSuffix ? [{ text: recipe.titleSuffix, size: 'small' as const }] : []),
+    ];
+  }, [recipe]);
+
   const heroStyle = {
     '--recipe-hero-image': `url(${heroImage})`,
   } as CSSProperties;
@@ -58,7 +69,7 @@ export function RecipePreview({ recipe }: Props) {
   };
 
   return (
-    <div className="recipe-shell" style={heroStyle}>
+    <div className="recipe-shell recipe-shell--preview" style={heroStyle}>
       <div className="recipe-mobile-only recipe-mobile-simple">
         <div className="recipe-cover__media2">
           <Image src={heroImage} alt={recipe.title} fill sizes="100vw" priority className="recipe-cover__image-background" />
@@ -66,21 +77,29 @@ export function RecipePreview({ recipe }: Props) {
             <div className="recipe-cover__media">
               <Image src={heroImage} alt={recipe.title} fill sizes="100vw" priority className="recipe-cover__image" />
             </div>
-            <div className="recipe-cover__overlay">
-              <div className="recipe-cover__actions">
-                <span className="back-button" aria-hidden="true">
-                  ← Tillbaka
-                </span>
-                <span className="recipe-edit-button" aria-hidden="true">
-                  Redigera
-                </span>
-              </div>
-              <div className="recipe-cover__summary">
-                <div className="recipe-cover__title">
-                  {recipe.titlePrefix && <div className="recipe-cover__title-small">{recipe.titlePrefix}</div>}
-                  <div className="recipe-cover__title-main">{recipe.title}</div>
-                  {recipe.titleSuffix && <div className="recipe-cover__title-small">{recipe.titleSuffix}</div>}
+              <div className="recipe-cover__overlay">
+                <div className="recipe-cover__actions">
+                  <span className="back-button" aria-hidden="true">
+                    ← Tillbaka
+                  </span>
+                  <span className="recipe-edit-button" aria-hidden="true">
+                    Redigera
+                  </span>
                 </div>
+                <div className="recipe-cover__summary">
+                  <div className="recipe-cover__title">
+                    {titleSegments.map((segment, idx) =>
+                      segment.size === 'big' ? (
+                        <div key={idx} className="recipe-cover__title-main recipe-title-segment recipe-title-segment--big">
+                          {segment.text}
+                        </div>
+                      ) : (
+                        <div key={idx} className="recipe-cover__title-small recipe-title-segment recipe-title-segment--small">
+                          {segment.text}
+                        </div>
+                      ),
+                    )}
+                  </div>
             </div>
           </div>
         </section>
