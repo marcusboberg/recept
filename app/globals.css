@@ -3400,7 +3400,14 @@ button, input, textarea {
   }
 
   .recipe-edit-button--desktop {
-    display: none;
+    display: inline-flex;
+    position: fixed;
+    top: 1.5rem;
+    right: 1.5rem;
+    z-index: 30;
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
   }
 
   .recipe-edit-button--fab {

@@ -274,6 +274,14 @@ export function RecipeMobile({ slug, initialRecipe }: Props) {
         <a href="#/" className="back-button desktop back-button--floating">
           <i className="fa-solid fa-arrow-left" aria-hidden="true" /> Tillbaka
         </a>
+        <a
+          href={`#/edit/${liveRecipe.slug}`}
+          className="recipe-edit-button recipe-edit-button--desktop"
+          aria-label="Redigera"
+          title="Redigera"
+        >
+          <i className="fa-solid fa-pen-to-square" aria-hidden="true" /> Redigera
+        </a>
         <div className="recipe-desktop-content">
           <div className="recipe-desktop-card">
             <div className="recipe-desktop-card__body recipe-desktop-card__ingredients">
