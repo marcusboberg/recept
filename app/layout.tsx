@@ -47,14 +47,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Momo+Trust+Display&family=Montserrat+Alternates:ital,wght@0,400;0,600;1,400;1,600&display=swap"
-        />
-      </head>
+      <head />
       <body className="bg-stone-50 text-stone-900" suppressHydrationWarning>
         <div className="app-shell">
           <main className="site-main">{children}</main>
