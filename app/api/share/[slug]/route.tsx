@@ -1,10 +1,10 @@
-'use server';
-
 import path from 'path';
 import { promises as fs } from 'fs';
 import { ImageResponse } from 'next/og';
 import type { NextRequest } from 'next/server';
 
+export const dynamic = 'force-static';
+export const revalidate = 0;
 export const runtime = 'nodejs';
 
 type RecipeFile = {
@@ -22,6 +22,19 @@ async function loadRecipe(slug: string): Promise<RecipeFile | null> {
   } catch (error) {
     console.error('Failed to load recipe for share card', slug, error);
     return null;
+  }
+}
+
+export async function generateStaticParams() {
+  const dir = path.join(process.cwd(), 'data', 'recipes');
+  try {
+    const files = await fs.readdir(dir);
+    return files
+      .filter((file) => file.endsWith('.json'))
+      .map((file) => ({ slug: file.replace(/\.json$/, '') }));
+  } catch (error) {
+    console.error('Failed to read recipes for share card params', error);
+    return [];
   }
 }
 
