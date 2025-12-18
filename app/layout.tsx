@@ -1,5 +1,26 @@
 import type { Metadata, Viewport } from 'next';
+import { Fraunces, Momo_Trust_Display, Montserrat_Alternates } from 'next/font/google';
 import './globals.css';
+
+const headingDisplay = Momo_Trust_Display({
+  subsets: ['latin'],
+  weight: ['400'],
+  variable: '--font-heading-display',
+});
+
+const bodyFont = Montserrat_Alternates({
+  subsets: ['latin'],
+  style: ['italic', 'normal'],
+  weight: ['400', '600'],
+  variable: '--font-body-family',
+});
+
+const fraunces = Fraunces({
+  subsets: ['latin'],
+  axes: ['opsz'],
+  weight: ['400', '600'],
+  variable: '--font-fraunces-family',
+});
 
 const defaultSiteUrl = 'http://localhost:3000';
 const rawSiteUrl = process.env.NEXT_PUBLIC_APP_URL ?? defaultSiteUrl;
@@ -45,7 +66,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html
+      lang="en"
+      className={`${headingDisplay.variable} ${bodyFont.variable} ${fraunces.variable}`}
+    >
       <head>
         <link
           rel="stylesheet"
