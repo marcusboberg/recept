@@ -396,6 +396,14 @@ export function RecipeMobile({ slug, initialRecipe }: Props) {
             <div className="recipe-desktop-card__image">
               <Image src={heroImage} alt={liveRecipe.title} fill sizes="50vw" priority className="desk-image" />
               <div className="recipe-desktop-image-overlay">
+                <a
+                  href={`#/edit/${liveRecipe.slug}`}
+                  className="recipe-edit-button recipe-edit-button--fab"
+                  aria-label="Redigera"
+                  title="Redigera"
+                >
+                  <i className="fa-solid fa-pen-to-square" aria-hidden="true" />
+                </a>
                 <div className="recipe-cover__title recipe-cover__title--desktop">
                   {titleSegments.map((segment, idx) =>
                     segment.size === 'big' ? (

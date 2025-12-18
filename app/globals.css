@@ -3412,8 +3412,8 @@ button, input, textarea {
 
   .recipe-edit-button--fab {
     position: absolute;
-    bottom: 1.25rem;
-    right: 1.25rem;
+    bottom: 1rem;
+    right: 1rem;
     width: 52px;
     height: 52px;
     border-radius: 50%;
