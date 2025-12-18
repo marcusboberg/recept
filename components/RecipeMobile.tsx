@@ -106,7 +106,6 @@ export function RecipeMobile({ slug, initialRecipe }: Props) {
     const updateHint = () => {
       const hasScroll = el.scrollHeight > el.clientHeight + 1;
       const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setShowScrollHint(hasScroll && !atBottom);
     };
     updateHint();
