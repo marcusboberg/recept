@@ -54,8 +54,7 @@ export function RecipeMobile({ slug, initialRecipe }: Props) {
   const [checkedSteps, setCheckedSteps] = useState<Record<number, boolean>>({});
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const [showScrollHint, setShowScrollHint] = useState(false);
-  const [toggleDirection, setToggleDirection] = useState<'left' | 'right'>('right');
-  const lastViewRef = useRef<ViewMode>('ingredients');
+  const toggleDirection: 'left' | 'right' = activeView === 'ingredients' ? 'left' : 'right';
 
   useEffect(() => {
     if (!slug) return undefined;
@@ -102,25 +101,12 @@ export function RecipeMobile({ slug, initialRecipe }: Props) {
   };
 
   useEffect(() => {
-    const previous = lastViewRef.current;
-    if (previous !== activeView) {
-      setToggleDirection(activeView === 'ingredients' ? 'left' : 'right');
-      lastViewRef.current = activeView;
-    }
-  }, [activeView]);
-
-  useEffect(() => {
-    // On first mount, set direction but skip wobble
-    lastViewRef.current = activeView;
-    setToggleDirection(activeView === 'ingredients' ? 'left' : 'right');
-  }, []);
-
-  useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     const updateHint = () => {
       const hasScroll = el.scrollHeight > el.clientHeight + 1;
       const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setShowScrollHint(hasScroll && !atBottom);
     };
     updateHint();
