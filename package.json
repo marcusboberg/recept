@@ -16,6 +16,9 @@
   },
   "dependencies": {
     "@awesome.me/kit-212dd48cdb": "^1.0.10",
+    "@fontsource/fraunces": "^5.2.9",
+    "@fontsource/momo-trust-display": "^5.2.1",
+    "@fontsource/montserrat-alternates": "^5.2.8",
     "@monaco-editor/react": "^4.6.0",
     "firebase": "^10.14.1",
     "monaco-editor": "^0.55.1",
