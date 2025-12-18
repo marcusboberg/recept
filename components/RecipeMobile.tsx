@@ -277,14 +277,6 @@ export function RecipeMobile({ slug, initialRecipe }: Props) {
         <div className="recipe-desktop-content">
           <div className="recipe-desktop-card">
             <div className="recipe-desktop-card__body recipe-desktop-card__ingredients">
-              <a
-                href={`#/edit/${liveRecipe.slug}`}
-                className="recipe-edit-button recipe-edit-button--fab"
-                aria-label="Redigera"
-                title="Redigera"
-              >
-                <i className="fa-solid fa-pen-to-square" aria-hidden="true" />
-              </a>
               <div className="recipe-desktop-toggle" role="tablist" aria-label="Visa innehåll">
                 <span className={`recipe-desktop-toggle__bg ${activeView === 'ingredients' ? 'is-left' : 'is-right'}`} aria-hidden="true">
                   <span
