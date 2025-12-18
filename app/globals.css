@@ -2328,6 +2328,7 @@ button, input, textarea {
   flex-direction: column;
   gap: 0.75rem;
   margin-top: auto;
+  align-items: center;
 }
 
 .recipe-cover__title {
@@ -2339,6 +2340,7 @@ button, input, textarea {
   gap: 0.2rem;
   align-items: center;
   margin-bottom: 1.5rem;
+  max-width: 80vw;
 }
 .recipe-cover__title * {
   font-family: 'Fraunces', serif !important;
