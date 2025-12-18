@@ -15,16 +15,20 @@ type View =
   | { type: 'list' }
   | { type: 'recipe'; slug: string }
   | { type: 'edit'; slug: string }
-  | { type: 'new' };
+  | { type: 'new' }
+  | { type: 'categoryGroup'; group: 'place' | 'base' | 'type' };
 
 function parseHash(hash: string): View {
   const trimmed = hash.startsWith('#') ? hash.slice(1) : hash;
   const [segment, slug] = trimmed.split('/').filter(Boolean);
   if (!segment) {
-    return { type: 'categories' };
+    return { type: 'list' };
   }
   switch (segment) {
     case 'categories':
+      if (slug === 'place' || slug === 'base' || slug === 'type') {
+        return { type: 'categoryGroup', group: slug };
+      }
       return { type: 'categories' };
     case 'category':
       return slug ? { type: 'category', slug } : { type: 'categories' };
@@ -43,7 +47,7 @@ function parseHash(hash: string): View {
 
 export function AppView() {
   // Start with a deterministic view for SSR; hydrate with the real hash once the client is available.
-  const [view, setView] = useState<View>(() => (typeof window === 'undefined' ? { type: 'categories' } : parseHash(window.location.hash)));
+  const [view, setView] = useState<View>(() => (typeof window === 'undefined' ? { type: 'list' } : parseHash(window.location.hash)));
 
   useEffect(() => {
     const handleHashChange = () => setView(parseHash(window.location.hash));
@@ -72,27 +76,6 @@ export function AppView() {
     };
   }, [view.type]);
 
-  const hero = useMemo(
-    () => (
-      <section className="hero">
-        <div className="hero__copy">
-          <p className="eyebrow">Minimal recipes</p>
-          <h2 className="hero__title">Cook beautiful food with simple guidance.</h2>
-          <p className="hero__subtitle">Browse, search, and open any dish in one tap.</p>
-        </div>
-        <div className="hero__cta">
-          <a href="#/new" className="button-primary">
-            + Nytt recept
-          </a>
-          <a href="#/recipes" className="button-ghost">
-            Visa alla recept
-          </a>
-        </div>
-      </section>
-    ),
-    [],
-  );
-
   if (view.type === 'recipe') {
     return <RecipeMobile slug={view.slug} />;
   }
@@ -105,10 +88,37 @@ export function AppView() {
     return <NewRecipeSection initialJson={recipeToJson(emptyRecipe)} initialTitle={emptyRecipe.title} />;
   }
 
+  const categoryGroups = [
+    { key: 'place' as const, label: 'Geografi', href: '#/categories/place', accent: 'place' },
+    { key: 'base' as const, label: 'Basvara', href: '#/categories/base', accent: 'base' },
+    { key: 'type' as const, label: 'Tillagning', href: '#/categories/type', accent: 'type' },
+  ];
+
   return (
     <div className="page-shell space-y-6">
-      {hero}
+      <header className="page-header">
+        <div>
+          <p className="eyebrow">Alla recept</p>
+          <h1 className="page-title">Recept</h1>
+        </div>
+        <div className="page-actions">
+          <a href="#/new" className="button-primary button-compact">
+            + Nytt recept
+          </a>
+        </div>
+      </header>
+      <div className="category-group-row">
+        {categoryGroups.map((group) => (
+          <a key={group.key} className={`category-group-card category-group-card--${group.accent}`} href={group.href}>
+            <div className="category-group-card__label">{group.label}</div>
+            <div className="category-group-card__cta">
+              Visa kategorier <span aria-hidden="true">→</span>
+            </div>
+          </a>
+        ))}
+      </div>
       {view.type === 'categories' && <RecipesShell showCategories />}
+      {view.type === 'categoryGroup' && <RecipesShell categoryGroup={view.group} />}
       {view.type === 'category' && <RecipesShell categorySlug={view.slug} />}
       {view.type === 'list' && <RecipesShell />}
     </div>

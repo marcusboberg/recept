@@ -25,6 +25,11 @@ interface Props {
 export function StudioSidebar({ title, navSections, activeId, onSelect, footer }: Props) {
   return (
     <aside className="new-recipe-shell__sidebar">
+      <div className="sidebar-dots">
+        <span />
+        <span />
+        <span />
+      </div>
       <div className="new-recipe-brand">
         <div className="new-recipe-brand__logo">R</div>
         <div className="new-recipe-brand__copy">

@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import '@awesome.me/kit-212dd48cdb/icons/css/all.min.css';
 import './globals.css';
 
 const defaultSiteUrl = 'http://localhost:3000';
@@ -47,12 +48,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
           rel="stylesheet"
-          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
-          integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A=="
-          crossOrigin="anonymous"
-          referrerPolicy="no-referrer"
+          href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Momo+Trust+Display&family=Montserrat+Alternates:ital,wght@0,400;0,600;1,400;1,600&display=swap"
         />
       </head>
       <body className="bg-stone-50 text-stone-900" suppressHydrationWarning>

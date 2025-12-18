@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { EditorShell } from '@/components/EditorShell';
 import { StudioSidebar } from '@/components/StudioSidebar';
@@ -8,7 +8,8 @@ import { getFirebaseAuth, getFirestoreClient } from '@/lib/firebaseClient';
 import { recipeToJson } from '@/lib/recipes';
 import { recipeSchema } from '@/schema/recipeSchema';
 import { getUserDisplay } from '@/lib/userDisplay';
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from 'firebase/auth';
+import { onAuthStateChanged, signOut, type User } from 'firebase/auth';
+import { StudioLoginCard } from './StudioLoginCard';
 
 interface Props {
   slug: string;
@@ -23,11 +24,6 @@ export function EditRecipeSection({ slug }: Props) {
 
   const [authStatus, setAuthStatus] = useState<'loading' | 'authenticated' | 'unauthenticated'>('loading');
   const [user, setUser] = useState<User | null>(null);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [authSubmitting, setAuthSubmitting] = useState(false);
-  const [authError, setAuthError] = useState<string | null>(null);
-  const emailInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -71,31 +67,10 @@ export function EditRecipeSection({ slug }: Props) {
     return unsubscribe;
   }, []);
 
-  const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setAuthError(null);
-    setAuthSubmitting(true);
-    try {
-      const auth = getFirebaseAuth();
-      await signInWithEmailAndPassword(auth, email.trim(), password);
-      setEmail('');
-      setPassword('');
-    } catch (err) {
-      setAuthError((err as Error).message ?? 'Fel vid inloggning.');
-    } finally {
-      setAuthSubmitting(false);
-    }
-  };
-
   const handleLogout = async () => {
     const auth = getFirebaseAuth();
     await signOut(auth);
   };
-
-  const quickEmails = [
-    { label: 'Marcus', value: 'marcusboberg@icloud.com' },
-    { label: 'Philip', value: 'philip.ottosson@gmail.com' },
-  ];
 
   const handleBack = () => {
     if (typeof window !== 'undefined') {
@@ -138,54 +113,13 @@ export function EditRecipeSection({ slug }: Props) {
         </div>
       )}
       {authStatus === 'unauthenticated' && (
-        <form className="new-recipe-auth" onSubmit={handleLogin}>
-          <p className="nav-label">Logga in</p>
-          <label className="space-y-1" style={{ width: '100%' }}>
-            <span className="text-sm text-muted">E-post</span>
-            <input
-              className="input"
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              required
-              ref={emailInputRef}
-            />
-          </label>
-          <label className="space-y-1" style={{ width: '100%' }}>
-            <span className="text-sm text-muted">Lösenord</span>
-            <input
-              className="input"
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              required
-            />
-          </label>
-          <div className="new-recipe-quicklogins">
-            {quickEmails.map((account) => (
-              <button
-                type="button"
-                key={account.value}
-                className="chip-button"
-                onClick={() => setEmail(account.value)}
-              >
-                {account.label}
-              </button>
-            ))}
-          </div>
-          <button type="submit" className="button-primary" disabled={authSubmitting}>
-            {authSubmitting ? 'Loggar in…' : 'Logga in'}
-          </button>
-          {authError && (
-            <p className="text-sm" style={{ color: '#b91c1c', margin: 0 }}>
-              {authError}
-            </p>
-          )}
+        <div className="new-recipe-auth">
+          <p className="text-sm text-muted" style={{ marginBottom: 0 }}>Logga in i huvudrutan för att låsa upp studion.</p>
           <button type="button" className="nav-action" onClick={handleBack} style={{ marginTop: '0.5rem' }}>
             <i className="fa-solid fa-right-left" aria-hidden="true"></i>
             <span>Tillbaka</span>
           </button>
-        </form>
+        </div>
       )}
       {authStatus === 'authenticated' && (
         <div className="new-recipe-auth">
@@ -255,14 +189,12 @@ export function EditRecipeSection({ slug }: Props) {
                 )}
               </>
             ) : (
-              <div className="new-recipe-workspace">
-                <div className="workspace-card stack">
-                  <p className="card-title">Logga in för att redigera</p>
-                  <p className="card-subtitle" style={{ marginBottom: 0 }}>
-                    Använd formuläret i sidopanelen för att logga in med ditt Firebase-konto.
-                  </p>
-                </div>
-              </div>
+              <StudioLoginCard
+                status={authStatus}
+                onBack={handleBack}
+                title="Logga in för att redigera"
+                subtitle="Snabbinloggning med färdiga konton eller valfri e-post. Lösenord krävs alltid."
+              />
             )}
           </>
         )}

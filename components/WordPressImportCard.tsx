@@ -13,6 +13,7 @@ interface IngredientItem {
   label: string;
   amount?: string;
   notes?: string;
+  kind?: 'ingredient' | 'heading';
 }
 
 interface IngredientGroup {
@@ -196,12 +197,18 @@ function convertWordPressHtml(html: string): Recipe {
     doc.querySelector('meta[property="article:modified_time"]')?.getAttribute('content'),
   ])) ?? createdAt;
 
-  const ingredientGroups = collectIngredientGroups(doc);
+  const ingredientGroups = collectIngredientGroups(doc).map((group) => ({
+    ...group,
+    items: group.items.map((item) => ({ ...item, kind: item.kind ?? 'ingredient' as const })),
+  }));
   if (ingredientGroups.length === 0) {
     throw new Error('Hittade inga ingredientslistor i HTML:en. Säkerställ att WordPress-inlägget använder checklistor.');
   }
 
-  const flatIngredients = ingredientGroups.flatMap((group) => group.items);
+  const flatIngredients = ingredientGroups.flatMap((group) => group.items).map((item) => ({
+    ...item,
+    kind: item.kind ?? 'ingredient',
+  }));
   const steps = collectSteps(doc);
   if (steps.length === 0) {
     throw new Error('Hittade inga tillagningssteg att importera.');
@@ -209,6 +216,7 @@ function convertWordPressHtml(html: string): Recipe {
 
   return {
     title: cleanText(title),
+    titleSegments: [{ text: cleanText(title), size: 'big' as const }],
     slug: slugify(title),
     description: cleanText(description),
     imageUrl,

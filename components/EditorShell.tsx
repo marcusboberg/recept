@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { doc, setDoc } from 'firebase/firestore';
 import { deriveCategoriesArray } from '@/lib/categories';
 import { JsonEditor } from '@/components/JsonEditor';
@@ -19,6 +19,9 @@ interface EditorShellProps extends Props {
   forcedTab?: 'form' | 'json';
 }
 
+type IngredientRow = { label: string; amount?: string; kind: 'ingredient' | 'heading' };
+type IngredientGroup = { title?: string; items: IngredientRow[] };
+
 export function EditorShell({ initialJson, initialTitle, mode: _mode, forcedTab }: EditorShellProps) {
   const [content, setContent] = useState(initialJson);
   const [errors, setErrors] = useState<string[]>([]);
@@ -26,33 +29,106 @@ export function EditorShell({ initialJson, initialTitle, mode: _mode, forcedTab 
   const [formRecipe, setFormRecipe] = useState<Recipe | null>(null);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+  const [insertMenu, setInsertMenu] = useState<{ index: number; x: number; y: number } | null>(null);
+  const [flatIngredients, setFlatIngredients] = useState<Array<{ id: string; label: string; amount?: string; kind: 'ingredient' | 'heading' }>>([]);
+  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [dropIndicatorIndex, setDropIndicatorIndex] = useState<number | null>(null);
+  const [focusIngredientId, setFocusIngredientId] = useState<string | null>(null);
+  const [justDroppedId, setJustDroppedId] = useState<string | null>(null);
   const view: 'form' | 'json' = forcedTab ?? 'form';
+  const formUpdateRef = useRef(false);
+  const ingredientRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const dropFlashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!insertMenu) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!target) return;
+      const inMenu = target.closest('.insert-menu');
+      const inTrigger = target.closest('.ingredient-insert__trigger');
+      if (!inMenu && !inTrigger) {
+        setInsertMenu(null);
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [insertMenu]);
+
+  useEffect(() => {
+    if (focusIngredientId) {
+      const el = ingredientRefs.current[focusIngredientId];
+      if (el) {
+        el.focus();
+        el.select?.();
+      }
+      setFocusIngredientId(null);
+    }
+  }, [focusIngredientId]);
+
+  useEffect(() => {
+    return () => {
+      if (dropFlashTimer.current) {
+        clearTimeout(dropFlashTimer.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const parsed = parseRecipe(content);
     if (parsed.errors) {
       setErrors(parsed.errors);
       setPreview(null);
+      formUpdateRef.current = false;
       return;
     } else if (parsed.recipe) {
+      const recipe = parsed.recipe;
       setErrors([]);
-      setPreview(parsed.recipe);
-      setFormRecipe(parsed.recipe);
+      setPreview(recipe);
+      setFormRecipe(recipe);
+
+      if (!formUpdateRef.current) {
+        const flattened: Array<{ id: string; label: string; amount?: string; kind: 'ingredient' | 'heading' }> = [];
+
+        const groupsToFlatten =
+          recipe.ingredientGroups && recipe.ingredientGroups.length > 0
+            ? recipe.ingredientGroups
+            : [{ title: 'Huvudingredienser', items: recipe.ingredients ?? [] }];
+
+        groupsToFlatten.forEach((group, groupIndex) => {
+          const isDefaultFirst = groupIndex === 0 && (group.title ?? 'Huvudingredienser') === 'Huvudingredienser';
+          if (group.title && !isDefaultFirst) {
+            flattened.push({ id: `${groupIndex}-heading`, label: group.title, kind: 'heading' });
+          }
+          (group.items ?? []).forEach((ing, itemIndex) => {
+            const stableId = `${groupIndex}-${itemIndex}`;
+            flattened.push({ id: stableId, label: ing.label, amount: ing.amount, kind: ing.kind ?? 'ingredient' });
+          });
+        });
+
+        setFlatIngredients(flattened.length > 0 ? flattened : [{ id: crypto.randomUUID(), label: '', amount: '', kind: 'ingredient' }]);
+      }
+      formUpdateRef.current = false;
     }
   }, [content]);
 
   const stripNotes = (recipe: Recipe): Recipe => ({
     ...recipe,
-    ingredients: recipe.ingredients?.map(({ label, amount }) =>
-      amount && amount.length > 0 ? { label, amount } : { label },
-    ) ?? [],
+    ingredients: (recipe.ingredients ?? []).map(({ label, amount, kind }) =>
+      amount && amount.length > 0 ? { label, amount, kind } : { label, kind },
+    ),
     ingredientGroups: recipe.ingredientGroups?.map((group) => ({
       ...group,
-      items: group.items?.map(({ label, amount }) => (amount && amount.length > 0 ? { label, amount } : { label })) ?? [],
+      items:
+        group.items?.map(({ label, amount, kind }) =>
+          amount && amount.length > 0 ? { label, amount, kind } : { label, kind },
+        ) ?? [],
     })),
   });
 
   const updateRecipe = (updater: (prev: Recipe) => Recipe) => {
+    formUpdateRef.current = true;
     setFormRecipe((prev) => {
       if (!prev) return prev;
       const next = stripNotes(updater(prev));
@@ -62,55 +138,73 @@ export function EditorShell({ initialJson, initialTitle, mode: _mode, forcedTab 
     });
   };
 
-  const addIngredient = () => {
-    updateRecipe((prev) => ({
+  const rebuildRecipeFromFlat = (list: typeof flatIngredients, prev: Recipe): Recipe => {
+    const groups = list.reduce<IngredientGroup[]>((acc, item) => {
+      if (item.kind === 'heading') {
+        acc.push({ title: item.label || 'Sektion', items: [] });
+        return acc;
+      }
+
+      if (acc.length === 0) {
+        acc.push({ title: 'Huvudingredienser', items: [] });
+      }
+
+      const current = acc[acc.length - 1];
+      current.items.push({ label: item.label, amount: item.amount, kind: item.kind });
+      return acc;
+    }, []);
+
+    const filteredGroups = groups.filter((group) => group.items.length > 0);
+    const safeGroups: IngredientGroup[] =
+      filteredGroups.length > 0 ? filteredGroups : [{ title: 'Huvudingredienser', items: [{ label: '', kind: 'ingredient' }] }];
+    const ingredients = safeGroups[0]?.items ?? [{ label: '', kind: 'ingredient' }];
+
+    return {
       ...prev,
-      ingredients: [...(prev.ingredients ?? []), { label: '', amount: '' }],
-    }));
+      ingredients,
+      ingredientGroups: safeGroups,
+    };
+  };
+
+  const setFlatAndRecipe = (updater: (prev: typeof flatIngredients) => typeof flatIngredients) => {
+    setFlatIngredients((prevFlat) => {
+      const nextFlat = updater(prevFlat);
+      updateRecipe((prevRecipe) => rebuildRecipeFromFlat(nextFlat, prevRecipe));
+      return nextFlat;
+    });
+  };
+
+  const insertIngredientAt = (index: number, kind: 'ingredient' | 'heading' = 'ingredient') => {
+    setFlatAndRecipe((prev) => {
+      const next = [...prev];
+      const newId = crypto.randomUUID();
+      next.splice(index, 0, { id: newId, label: '', amount: '', kind });
+      setFocusIngredientId(newId);
+      return next;
+    });
   };
 
   const updateIngredient = (index: number, field: 'label' | 'amount', value: string) => {
-    updateRecipe((prev) => {
-      const next = [...(prev.ingredients ?? [])];
+    setFlatAndRecipe((prev) => {
+      const next = [...prev];
       next[index] = { ...next[index], [field]: value };
-      return { ...prev, ingredients: next };
+      return next;
     });
   };
 
-  const addGroup = () => {
-    updateRecipe((prev) => ({
-      ...prev,
-      ingredientGroups: [...(prev.ingredientGroups ?? []), { title: '', items: [{ label: '', amount: '' }] }],
-    }));
-  };
+  const moveIngredient = (from: number, to: number) => {
+    setFlatAndRecipe((prev) => {
+      const next = [...prev];
+      const [item] = next.splice(from, 1);
+      next.splice(to, 0, item);
 
-  const updateGroupTitle = (groupIndex: number, title: string) => {
-    updateRecipe((prev) => {
-      const groups = [...(prev.ingredientGroups ?? [])];
-      groups[groupIndex] = { ...groups[groupIndex], title };
-      return { ...prev, ingredientGroups: groups };
-    });
-  };
+      if (dropFlashTimer.current) {
+        clearTimeout(dropFlashTimer.current);
+      }
+      setJustDroppedId(item.id);
+      dropFlashTimer.current = setTimeout(() => setJustDroppedId(null), 900);
 
-  const addGroupItem = (groupIndex: number) => {
-    updateRecipe((prev) => {
-      const groups = [...(prev.ingredientGroups ?? [])];
-      const group = groups[groupIndex];
-      const items = [...(group.items ?? [])];
-      items.push({ label: '', amount: '' });
-      groups[groupIndex] = { ...group, items };
-      return { ...prev, ingredientGroups: groups };
-    });
-  };
-
-  const updateGroupItem = (groupIndex: number, itemIndex: number, field: 'label' | 'amount', value: string) => {
-    updateRecipe((prev) => {
-      const groups = [...(prev.ingredientGroups ?? [])];
-      const group = groups[groupIndex];
-      const items = [...(group.items ?? [])];
-      items[itemIndex] = { ...items[itemIndex], [field]: value };
-      groups[groupIndex] = { ...group, items };
-      return { ...prev, ingredientGroups: groups };
+      return next;
     });
   };
 
@@ -157,40 +251,125 @@ export function EditorShell({ initialJson, initialTitle, mode: _mode, forcedTab 
   const saveDisabled = saving || errors.length > 0;
   const formReady = Boolean(formRecipe);
 
+  const renderTitleComposer = () => {
+    if (!formRecipe) return null;
+    const fallbackSegments =
+      formRecipe.titleSegments && formRecipe.titleSegments.length > 0
+        ? formRecipe.titleSegments
+        : [
+            ...(formRecipe.titlePrefix ? [{ text: formRecipe.titlePrefix, size: 'small' as const }] : []),
+            { text: formRecipe.title, size: 'big' as const },
+            ...(formRecipe.titleSuffix ? [{ text: formRecipe.titleSuffix, size: 'small' as const }] : []),
+          ];
+
+    const setSegments = (segments: { text: string; size: 'big' | 'small' }[]) => {
+      const cleaned = segments.filter((seg) => seg.text.trim().length > 0);
+      const title = cleaned.map((seg) => seg.text).join(' ').trim();
+      updateRecipe((prev) => ({
+        ...prev,
+        title,
+        titlePrefix: '',
+        titleSuffix: '',
+        titleSegments: cleaned.length > 0 ? cleaned : [{ text: title || 'Ny rätt', size: 'big' }],
+      }));
+    };
+
+    const handleTextChange = (index: number, text: string) => {
+      const next = [...fallbackSegments];
+      next[index] = { ...next[index], text };
+      setSegments(next);
+    };
+
+    const handleSizeToggle = (index: number) => {
+      const next = [...fallbackSegments];
+      const nextSize = next[index].size === 'big' ? 'small' : 'big';
+      next[index] = { ...next[index], size: nextSize };
+      setSegments(next);
+    };
+
+    const handleRemove = (index: number) => {
+      const next = [...fallbackSegments];
+      next.splice(index, 1);
+      setSegments(next);
+    };
+
+  const handleAdd = () => {
+    setSegments([...fallbackSegments, { text: 'Ny del', size: 'small' }]);
+  };
+
+    return (
+      <div className="stack">
+        <span className="text-sm text-muted">Titel (bygg valfria stora/små delar)</span>
+        <div className="title-composer title-composer--segments">
+          <div className="title-composer__segments">
+            {fallbackSegments.map((segment, idx) => (
+              <div key={idx} className="title-segment-row">
+                <input
+                  className="input title-segment-row__input"
+                  value={segment.text}
+                  onChange={(e) => handleTextChange(idx, e.target.value)}
+                />
+                <div className="title-segment-row__actions">
+                  <button
+                    type="button"
+                    className={segment.size === 'big' ? 'title-size-pill is-big' : 'title-size-pill'}
+                    aria-label={segment.size === 'big' ? 'Stor del' : 'Liten del'}
+                    onClick={() => handleSizeToggle(idx)}
+                  >
+                    {segment.size === 'big' ? 'Stor' : 'Liten'}
+                  </button>
+                  {fallbackSegments.length > 1 && (
+                    <button
+                      type="button"
+                      className="chip-button chip-button--icon chip-button--danger"
+                      aria-label="Ta bort"
+                      onClick={() => handleRemove(idx)}
+                    >
+                      <i className="fa-solid fa-trash-can" aria-hidden="true"></i>
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="title-composer__toolbar">
+            <button type="button" className="chip-button" onClick={handleAdd}>
+              +
+            </button>
+            <span className="text-sm text-muted">Titel byggs av alla delar i ordning. Stor/liten visas per segment.</span>
+          </div>
+          <div className="title-composer__preview">
+            <span className="text-sm text-muted">Förhandsvisning:</span>{' '}
+            <strong>{fallbackSegments.map((seg) => seg.text).join(' ') || 'Ny rätt'}</strong>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderInsertMenu = () => {
+    if (!insertMenu) return null;
+    const close = () => setInsertMenu(null);
+    const handleAdd = (kind: 'ingredient' | 'heading') => {
+      insertIngredientAt(insertMenu.index, kind);
+      close();
+    };
+    return (
+      <div className="insert-menu" style={{ top: insertMenu.y, left: insertMenu.x }}>
+        <button type="button" onClick={() => handleAdd('ingredient')}>+ Ingrediens</button>
+        <button type="button" onClick={() => handleAdd('heading')}>+ Rubrik</button>
+        <button type="button" className="insert-menu__close" onClick={close} aria-label="Stäng">×</button>
+      </div>
+    );
+  };
+
   const renderForm = () => {
     if (!formRecipe) return null;
     return (
       <div className="workspace-grid">
         <article className="workspace-card stack">
-          <h3>Grunddata</h3>
-          <label className="stack">
-            <span className="text-sm text-muted">Titel</span>
-            <input className="input" value={formRecipe.title} onChange={(e) => updateRecipe((prev) => ({ ...prev, title: e.target.value }))} />
-          </label>
-          <div className="two-col">
-            <label className="stack">
-              <span className="text-sm text-muted">Titel före (liten)</span>
-              <input
-                className="input"
-                value={formRecipe.titlePrefix ?? ''}
-                onChange={(e) => updateRecipe((prev) => ({ ...prev, titlePrefix: e.target.value }))}
-                placeholder="t.ex. Chili-"
-              />
-            </label>
-            <label className="stack">
-              <span className="text-sm text-muted">Titel efter (liten)</span>
-              <input
-                className="input"
-                value={formRecipe.titleSuffix ?? ''}
-                onChange={(e) => updateRecipe((prev) => ({ ...prev, titleSuffix: e.target.value }))}
-                placeholder="t.ex. med stekt majs"
-              />
-            </label>
-          </div>
-          <label className="stack">
-            <span className="text-sm text-muted">Slug</span>
-            <input className="input" value={formRecipe.slug} onChange={(e) => updateRecipe((prev) => ({ ...prev, slug: e.target.value }))} />
-          </label>
+          <h3>Grunddata &amp; kategorier</h3>
+          {renderTitleComposer()}
           <label className="stack">
             <span className="text-sm text-muted">Bild-URL</span>
             <input
@@ -230,112 +409,157 @@ export function EditorShell({ initialJson, initialTitle, mode: _mode, forcedTab 
               />
             </label>
           </div>
-          <label className="stack">
-            <span className="text-sm text-muted">Beskrivning</span>
-            <textarea
-              className="input"
-              rows={3}
-              value={formRecipe.description ?? ''}
-              onChange={(e) => updateRecipe((prev) => ({ ...prev, description: e.target.value }))}
-            />
-          </label>
-        </article>
-
-        <article className="workspace-card stack">
-          <h3>Kategorier</h3>
-          <label className="stack">
-            <span className="text-sm text-muted">Plats (land/region/kontinent)</span>
-            <input
-              className="input"
-              value={formRecipe.categoryPlace ?? ''}
-              onChange={(e) => updateRecipe((prev) => ({ ...prev, categoryPlace: e.target.value }))}
-            />
-          </label>
-          <label className="stack">
-            <span className="text-sm text-muted">Basvara</span>
-            <input
-              className="input"
-              value={formRecipe.categoryBase ?? ''}
-              onChange={(e) => updateRecipe((prev) => ({ ...prev, categoryBase: e.target.value }))}
-            />
-          </label>
-          <label className="stack">
-            <span className="text-sm text-muted">Typ</span>
-            <input
-              className="input"
-              value={formRecipe.categoryType ?? ''}
-              onChange={(e) => updateRecipe((prev) => ({ ...prev, categoryType: e.target.value }))}
-            />
-          </label>
-        </article>
-
-        <article className="workspace-card stack">
-          <h3>Ingredienser (utan grupp)</h3>
-          <div className="stack" style={{ gap: '1rem' }}>
-            {(formRecipe.ingredients ?? []).map((item, index) => (
-              <div key={index} className="two-col">
-                <label className="stack">
-                  <span className="text-sm text-muted">Namn</span>
-                  <input className="input" value={item.label} onChange={(e) => updateIngredient(index, 'label', e.target.value)} />
-                </label>
-                <label className="stack">
-                  <span className="text-sm text-muted">Mängd</span>
-                  <input className="input" value={item.amount ?? ''} onChange={(e) => updateIngredient(index, 'amount', e.target.value)} />
-                </label>
-              </div>
-            ))}
-            <button type="button" className="button-primary" onClick={addIngredient}>
-              Lägg till ingrediens
-            </button>
+          <div className="stack" style={{ gap: '0.5rem' }}>
+            <p className="text-sm text-muted" style={{ marginBottom: '-0.25rem' }}>
+              Kategorier
+            </p>
+            <div className="three-col">
+              <label className="stack">
+                <span className="text-sm text-muted">Plats</span>
+                <input
+                  className="input"
+                  value={formRecipe.categoryPlace ?? ''}
+                  onChange={(e) => updateRecipe((prev) => ({ ...prev, categoryPlace: e.target.value }))}
+                />
+              </label>
+              <label className="stack">
+                <span className="text-sm text-muted">Basvara</span>
+                <input
+                  className="input"
+                  value={formRecipe.categoryBase ?? ''}
+                  onChange={(e) => updateRecipe((prev) => ({ ...prev, categoryBase: e.target.value }))}
+                />
+              </label>
+              <label className="stack">
+                <span className="text-sm text-muted">Typ</span>
+                <input
+                  className="input"
+                  value={formRecipe.categoryType ?? ''}
+                  onChange={(e) => updateRecipe((prev) => ({ ...prev, categoryType: e.target.value }))}
+                />
+              </label>
+            </div>
           </div>
         </article>
 
         <article className="workspace-card stack">
-          <div className="flex" style={{ justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
-            <h3>Ingrediensgrupper</h3>
-            <button type="button" className="button-primary" onClick={addGroup}>
-              Lägg till grupp
+          <div className="flex" style={{ justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
+            <h3 style={{ margin: 0 }}>Ingredienser</h3>
+            <button type="button" className="button-secondary" onClick={() => insertIngredientAt(flatIngredients.length, 'ingredient')}>
+              + Ny ingrediens
             </button>
           </div>
-          <div className="stack" style={{ gap: '1.25rem' }}>
-            {(formRecipe.ingredientGroups ?? []).map((group, groupIndex) => (
-              <div key={groupIndex} className="stack" style={{ border: '1px solid #e5e7eb', borderRadius: '16px', padding: '1rem' }}>
-                <label className="stack">
-                  <span className="text-sm text-muted">Gruppens rubrik</span>
+          <div className="stack" style={{ gap: '0.5rem' }}>
+            {flatIngredients.map((item, index) => (
+              <div
+                key={item.id}
+                className={`ingredient-row ${item.kind === 'heading' ? 'ingredient-row--heading' : 'ingredient-row--item'} ${
+                  dragOverIndex === index ? 'ingredient-row--dragover' : ''
+                } ${justDroppedId === item.id ? 'ingredient-row--dropped' : ''}`}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  if (draggingIndex !== null) {
+                    const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+                    const isAfter = e.clientY > rect.top + rect.height / 2;
+                    setDragOverIndex(index);
+                    setDropIndicatorIndex(isAfter ? index + 1 : index);
+                  }
+                }}
+                onDragLeave={() => {
+                  setDragOverIndex(null);
+                  setDropIndicatorIndex(null);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  if (draggingIndex !== null && dropIndicatorIndex !== null) {
+                    const targetIndex = dropIndicatorIndex > draggingIndex ? dropIndicatorIndex - 1 : dropIndicatorIndex;
+                    moveIngredient(draggingIndex, targetIndex);
+                  }
+                  setDraggingIndex(null);
+                  setDragOverIndex(null);
+                  setDropIndicatorIndex(null);
+                }}
+              >
+                {dropIndicatorIndex === index && draggingIndex !== null && (
+                  <div className="ingredient-drop-indicator" aria-hidden="true" />
+                )}
+                <div className="ingredient-row__grid">
+                  <button
+                    type="button"
+                    className="ingredient-drag"
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer?.setData('text/plain', item.id);
+                      e.dataTransfer?.setDragImage?.(new Image(), 0, 0);
+                      setDraggingIndex(index);
+                      setDragOverIndex(index);
+                      setDropIndicatorIndex(index);
+                    }}
+                    onDragEnd={() => {
+                      setDraggingIndex(null);
+                      setDragOverIndex(null);
+                      setDropIndicatorIndex(null);
+                    }}
+                    aria-label="Dra för att flytta"
+                  >
+                    <i className="fa-solid fa-up-down-left-right" aria-hidden="true"></i>
+                  </button>
                   <input
-                    className="input"
-                    value={group.title ?? ''}
-                    onChange={(e) => updateGroupTitle(groupIndex, e.target.value)}
-                    placeholder="Sås, Garnityr, etc."
+                    className={
+                      item.kind === 'heading'
+                        ? 'input ingredient-row__name ingredient-row__name--heading'
+                        : 'input ingredient-row__name'
+                    }
+                    ref={(el) => {
+                      ingredientRefs.current[item.id] = el;
+                    }}
+                    value={item.label}
+                    onChange={(e) => updateIngredient(index, 'label', e.target.value)}
+                    placeholder={item.kind === 'heading' ? 'Rubrik' : 't.ex. Smör'}
                   />
-                </label>
-                <div className="stack" style={{ gap: '1rem' }}>
-                  {(group.items ?? []).map((item, itemIndex) => (
-                    <div key={itemIndex} className="two-col">
-                      <label className="stack">
-                        <span className="text-sm text-muted">Namn</span>
-                        <input
-                          className="input"
-                          value={item.label}
-                          onChange={(e) => updateGroupItem(groupIndex, itemIndex, 'label', e.target.value)}
-                        />
-                      </label>
-                      <label className="stack">
-                        <span className="text-sm text-muted">Mängd</span>
-                        <input
-                          className="input"
-                          value={item.amount ?? ''}
-                          onChange={(e) => updateGroupItem(groupIndex, itemIndex, 'amount', e.target.value)}
-                        />
-                      </label>
-                    </div>
-                  ))}
-                  <button type="button" className="button-primary" onClick={() => addGroupItem(groupIndex)}>
-                    Lägg till ingrediens i grupp
+                  {item.kind !== 'heading' && (
+                    <input
+                      className="input ingredient-row__amount"
+                      value={item.amount ?? ''}
+                      onChange={(e) => updateIngredient(index, 'amount', e.target.value)}
+                      placeholder="1 dl"
+                    />
+                  )}
+                  <button
+                    type="button"
+                    className="ingredient-kind-toggle"
+                    aria-label={item.kind === 'heading' ? 'Gör till ingrediens' : 'Gör till rubrik'}
+                    onClick={() =>
+                      setFlatAndRecipe((prev) => {
+                        const next = [...prev];
+                        const nextKind = next[index].kind === 'heading' ? 'ingredient' : 'heading';
+                        next[index] = { ...next[index], kind: nextKind, amount: nextKind === 'heading' ? '' : next[index].amount };
+                        return next;
+                      })
+                    }
+                  >
+                    <i className={item.kind === 'heading' ? 'fa-solid fa-heading' : 'fa-solid fa-list-ul'} aria-hidden="true"></i>
+                  </button>
+                  <button
+                    type="button"
+                    className="chip-button chip-button--icon chip-button--danger"
+                    aria-label="Ta bort"
+                    onClick={() =>
+                      setFlatAndRecipe((prev) => {
+                        const next = [...prev];
+                        next.splice(index, 1);
+                        return next.length > 0 ? next : [{ id: crypto.randomUUID(), label: '', amount: '', kind: 'ingredient' }];
+                      })
+                    }
+                  >
+                    <i className="fa-solid fa-trash-can" aria-hidden="true"></i>
                   </button>
                 </div>
               </div>
             ))}
+            {dropIndicatorIndex === flatIngredients.length && draggingIndex !== null && (
+              <div className="ingredient-drop-indicator" aria-hidden="true" />
+            )}
           </div>
         </article>
 

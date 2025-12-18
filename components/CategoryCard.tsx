@@ -8,6 +8,7 @@ interface Props {
 
 export function CategoryCard({ category }: Props) {
   const hero = category.image || DEFAULT_RECIPE_IMAGE;
+  const segments = [{ text: category.name, size: 'big' as const }];
   return (
     <a href={`#/category/${category.slug}`} className="recipe-card">
       <div className="recipe-card__image">
@@ -15,7 +16,13 @@ export function CategoryCard({ category }: Props) {
           <Image src={hero} alt={category.name} fill sizes="320px" />
         </div>
         <div className="recipe-card__overlay">
-          <h3 className="recipe-card__title">{category.name}</h3>
+          <div className="recipe-card__titleblock">
+            {segments.map((segment, idx) => (
+              <div key={idx} className="recipe-card__title-main recipe-title-segment recipe-title-segment--big">
+                {segment.text}
+              </div>
+            ))}
+          </div>
           <p className="recipe-card__subtitle">{category.count} recept</p>
         </div>
       </div>

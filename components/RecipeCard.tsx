@@ -8,6 +8,14 @@ interface Props {
 
 export function RecipeCard({ recipe }: Props) {
   const hero = recipe.imageUrl?.trim() || DEFAULT_RECIPE_IMAGE;
+  const segments =
+    recipe.titleSegments && recipe.titleSegments.length > 0
+      ? recipe.titleSegments
+      : [
+          ...(recipe.titlePrefix ? [{ text: recipe.titlePrefix, size: 'small' as const }] : []),
+          { text: recipe.title, size: 'big' as const },
+          ...(recipe.titleSuffix ? [{ text: recipe.titleSuffix, size: 'small' as const }] : []),
+        ];
 
   return (
     <a href={`#/recipe/${recipe.slug}`} className="recipe-card">
@@ -17,9 +25,17 @@ export function RecipeCard({ recipe }: Props) {
         </div>
         <div className="recipe-card__overlay recipe-card__overlay--center">
           <div className="recipe-card__titleblock">
-            {recipe.titlePrefix && <div className="recipe-card__title-small">{recipe.titlePrefix}</div>}
-            <h3 className="recipe-card__title-main">{recipe.title}</h3>
-            {recipe.titleSuffix && <div className="recipe-card__title-small">{recipe.titleSuffix}</div>}
+            {segments.map((segment, idx) =>
+              segment.size === 'big' ? (
+                <div key={idx} className="recipe-card__title-main recipe-title-segment recipe-title-segment--big">
+                  {segment.text}
+                </div>
+              ) : (
+                <div key={idx} className="recipe-card__title-small recipe-title-segment recipe-title-segment--small">
+                  {segment.text}
+                </div>
+              ),
+            )}
           </div>
         </div>
       </div>
