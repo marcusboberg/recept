@@ -2225,7 +2225,7 @@ button, input, textarea {
 }
 
 .recipe-edit-button:hover {
-  background: rgba(248, 250, 252, 0.15);
+  background: rgba(15, 23, 42, 0.4);
 }
 
 .recipe-hero__title {
@@ -3430,7 +3430,7 @@ button, input, textarea {
   }
 
   .recipe-edit-button--fab:hover {
-    background: #fff;
+    background: rgba(0, 0, 0, 0.75);
     box-shadow: 0 20px 42px rgba(5, 10, 18, 0.36);
   }
 
