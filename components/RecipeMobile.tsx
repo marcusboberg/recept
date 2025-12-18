@@ -161,9 +161,6 @@ export function RecipeMobile({ slug, initialRecipe }: Props) {
                 <a href="#/" className="back-button">
                   <i className="fa-solid fa-arrow-left" aria-hidden="true" /> Tillbaka
                 </a>
-                <a href={`#/edit/${liveRecipe.slug}`} className="recipe-edit-button">
-                  <i className="fa-solid fa-pen-to-square" aria-hidden="true" /> Redigera
-                </a>
               </div>
               <div className="recipe-cover__summary">
                 <div className="recipe-cover__title">
@@ -405,14 +402,6 @@ export function RecipeMobile({ slug, initialRecipe }: Props) {
                   )}
                 </div>
               </div>
-              <a
-                href={`#/edit/${liveRecipe.slug}`}
-                className="recipe-edit-button recipe-edit-button--fab"
-                aria-label="Redigera"
-                title="Redigera"
-              >
-                <i className="fa-solid fa-pen-to-square" aria-hidden="true" />
-              </a>
             </div>
           </div>
         </div>
