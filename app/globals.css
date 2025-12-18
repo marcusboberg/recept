@@ -2346,7 +2346,7 @@ button, input, textarea {
 
 .recipe-cover__title-main {
   font-family: 'Fraunces', serif !important;
-  font-size: clamp(2.2rem, 6vw, 3.3rem);
+  font-size: clamp(3.3rem, 9vw, 4.95rem);
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -2356,7 +2356,7 @@ button, input, textarea {
 
 .recipe-cover__title-small {
   font-family: 'Fraunces', serif !important;
-  font-size: clamp(1.15rem, 3vw, 1.7rem);
+  font-size: clamp(1.7rem, 4.5vw, 2.55rem);
   font-weight: 400;
   line-height: 1.05;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
@@ -2375,6 +2375,14 @@ button, input, textarea {
 .recipe-title-segment--small {
   font-size: 1.15rem;
   font-weight: 500;
+}
+
+.recipe-shell .recipe-title-segment--big {
+  font-size: 3rem;
+}
+
+.recipe-shell .recipe-title-segment--small {
+  font-size: 1.7rem;
 }
 
 .recipe-cover__meta {

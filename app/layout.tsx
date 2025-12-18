@@ -1,5 +1,12 @@
 import type { Metadata, Viewport } from 'next';
 import '@awesome.me/kit-212dd48cdb/icons/css/all.min.css';
+import '@fontsource/fraunces/400.css';
+import '@fontsource/fraunces/600.css';
+import '@fontsource/montserrat-alternates/400.css';
+import '@fontsource/montserrat-alternates/400-italic.css';
+import '@fontsource/montserrat-alternates/600.css';
+import '@fontsource/montserrat-alternates/600-italic.css';
+import '@fontsource/momo-trust-display/400.css';
 import './globals.css';
 
 const defaultSiteUrl = 'http://localhost:3000';
