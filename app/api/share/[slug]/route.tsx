@@ -3,6 +3,7 @@
 import path from 'path';
 import { promises as fs } from 'fs';
 import { ImageResponse } from 'next/og';
+import type { NextRequest } from 'next/server';
 
 export const runtime = 'nodejs';
 
@@ -24,8 +25,9 @@ async function loadRecipe(slug: string): Promise<RecipeFile | null> {
   }
 }
 
-export async function GET(_: Request, { params }: { params: { slug: string } }) {
-  const recipe = await loadRecipe(params.slug);
+export async function GET(_: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const recipe = await loadRecipe(slug);
   if (!recipe) {
     return new Response('Recipe not found', { status: 404 });
   }
