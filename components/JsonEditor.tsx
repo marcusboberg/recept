@@ -36,7 +36,7 @@ export function JsonEditor({ value, onChange, errors = [] }: Props) {
   }, [markers]);
 
   return (
-    <div className="card json-editor-card" style={{ padding: '0', overflow: 'hidden', height: '100%', minHeight: 0 }}>
+    <div className="card json-editor-card" style={{ padding: '0', overflow: 'hidden', minHeight: 0 }}>
       <MonacoEditor
         height="100%"
         defaultLanguage="json"

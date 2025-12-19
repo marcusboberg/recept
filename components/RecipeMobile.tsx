@@ -247,20 +247,27 @@ export function RecipeMobile({ slug, initialRecipe }: Props) {
               </div>
             )}
           </div>
-          <div className="recipe-floating-tabs" role="tablist" aria-label="Visa innehåll">
+          <div className="recipe-toggle-mobile recipe-toggle-mobile--floating" role="tablist" aria-label="Visa innehåll">
+            <span className={`recipe-toggle-mobile__bg ${activeView === 'ingredients' ? 'is-left' : 'is-right'}`} aria-hidden="true">
+              <span
+                className={`recipe-toggle-mobile__bg-inner ${toggleDirection === 'right' ? 'wobble-right' : 'wobble-left'}`}
+              />
+            </span>
             <button
-              className={activeView === 'ingredients' ? 'recipe-tab is-active' : 'recipe-tab'}
+              className={activeView === 'ingredients' ? 'recipe-toggle-mobile__tab is-active' : 'recipe-toggle-mobile__tab'}
               onClick={() => setActiveView('ingredients')}
               role="tab"
               aria-selected={activeView === 'ingredients'}
+              type="button"
             >
               Ingredienser
             </button>
             <button
-              className={activeView === 'steps' ? 'recipe-tab is-active' : 'recipe-tab'}
+              className={activeView === 'steps' ? 'recipe-toggle-mobile__tab is-active' : 'recipe-toggle-mobile__tab'}
               onClick={() => setActiveView('steps')}
               role="tab"
               aria-selected={activeView === 'steps'}
+              type="button"
             >
               Gör så här
             </button>

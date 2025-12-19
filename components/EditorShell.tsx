@@ -297,14 +297,20 @@ export function EditorShell({ initialJson, initialTitle, mode: _mode, forcedTab 
           ];
 
     const setSegments = (segments: { text: string; size: 'big' | 'small' }[]) => {
-      const cleaned = segments.filter((seg) => seg.text.trim().length > 0);
-      const title = cleaned.map((seg) => seg.text).join(' ').trim();
+      // Bevara segment även om de är tomma så användaren kan skriva i dem
+      const normalized = segments.map((seg) => ({ text: seg.text, size: seg.size }));
+      const titleFromSegments = normalized
+        .map((seg) => seg.text.trim())
+        .filter((txt) => txt.length > 0)
+        .join(' ')
+        .trim();
+      const title = titleFromSegments || 'Ny rätt';
       updateRecipe((prev) => ({
         ...prev,
         title,
         titlePrefix: '',
         titleSuffix: '',
-        titleSegments: cleaned.length > 0 ? cleaned : [{ text: title || 'Ny rätt', size: 'big' }],
+        titleSegments: normalized.length > 0 ? normalized : [{ text: title, size: 'big' }],
       }));
     };
 
@@ -591,7 +597,7 @@ export function EditorShell({ initialJson, initialTitle, mode: _mode, forcedTab 
           )}
           {!formReady && errors.length > 0 && (
             <div className="alert error" style={{ marginTop: '1rem' }}>
-              JSON måste vara giltig innan formuläret kan visas.
+              Ogiltig JSON: {errors.join('; ')}
             </div>
           )}
         </div>
@@ -744,6 +750,7 @@ function SortableIngredientRow({
             className="chip-button chip-button--icon chip-button--danger"
             aria-label="Ta bort"
             onClick={onDelete}
+            disabled={item.kind === 'heading'}
           >
             <i className="fa-solid fa-trash-can" aria-hidden="true"></i>
           </button>

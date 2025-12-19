@@ -82,9 +82,6 @@ export function RecipePreview({ recipe }: Props) {
                   <span className="back-button" aria-hidden="true">
                     ← Tillbaka
                   </span>
-                  <span className="recipe-edit-button" aria-hidden="true">
-                    Redigera
-                  </span>
                 </div>
                 <div className="recipe-cover__summary">
                   <div className="recipe-cover__title">
