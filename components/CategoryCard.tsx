@@ -10,7 +10,7 @@ export function CategoryCard({ category }: Props) {
   const hero = category.image || DEFAULT_RECIPE_IMAGE;
   const segments = [{ text: category.name, size: 'big' as const }];
   return (
-    <a href={`#/category/${category.slug}`} className="recipe-card">
+    <a href={`#/category/${category.slug}`} className="recipe-card recipe-card--category">
       <div className="recipe-card__image">
         <div className="recipe-card__media">
           <Image src={hero} alt={category.name} fill sizes="320px" />

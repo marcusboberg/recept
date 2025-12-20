@@ -103,20 +103,6 @@ export function RecipesShell({
     const label = categoryGroup === 'place' ? 'Region' : categoryGroup === 'base' ? 'Basvara' : 'Tillagning';
     return (
       <div className="space-y-4">
-        <div className="category-chips category-chips--nav">
-          <a className="chip-button chip-button--ghost" href="#/recipes">
-            Alla recept
-          </a>
-          <a className={categoryGroup === 'place' ? 'chip-button is-active' : 'chip-button'} href="#/categories/place">
-            Region
-          </a>
-          <a className={categoryGroup === 'base' ? 'chip-button is-active' : 'chip-button'} href="#/categories/base">
-            Basvara
-          </a>
-          <a className={categoryGroup === 'type' ? 'chip-button is-active' : 'chip-button'} href="#/categories/type">
-            Tillagning
-          </a>
-        </div>
         {showSearchBar && (
           <div className="filters">
             <SearchBar value={searchQuery} onChange={handleSearchChange} />
@@ -136,31 +122,12 @@ export function RecipesShell({
     <div className="space-y-4">
       {activeCategory && (
         <div className="category-detail-header">
-          <button
-            type="button"
-            className="category-back-button"
-            aria-label="Tillbaka"
-            onClick={() => {
-              if (typeof window !== 'undefined' && window.history.length > 1) {
-                window.history.back();
-              } else {
-                window.location.hash = '#/categories';
-              }
-            }}
-          >
-            <i className="fa-solid fa-arrow-left" aria-hidden="true" />
-          </button>
           <div className="category-detail-title">
             <p className="eyebrow">Kategori</p>
             <h2 className="category-detail-name">
               {activeCategory.name} ({activeCategory.count})
             </h2>
           </div>
-        </div>
-      )}
-      {showSearchBar && (
-        <div className="filters">
-          <SearchBar value={searchQuery} onChange={handleSearchChange} />
         </div>
       )}
       {!categorySlug && showCategoryChips && categories.length > 0 && (
