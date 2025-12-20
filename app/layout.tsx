@@ -22,7 +22,6 @@ export const metadata: Metadata = {
     template: '%s | Recept',
   },
   description: siteDescription,
-  themeColor: '#000000',
   icons: {
     icon: [
       { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
@@ -50,7 +49,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
-  themeColor: '#050607',
+  themeColor: '#000000',
 };
 
 export default function RootLayout({

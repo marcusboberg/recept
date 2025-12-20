@@ -3,7 +3,9 @@ import { notFound } from 'next/navigation';
 import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
 import { doc, getDoc, getFirestore, type Firestore } from 'firebase/firestore';
 
-export const dynamic = 'force-dynamic';
+const isStaticExport = process.env.NEXT_STATIC_EXPORT === 'true';
+export const dynamic = 'force-static';
+export const dynamicParams = false;
 export const revalidate = 0;
 
 type RecipeDoc = {
@@ -51,6 +53,7 @@ function getFirestoreServer(): Firestore {
 
 async function loadRecipe(slug: string): Promise<RecipeFile | null> {
   if (!slug) return null;
+  if (isStaticExport) return null;
   try {
     const db = getFirestoreServer();
     const snap = await getDoc(doc(db, 'recipes', slug));
@@ -70,12 +73,13 @@ async function loadRecipe(slug: string): Promise<RecipeFile | null> {
   }
 }
 
-export const dynamicParams = true;
-
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   const recipe = await loadRecipe(params.slug);
   if (!recipe) {
-    return { title: 'Recept saknas' };
+    return {
+      title: 'Recept saknas',
+      description: 'Den här delningslänken kunde inte laddas.',
+    };
   }
 
   const title = recipe.title || 'Recept';
@@ -117,7 +121,44 @@ export default async function SharePage({ params }: { params: { slug: string } }
   const recipe = await loadRecipe(params.slug);
 
   if (!recipe) {
-    notFound();
+    if (!isStaticExport) {
+      notFound();
+    }
+    return (
+      <div
+        style={{
+          minHeight: '100vh',
+          display: 'grid',
+          placeItems: 'center',
+          padding: '32px',
+          background: '#0b0b0b',
+          color: '#f8fafc',
+          fontFamily: "'Montserrat Alternates', system-ui, sans-serif",
+          textAlign: 'center',
+        }}
+      >
+        <div style={{ maxWidth: 520 }}>
+          <h1 style={{ fontSize: 28, marginBottom: 12, fontWeight: 700 }}>Recept saknas</h1>
+          <p style={{ color: '#cbd5e1', marginBottom: 16 }}>
+            Den här delningslänken kunde inte laddas i statisk export. Öppna appen för att se receptet.
+          </p>
+          <a
+            href="/#/recipes"
+            style={{
+              display: 'inline-flex',
+              padding: '12px 18px',
+              borderRadius: 999,
+              background: '#2563eb',
+              color: '#fff',
+              textDecoration: 'none',
+              fontWeight: 600,
+            }}
+          >
+            Till recepten
+          </a>
+        </div>
+      </div>
+    );
   }
 
   const targetHref = `/#/recipe/${params.slug}`;

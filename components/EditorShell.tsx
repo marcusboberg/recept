@@ -251,7 +251,7 @@ export function EditorShell({ initialJson, initialTitle, mode: _mode, forcedTab 
   const addStep = () => {
     updateRecipe((prev) => ({
       ...prev,
-      steps: [...(prev.steps ?? []), { title: '', body: '' }],
+      steps: [...(prev.steps ?? []), { title: '', body: 'Skriv här...' }],
     }));
   };
 
@@ -259,6 +259,14 @@ export function EditorShell({ initialJson, initialTitle, mode: _mode, forcedTab 
     updateRecipe((prev) => {
       const steps = [...(prev.steps ?? [])];
       steps[index] = { ...steps[index], [field]: value };
+      return { ...prev, steps };
+    });
+  };
+
+  const removeStep = (index: number) => {
+    updateRecipe((prev) => {
+      const steps = [...(prev.steps ?? [])];
+      steps.splice(index, 1);
       return { ...prev, steps };
     });
   };
@@ -581,6 +589,18 @@ export function EditorShell({ initialJson, initialTitle, mode: _mode, forcedTab 
           <div className="stack" style={{ gap: '1rem' }}>
             {(formRecipe.steps ?? []).map((step, index) => (
               <div key={index} className="stack" style={{ border: '1px solid #e5e7eb', borderRadius: '16px', padding: '1rem' }}>
+                <div className="flex" style={{ justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
+                  <span className="text-sm text-muted">Steg {index + 1}</span>
+                  <button
+                    type="button"
+                    className="button-ghost"
+                    onClick={() => removeStep(index)}
+                    aria-label={`Ta bort steg ${index + 1}`}
+                    style={{ padding: '0.35rem 0.6rem', color: '#b91c1c' }}
+                  >
+                    <i className="fa-solid fa-trash-can" aria-hidden="true" /> Ta bort
+                  </button>
+                </div>
                 <label className="stack">
                   <span className="text-sm text-muted">Stegrubrik (valfri)</span>
                   <input className="input" value={step.title ?? ''} onChange={(e) => updateStep(index, 'title', e.target.value)} />
