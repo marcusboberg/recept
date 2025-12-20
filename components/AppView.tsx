@@ -8,6 +8,7 @@ import { EditRecipeSection } from '@/components/EditRecipeSection';
 import { NewRecipeSection } from '@/components/NewRecipeSection';
 import { emptyRecipe } from '@/lib/templates';
 import { recipeToJson } from '@/lib/recipes';
+import { SearchBar } from './SearchBar';
 
 type View =
   | { type: 'categories' }
@@ -61,20 +62,33 @@ export function AppView() {
     if (typeof document === 'undefined') {
       return;
     }
-    const className = 'is-recipe-view';
+    const recipeClass = 'is-recipe-view';
+    const homeClass = 'is-home-view';
     const shell = document.querySelector('.app-shell');
     if (!shell) {
       return;
     }
-    if (view.type === 'recipe') {
-      shell.classList.add(className);
-    } else {
-      shell.classList.remove(className);
-    }
+    const isRecipe = view.type === 'recipe';
+    const isHome = view.type === 'list';
+
+    shell.classList.toggle(recipeClass, isRecipe);
+    shell.classList.toggle(homeClass, isHome);
+    document.body.classList.toggle(homeClass, isHome);
+
     return () => {
-      shell.classList.remove(className);
+      shell.classList.remove(recipeClass);
+      shell.classList.remove(homeClass);
+      document.body.classList.remove(homeClass);
     };
   }, [view.type]);
+
+  const categoryGroups = [
+    { key: 'place' as const, label: 'Region', href: '#/categories/place', accent: 'place' },
+    { key: 'base' as const, label: 'Basvara', href: '#/categories/base', accent: 'base' },
+    { key: 'type' as const, label: 'Tillagning', href: '#/categories/type', accent: 'type' },
+  ];
+
+  const [searchQuery, setSearchQuery] = useState('');
 
   if (view.type === 'recipe') {
     return <RecipeMobile slug={view.slug} />;
@@ -88,14 +102,8 @@ export function AppView() {
     return <NewRecipeSection initialJson={recipeToJson(emptyRecipe)} initialTitle={emptyRecipe.title} />;
   }
 
-  const categoryGroups = [
-    { key: 'place' as const, label: 'Geografi', href: '#/categories/place', accent: 'place' },
-    { key: 'base' as const, label: 'Basvara', href: '#/categories/base', accent: 'base' },
-    { key: 'type' as const, label: 'Tillagning', href: '#/categories/type', accent: 'type' },
-  ];
-
   return (
-    <div className="page-shell space-y-6">
+    <div className="page-shell space-y-6 home-landing">
       <header className="page-header">
         <div>
           <p className="eyebrow">Alla recept</p>
@@ -107,20 +115,29 @@ export function AppView() {
           </a>
         </div>
       </header>
-      <div className="category-group-row">
-        {categoryGroups.map((group) => (
-          <a key={group.key} className={`category-group-card category-group-card--${group.accent}`} href={group.href}>
-            <div className="category-group-card__label">{group.label}</div>
-            <div className="category-group-card__cta">
-              Visa kategorier <span aria-hidden="true">→</span>
-            </div>
-          </a>
-        ))}
-      </div>
+      {view.type === 'list' && (
+        <div className="category-search-row">
+          <div className="category-group-row">
+            {categoryGroups.map((group) => (
+              <a key={group.key} className={`category-group-card category-group-card--${group.accent}`} href={group.href}>
+                <div className="category-group-card__label">{group.label}</div>
+                <div className="category-group-card__cta">
+                  Visa kategorier <span aria-hidden="true">→</span>
+                </div>
+              </a>
+            ))}
+          </div>
+          <div className="category-search">
+            <SearchBar value={searchQuery} onChange={setSearchQuery} />
+          </div>
+        </div>
+      )}
       {view.type === 'categories' && <RecipesShell showCategories />}
       {view.type === 'categoryGroup' && <RecipesShell categoryGroup={view.group} />}
       {view.type === 'category' && <RecipesShell categorySlug={view.slug} />}
-      {view.type === 'list' && <RecipesShell />}
+      {view.type === 'list' && (
+        <RecipesShell searchQuery={searchQuery} onSearchChange={setSearchQuery} showSearchBar={false} />
+      )}
     </div>
   );
 }

@@ -20,6 +20,7 @@ import { RecipePreview } from '@/components/RecipePreview';
 import { parseRecipe, recipeToJson } from '@/lib/recipes';
 import type { Recipe } from '@/schema/recipeSchema';
 import { getFirestoreClient } from '@/lib/firebaseClient';
+import { useLiveRecipes } from '@/lib/useLiveRecipes';
 
 interface Props {
   initialJson: string;
@@ -55,6 +56,27 @@ export function EditorShell({ initialJson, initialTitle, mode: _mode, forcedTab 
   const ingredientRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const dropFlashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const liveRecipes = useLiveRecipes();
+
+  const categoryOptions = useMemo(() => {
+    const place = new Set<string>();
+    const base = new Set<string>();
+    const type = new Set<string>();
+    liveRecipes.forEach((recipe) => {
+      const p = recipe.categoryPlace?.trim();
+      const b = recipe.categoryBase?.trim();
+      const t = recipe.categoryType?.trim();
+      if (p) place.add(p);
+      if (b) base.add(b);
+      if (t) type.add(t);
+    });
+    const sortFn = (a: string, b: string) => a.localeCompare(b, 'sv');
+    return {
+      place: Array.from(place).sort(sortFn),
+      base: Array.from(base).sort(sortFn),
+      type: Array.from(type).sort(sortFn),
+    };
+  }, [liveRecipes]);
 
   const indexById = useMemo(
     () => new Map(flatIngredients.map((item, idx) => [item.id, idx] as const)),
@@ -430,6 +452,7 @@ export function EditorShell({ initialJson, initialTitle, mode: _mode, forcedTab 
                 <span className="text-sm text-muted">Plats</span>
                 <input
                   className="input"
+                  list="category-place-options"
                   value={formRecipe.categoryPlace ?? ''}
                   onChange={(e) => updateRecipe((prev) => ({ ...prev, categoryPlace: e.target.value }))}
                 />
@@ -438,6 +461,7 @@ export function EditorShell({ initialJson, initialTitle, mode: _mode, forcedTab 
                 <span className="text-sm text-muted">Basvara</span>
                 <input
                   className="input"
+                  list="category-base-options"
                   value={formRecipe.categoryBase ?? ''}
                   onChange={(e) => updateRecipe((prev) => ({ ...prev, categoryBase: e.target.value }))}
                 />
@@ -446,6 +470,7 @@ export function EditorShell({ initialJson, initialTitle, mode: _mode, forcedTab 
                 <span className="text-sm text-muted">Typ</span>
                 <input
                   className="input"
+                  list="category-type-options"
                   value={formRecipe.categoryType ?? ''}
                   onChange={(e) => updateRecipe((prev) => ({ ...prev, categoryType: e.target.value }))}
                 />
@@ -573,6 +598,21 @@ export function EditorShell({ initialJson, initialTitle, mode: _mode, forcedTab 
             ))}
           </div>
         </article>
+        <datalist id="category-place-options">
+          {categoryOptions.place.map((opt) => (
+            <option key={opt} value={opt} />
+          ))}
+        </datalist>
+        <datalist id="category-base-options">
+          {categoryOptions.base.map((opt) => (
+            <option key={opt} value={opt} />
+          ))}
+        </datalist>
+        <datalist id="category-type-options">
+          {categoryOptions.type.map((opt) => (
+            <option key={opt} value={opt} />
+          ))}
+        </datalist>
       </div>
     );
   };

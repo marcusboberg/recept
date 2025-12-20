@@ -12,8 +12,8 @@ import './globals.css';
 const defaultSiteUrl = 'http://localhost:3000';
 const rawSiteUrl = process.env.NEXT_PUBLIC_APP_URL ?? defaultSiteUrl;
 const appUrl = rawSiteUrl.startsWith('http') ? rawSiteUrl : `https://${rawSiteUrl}`;
-const siteTitle = 'Recept | Git-backed recipes';
-const siteDescription = 'Recipes stored as JSON and rendered with Next.js';
+const siteTitle = 'Recept';
+const siteDescription = 'Recipes from Marcus and Philip.';
 
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),
@@ -22,6 +22,16 @@ export const metadata: Metadata = {
     template: '%s | Recept',
   },
   description: siteDescription,
+  themeColor: '#000000',
+  icons: {
+    icon: [
+      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
+      { url: '/icon-192x192.png', sizes: '192x192', type: 'image/png' },
+    ],
+    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+    shortcut: ['/favicon-32x32.png'],
+  },
   openGraph: {
     title: siteTitle,
     description: siteDescription,
@@ -34,17 +44,13 @@ export const metadata: Metadata = {
     title: siteTitle,
     description: siteDescription,
   },
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: 'black-translucent',
-  },
 };
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
-  themeColor: 'rgba(0,0,0,0)',
+  themeColor: '#050607',
 };
 
 export default function RootLayout({

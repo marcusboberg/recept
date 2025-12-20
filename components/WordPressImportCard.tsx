@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { recipeSchema, type Recipe } from '@/schema/recipeSchema';
 import { recipeToJson } from '@/lib/recipes';
+import { useLiveRecipes } from '@/lib/useLiveRecipes';
 
 interface Props {
   onImport: (json: string, title: string) => void;
@@ -30,6 +31,27 @@ export function WordPressImportCard({ onImport, className }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [preview, setPreview] = useState<Recipe | null>(null);
+  const liveRecipes = useLiveRecipes();
+
+  const categoryOptions = (() => {
+    const place = new Set<string>();
+    const base = new Set<string>();
+    const type = new Set<string>();
+    liveRecipes.forEach((recipe) => {
+      const p = recipe.categoryPlace?.trim();
+      const b = recipe.categoryBase?.trim();
+      const t = recipe.categoryType?.trim();
+      if (p) place.add(p);
+      if (b) base.add(b);
+      if (t) type.add(t);
+    });
+    const sortFn = (a: string, b: string) => a.localeCompare(b, 'sv');
+    return {
+      place: Array.from(place).sort(sortFn),
+      base: Array.from(base).sort(sortFn),
+      type: Array.from(type).sort(sortFn),
+    };
+  })();
 
   const handleConvert = async () => {
     setStatus(null);
@@ -78,7 +100,7 @@ export function WordPressImportCard({ onImport, className }: Props) {
   };
 
   return (
-    <div className={`card space-y-3 studio-card ${className ?? ''}`}>
+    <div className={`card space-y-3 studio-card ${className ?? ''}`} style={{ color: '#0f172a' }}>
       <div className="space-y-1">
         <h3 className="card-title">WordPress-import</h3>
         <p className="card-subtitle">Klistra in en WordPress-URL så hämtar vi HTML och bygger JSON åt dig.</p>
@@ -101,7 +123,9 @@ export function WordPressImportCard({ onImport, className }: Props) {
             className="input"
             placeholder="t.ex. Italien"
             value={categoryPlace}
+            list="wp-category-place-options"
             onChange={(event) => setCategoryPlace(event.target.value)}
+            style={{ color: '#0f172a' }}
           />
         </label>
         <label className="stack">
@@ -111,7 +135,9 @@ export function WordPressImportCard({ onImport, className }: Props) {
             className="input"
             placeholder="t.ex. Kyckling"
             value={categoryBase}
+            list="wp-category-base-options"
             onChange={(event) => setCategoryBase(event.target.value)}
+            style={{ color: '#0f172a' }}
           />
         </label>
         <label className="stack">
@@ -121,7 +147,9 @@ export function WordPressImportCard({ onImport, className }: Props) {
             className="input"
             placeholder="t.ex. Gryta"
             value={categoryType}
+            list="wp-category-type-options"
             onChange={(event) => setCategoryType(event.target.value)}
+            style={{ color: '#0f172a' }}
           />
         </label>
       </div>
@@ -152,6 +180,21 @@ export function WordPressImportCard({ onImport, className }: Props) {
           </p>
         </div>
       )}
+      <datalist id="wp-category-place-options">
+        {categoryOptions.place.map((opt) => (
+          <option key={opt} value={opt} />
+        ))}
+      </datalist>
+      <datalist id="wp-category-base-options">
+        {categoryOptions.base.map((opt) => (
+          <option key={opt} value={opt} />
+        ))}
+      </datalist>
+      <datalist id="wp-category-type-options">
+        {categoryOptions.type.map((opt) => (
+          <option key={opt} value={opt} />
+        ))}
+      </datalist>
     </div>
   );
 }

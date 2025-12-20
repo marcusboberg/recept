@@ -1,7 +1,16 @@
-import path from 'path';
-import { promises as fs } from 'fs';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
+import { doc, getDoc, getFirestore, type Firestore } from 'firebase/firestore';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+type RecipeDoc = {
+  title?: string;
+  description?: string;
+  imageUrl?: string;
+};
 
 type RecipeFile = {
   title: string;
@@ -15,30 +24,53 @@ const rawSiteUrl = process.env.NEXT_PUBLIC_APP_URL ?? defaultSiteUrl;
 const siteUrl = rawSiteUrl.startsWith('http') ? rawSiteUrl : `https://${rawSiteUrl}`;
 const fallbackImage = `${siteUrl}/images/recipes/new-recipe.jpg`;
 
+let app: FirebaseApp | null = null;
+let firestoreInstance: Firestore | null = null;
+
+const config = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
+};
+
+function getFirestoreServer(): Firestore {
+  if (firestoreInstance) return firestoreInstance;
+  if (!config.apiKey || !config.authDomain || !config.projectId || !config.appId) {
+    throw new Error('Firebase configuration missing; set NEXT_PUBLIC_FIREBASE_* env vars.');
+  }
+  if (!app) {
+    app = getApps().length > 0 ? getApps()[0] : initializeApp(config);
+  }
+  firestoreInstance = getFirestore(app);
+  return firestoreInstance;
+}
+
 async function loadRecipe(slug: string): Promise<RecipeFile | null> {
   if (!slug) return null;
-  const filePath = path.join(process.cwd(), 'data', 'recipes', `${slug}.json`);
   try {
-    const raw = await fs.readFile(filePath, 'utf8');
-    return JSON.parse(raw) as RecipeFile;
+    const db = getFirestoreServer();
+    const snap = await getDoc(doc(db, 'recipes', slug));
+    if (!snap.exists()) {
+      return null;
+    }
+    const data = snap.data() as RecipeDoc;
+    return {
+      title: data.title ?? slug,
+      description: data.description,
+      imageUrl: data.imageUrl,
+      slug,
+    };
   } catch (error) {
     console.error('Failed to load recipe for share page', slug, error);
     return null;
   }
 }
 
-export async function generateStaticParams() {
-  const dir = path.join(process.cwd(), 'data', 'recipes');
-  try {
-    const files = await fs.readdir(dir);
-    return files
-      .filter((file) => file.endsWith('.json'))
-      .map((file) => ({ slug: file.replace(/\.json$/, '') }));
-  } catch (error) {
-    console.error('Failed to read recipes for share page params', error);
-    return [];
-  }
-}
+export const dynamicParams = true;
 
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   const recipe = await loadRecipe(params.slug);
@@ -49,7 +81,6 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   const title = recipe.title || 'Recept';
   const description = recipe.description || 'Ett recept från recept.marcusboberg.se';
   const hero = recipe.imageUrl || fallbackImage;
-  const shareImage = `${siteUrl}/api/share/${recipe.slug}`;
   const canonical = `${siteUrl}/share/${recipe.slug}`;
 
   return {
@@ -71,19 +102,13 @@ export async function generateMetadata({ params }: { params: { slug: string } })
           height: 630,
           alt: title,
         },
-        {
-          url: shareImage,
-          width: 1080,
-          height: 1920,
-          alt: `${title} – stående bild`,
-        },
       ],
     },
     twitter: {
       card: 'summary_large_image',
       title,
       description,
-      images: [shareImage],
+      images: [hero],
     },
   };
 }

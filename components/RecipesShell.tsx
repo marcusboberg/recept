@@ -16,6 +16,9 @@ interface Props {
   showCategories?: boolean;
   categoryGroup?: 'place' | 'base' | 'type';
   showCategoryChips?: boolean;
+  searchQuery?: string;
+  onSearchChange?: (value: string) => void;
+  showSearchBar?: boolean;
 }
 
 export function RecipesShell({
@@ -24,13 +27,25 @@ export function RecipesShell({
   showCategories = false,
   categoryGroup = undefined,
   showCategoryChips = false,
+  searchQuery: searchQueryProp,
+  onSearchChange,
+  showSearchBar = true,
 }: Props = {}) {
   const liveRecipes = useLiveRecipes(initialRecipes);
-  const [searchQuery, setSearchQuery] = useState('');
+  const isControlled = searchQueryProp !== undefined;
+  const [internalSearch, setInternalSearch] = useState(searchQueryProp ?? '');
+  const searchQuery = isControlled ? (searchQueryProp as string) : internalSearch;
 
   const categories = useMemo(() => buildCategories(liveRecipes, DEFAULT_RECIPE_IMAGE), [liveRecipes]);
   const activeCategory = categorySlug ? categories.find((c) => c.slug === categorySlug) : null;
   const categoryFiltered = categorySlug ? liveRecipes.filter((recipe) => recipeInCategory(recipe, categorySlug)) : liveRecipes;
+
+  const handleSearchChange = (value: string) => {
+    if (!isControlled) {
+      setInternalSearch(value);
+    }
+    onSearchChange?.(value);
+  };
 
   const filtered = useMemo(
     () => categoryFiltered.filter((recipe) => matchQuery(recipe, searchQuery, [], categorySlug ?? undefined)),
@@ -85,8 +100,7 @@ export function RecipesShell({
     const items = groupByField[categoryGroup].filter((item) =>
       item.name.toLowerCase().includes(searchQuery.toLowerCase()),
     );
-    const label =
-      categoryGroup === 'place' ? 'Geografi' : categoryGroup === 'base' ? 'Basvara' : 'Tillagning';
+    const label = categoryGroup === 'place' ? 'Region' : categoryGroup === 'base' ? 'Basvara' : 'Tillagning';
     return (
       <div className="space-y-4">
         <div className="category-chips category-chips--nav">
@@ -94,7 +108,7 @@ export function RecipesShell({
             Alla recept
           </a>
           <a className={categoryGroup === 'place' ? 'chip-button is-active' : 'chip-button'} href="#/categories/place">
-            Geografi
+            Region
           </a>
           <a className={categoryGroup === 'base' ? 'chip-button is-active' : 'chip-button'} href="#/categories/base">
             Basvara
@@ -103,9 +117,11 @@ export function RecipesShell({
             Tillagning
           </a>
         </div>
-        <div className="filters">
-          <SearchBar value={searchQuery} onChange={setSearchQuery} />
-        </div>
+        {showSearchBar && (
+          <div className="filters">
+            <SearchBar value={searchQuery} onChange={handleSearchChange} />
+          </div>
+        )}
         <div className="category-grid">
           {items.map((category) => (
             <CategoryCard key={category.slug} category={category} />
@@ -119,16 +135,34 @@ export function RecipesShell({
   return (
     <div className="space-y-4">
       {activeCategory && (
-        <div className="filters">
-          <div className="pill ghost">Kategori: {activeCategory.name} ({activeCategory.count})</div>
-          <a className="button-ghost" href="#/">
-            <i className="fa-solid fa-arrow-left" aria-hidden="true" /> Alla kategorier
-          </a>
+        <div className="category-detail-header">
+          <button
+            type="button"
+            className="category-back-button"
+            aria-label="Tillbaka"
+            onClick={() => {
+              if (typeof window !== 'undefined' && window.history.length > 1) {
+                window.history.back();
+              } else {
+                window.location.hash = '#/categories';
+              }
+            }}
+          >
+            <i className="fa-solid fa-arrow-left" aria-hidden="true" />
+          </button>
+          <div className="category-detail-title">
+            <p className="eyebrow">Kategori</p>
+            <h2 className="category-detail-name">
+              {activeCategory.name} ({activeCategory.count})
+            </h2>
+          </div>
         </div>
       )}
-      <div className="filters">
-        <SearchBar value={searchQuery} onChange={setSearchQuery} />
-      </div>
+      {showSearchBar && (
+        <div className="filters">
+          <SearchBar value={searchQuery} onChange={handleSearchChange} />
+        </div>
+      )}
       {!categorySlug && showCategoryChips && categories.length > 0 && (
         <div className="category-chips">
           <a className="chip-button chip-button--ghost" href="#/recipes">

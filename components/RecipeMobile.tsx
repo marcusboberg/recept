@@ -81,6 +81,14 @@ export function RecipeMobile({ slug, initialRecipe }: Props) {
   const ingredientGroups = useMemo(() => (liveRecipe ? toIngredientGroups(liveRecipe) : []), [liveRecipe]);
   const heroImage = liveRecipe?.imageUrl?.trim() ? liveRecipe.imageUrl : DEFAULT_RECIPE_IMAGE;
   const titleSegments = liveRecipe ? getTitleSegments(liveRecipe) : [];
+  const handleBack = () => {
+    if (typeof window === 'undefined') return;
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      window.location.href = '#/';
+    }
+  };
 
   useEffect(() => {
     if (!heroImage || typeof document === 'undefined') {
@@ -91,6 +99,23 @@ export function RecipeMobile({ slug, initialRecipe }: Props) {
       document.documentElement.style.removeProperty('--recipe-blur-image');
     };
   }, [heroImage]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const isStandalone =
+      window.matchMedia?.('(display-mode: standalone)')?.matches ||
+      window.matchMedia?.('(display-mode: fullscreen)')?.matches ||
+      // iOS PWA flag
+      (typeof (window.navigator as any).standalone !== 'undefined' && (window.navigator as any).standalone);
+
+    if (isStandalone) {
+      document.documentElement.classList.add('pwa-mode');
+      return () => {
+        document.documentElement.classList.remove('pwa-mode');
+      };
+    }
+    return undefined;
+  }, []);
 
   const toggleIngredient = (key: string) => {
     setCheckedIngredients((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -157,11 +182,9 @@ export function RecipeMobile({ slug, initialRecipe }: Props) {
             <Image src={heroImage} alt={liveRecipe.title} fill sizes="100vw" priority className="recipe-cover__image" />
             </div>
             <div className="recipe-cover__overlay">
-              <div className="recipe-cover__actions">
-                <a href="#/" className="back-button">
-                  <i className="fa-solid fa-arrow-left" aria-hidden="true" /> Tillbaka
-                </a>
-              </div>
+              <button type="button" className="back-button back-button--mobile-icon" onClick={handleBack} aria-label="Tillbaka">
+                <i className="fa-solid fa-arrow-left" aria-hidden="true" />
+              </button>
               <div className="recipe-cover__summary">
                 <div className="recipe-cover__title">
                   {titleSegments.map((segment, idx) =>
