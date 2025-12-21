@@ -221,8 +221,8 @@ export function AppView() {
             {categoryGroups.map((group) => (
               <a key={group.key} className={`category-group-card category-group-card--${group.accent}`} href={group.href}>
                 <div className="category-group-card__label">{group.label}</div>
-                <div className="category-group-card__cta">
-                  Visa kategorier <span aria-hidden="true">→</span>
+                <div className="category-group-card__cta" aria-hidden="true">
+                  →
                 </div>
               </a>
             ))}
