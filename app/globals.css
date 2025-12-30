@@ -1610,6 +1610,115 @@ button, input, textarea {
   align-items: flex-start;
 }
 
+.chatgpt-wizard .chatgpt-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1rem;
+  align-items: start;
+}
+
+.wizard-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.wizard-row--prompt {
+  margin-top: 0.5rem;
+}
+
+.wizard-row--footer {
+  margin-top: 0.75rem;
+  padding: 0.9rem 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.wizard-row textarea {
+  width: 100%;
+}
+
+.wizard-actions {
+  margin-top: 0.75rem;
+  padding: 0.9rem 1rem;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.wizard-actions--footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+  margin-top: 1rem;
+}
+
+.wizard-actions--footer h4,
+.wizard-actions--footer p {
+  color: #e2e8f0;
+}
+
+.chatgpt-single {
+  max-width: 1040px;
+  margin: 0 auto;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.workspace-hero--left {
+  align-items: flex-start;
+  text-align: left;
+}
+
+.workspace-hero--left h2,
+.workspace-hero--left p,
+.workspace-hero--left .eyebrow {
+  text-align: left;
+}
+
+.wizard-card .button-primary,
+.wizard-card .button-ghost {
+  border-radius: 999px;
+}
+
+.chatgpt-card .wizard-step-content h3,
+.chatgpt-card .wizard-step-content h4,
+.chatgpt-card .wizard-step-content p,
+.chatgpt-card .wizard-step-content span,
+.chatgpt-card .wizard-step-content li {
+  color: var(--text);
+}
+
+.chatgpt-card .wizard-step-content .card-subtitle,
+.chatgpt-card .wizard-step-content .text-sm {
+  color: var(--muted);
+}
+
+.chatgpt-card textarea {
+  width: 100%;
+  min-height: 180px;
+  font-size: 1rem;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: #fff;
+  color: #0f172a;
+}
+
+.chatgpt-card textarea:focus {
+  outline: 2px solid rgba(59, 130, 246, 0.45);
+  outline-offset: 1px;
+}
+
+@media (max-width: 720px) {
+  .wizard-card {
+    padding: 1rem;
+  }
+}
+
 .three-col {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

@@ -5,6 +5,7 @@ import { onAuthStateChanged, signOut, type User } from 'firebase/auth';
 import { ChatPromptCard } from './ChatPromptCard';
 import { EditorShell } from './EditorShell';
 import { WordPressImportCard } from './WordPressImportCard';
+import { IcaImportCard } from './IcaImportCard';
 import { getFirebaseAuth } from '@/lib/firebaseClient';
 import { getUserDisplay } from '@/lib/userDisplay';
 import { StudioSidebar } from './StudioSidebar';
@@ -15,7 +16,7 @@ interface Props {
   initialTitle: string;
 }
 
-type ImportView = 'wordpress' | 'chatgpt' | 'manual' | 'preview' | 'json';
+type ImportView = 'wordpress' | 'ica' | 'chatgpt' | 'manual' | 'preview' | 'json';
 
 function ManualJsonCard({ onImport }: { onImport: (json: string, title: string) => void }) {
   const [value, setValue] = useState('');
@@ -87,6 +88,7 @@ export function NewRecipeSection({ initialJson, initialTitle }: Props) {
         iconClass: 'fa-solid fa-file-import',
         children: [
           { id: 'wordpress' as const, label: 'WordPress', description: 'Klistra in länk' },
+          { id: 'ica' as const, label: 'ICA.se', description: 'JSON-LD' },
           { id: 'chatgpt' as const, label: 'ChatGPT', description: 'Prompt + text' },
           { id: 'manual' as const, label: 'JSON', description: 'Klistra in manuellt' },
         ],
@@ -196,34 +198,38 @@ export function NewRecipeSection({ initialJson, initialTitle }: Props) {
               </section>
             )}
 
-            {activeView === 'chatgpt' && (
+            {activeView === 'ica' && (
               <section className="new-recipe-workspace">
                 <header className="workspace-hero">
-                  <p className="eyebrow">ChatGPT</p>
-                  <h2>Klistra in text, kör prompten och fyll editorn på sekunder.</h2>
-                  <p>Kopiera prompten, lägg in fritexten under och kör i valfri GPT-klient. Klistra sedan in JSON i preview.</p>
-                  <div className="workspace-hero__cta">
-                    <button type="button" className="button-ghost" onClick={() => setActiveView('preview')}>
-                      Gå till preview
-                    </button>
-                  </div>
+                  <p className="eyebrow">ICA.se-import</p>
+                  <h2>Klistra in ICA-länken, vi läser JSON-LD och bygger receptet.</h2>
+                  <p>
+                    Vi hämtar schema.org/Recipe direkt från sidan och fyller editorn. Dubbelkolla tider och
+                    kategorier i preview-läget.
+                  </p>
                 </header>
-                <div className="workspace-grid">
-                  <article className="workspace-card stack studio-card">
-                    <h3>Workflow</h3>
-                    <ol className="workspace-list workspace-list--numbered">
-                      <li>Klistra in originaltexten i promptkortet här.</li>
-                      <li>Kopiera prompten (inkl. text) och kör i ChatGPT.</li>
-                      <li>Ta JSON-utdata och klistra in i preview-vyn.</li>
-                    </ol>
-                    <p className="text-sm text-muted">Be GPT alltid svara som ren JSON utan kommentarer.</p>
-                  </article>
-                  <ChatPromptCard
-                    className="workspace-card stack studio-card"
-                    prompt={`Du är en formatkonverterare som tar ett recept i fritext och svarar med exakt JSON för webbplatsen Recept.
+                <div className="workspace-single">
+                  <IcaImportCard onImport={handleImport} className="workspace-card stack studio-card" />
+                </div>
+              </section>
+            )}
 
-1. Läs texten och hämta titel, beskrivning, tid, portioner, ingredienser, ev. grupper och steg.
-2. Ge mig giltig JSON och INGEN annan text. Använd följande struktur och fyll alla fält:
+            {activeView === 'chatgpt' && (
+              <section className="new-recipe-workspace">
+                <header className="workspace-hero workspace-hero--left chatgpt-hero">
+                  <p className="eyebrow">ChatGPT</p>
+                  <h2>Klistra in texten och kopiera prompten.</h2>
+                  <p>Kopiera prompt + text till GPT, hämta JSON och klistra in i preview.</p>
+                </header>
+                <div className="workspace-single">
+                  <ChatPromptCard
+                    className="workspace-card stack studio-card chatgpt-card"
+                    defaultOpen={false}
+                    title="Kopiera prompten"
+                    prompt={`Du är en formatkonverterare som tar ett recept i fritext och svarar med exakt JSON för webbplatsen Recept. Svara ALLTID med ett enda kodblock \`\`\`json ... \`\`\` (inga kommentarer, ingen extra text).
+
+1) Läs texten och hämta titel, beskrivning, tider, portioner, ingredienser (ev. grupper) och steg.
+2) Returnera giltig JSON med strukturen:
 {
   "title": "",
   "slug": "",
@@ -237,38 +243,27 @@ export function NewRecipeSection({ initialJson, initialTitle }: Props) {
   "prepTimeMinutes": 0,
   "cookTimeMinutes": 0,
   "servings": 0,
-  "ingredients": [
-    { "label": "", "amount": "", "notes": "" }
-  ],
-  "ingredientGroups": [
-    {
-      "title": "",
-      "items": [{ "label": "", "amount": "", "notes": "" }]
-    }
-  ],
-  "steps": [
-    { "title": "", "body": "" }
-  ],
+  "ingredients": [{ "label": "", "amount": "", "notes": "" }],
+  "ingredientGroups": [{ "title": "", "items": [{ "label": "", "amount": "", "notes": "" }] }],
+  "steps": [{ "title": "", "body": "" }],
   "source": "",
   "createdAt": "",
   "updatedAt": ""
 }
 
 Regler:
-- "slug" ska vara titeln i kebab-case (små bokstäver, siffror och bindestreck).
-- "categoryPlace" är plats (land/region/kontinent), "categoryBase" är basvara (t.ex. kyckling, köttfärs, vegetariskt, pasta) och "categoryType" är typ (t.ex. gryta, paj, ugnsbakat, soppa, plockmat). Alla tre måste fyllas.
-- "categories" ska innehålla dessa tre värden (plus ev. extra).
-- "tags" är 3–5 korta etiketter, skrivna i engelska eller svenska beroende på texten.
-- Tider anges i heltal minuter. Sätt 0 om texten saknar information.
-- "imageUrl" är en URL. Behåll default-värdet om inget anges.
-- Använd ENDAST raka ASCII-citattecken (") runt alla strängar och nycklar.
-- Svara som ett rent \`\`\`json ... \`\`\`-block (inga andra tecken före eller efter) så att alla citattecken förblir ASCII.
-- "ingredients" är alltid en lista med { label, amount?, notes? }. Lämna bort fält som saknar värde (ingen tom sträng).
-- Använd "ingredientGroups" endast om texten har tydliga sektioner; annars utelämna hela fältet.
-- "steps" är i rätt ordning. "title" är valfri, "body" ska alltid fyllas.
-- "source" ska vara en URL om den finns, annars utelämna fältet.
-- "createdAt" och "updatedAt" är ISO 8601 i UTC (t.ex. 2024-01-05T12:00:00.000Z). Använd dagens datum om texten saknar datum.
-- Svara aldrig med kommentarer eller Markdown, endast ren JSON.`}
+- Behåll svensk stavning/diakritik i text (endast raka ASCII-citattecken runt nycklar/värden).
+- "slug" = kebab-case av titeln (endast a-z, 0-9, bindestreck). Konvertera å/ä/ö → a, övriga accenter till närmaste ASCII.
+- "categoryPlace" (plats), "categoryBase" (basvara), "categoryType" (typ) måste alltid fyllas. Lägg även in dem i "categories" + ev. extra etiketter.
+- "tags": 3–5 korta etiketter.
+- Tider: heltal minuter, sätt 0 om saknas.
+- "servings": heltal >= 1. Om okänt, sätt 4.
+- "ingredients": alltid minst ett objekt. Lämna bort fält som saknas (ingen tom sträng).
+- "ingredientGroups": använd endast om texten har tydliga sektioner. Annars utelämna hela fältet (skriv inte en tom array).
+- "steps": i rätt ordning. "title" valfri, "body" obligatorisk.
+- "source": URL om den finns, annars utelämna.
+- "createdAt"/"updatedAt": ISO 8601 i UTC (t.ex. 2024-01-05T12:00:00.000Z). Använd dagens datum om inget anges.
+- Svara ENDAST med JSON-objektet, inga kommentarer eller extra tecken.`}
                   />
                 </div>
               </section>
