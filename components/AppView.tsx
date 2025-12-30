@@ -9,7 +9,7 @@ import { NewRecipeSection } from '@/components/NewRecipeSection';
 import { emptyRecipe } from '@/lib/templates';
 import { recipeToJson } from '@/lib/recipes';
 import { useLiveRecipes } from '@/lib/useLiveRecipes';
-import { toCategorySlug } from '@/lib/categories';
+import { deriveCategoriesArray, toCategorySlug } from '@/lib/categories';
 import { SearchBar } from './SearchBar';
 
 type View =
@@ -128,6 +128,18 @@ export function AppView() {
     return 'Alla Recept';
   }, [liveRecipes, view]);
 
+  const categoryDisplayName = useMemo(() => {
+    if (view.type !== 'category') return null;
+    for (const recipe of liveRecipes) {
+      for (const name of deriveCategoriesArray(recipe)) {
+        if (toCategorySlug(name) === view.slug) {
+          return name;
+        }
+      }
+    }
+    return null;
+  }, [liveRecipes, view]);
+
   const headerTitle = (() => {
     if (view.type === 'categoryGroup') {
       if (view.group === 'place') return 'Alla Regioner';
@@ -135,7 +147,7 @@ export function AppView() {
       return 'Alla Tillagningar';
     }
     if (view.type === 'category') {
-      return formatTitle(view.slug);
+      return categoryDisplayName ?? formatTitle(view.slug);
     }
     return 'Alla Recept';
   })();

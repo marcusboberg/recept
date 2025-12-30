@@ -660,7 +660,7 @@ button, input, textarea {
 }
 
 .home-hero__title {
-  font-family: 'Fraunces', serif;
+  font-family: var(--font-heading);
   font-size: 3rem;
   font-weight: 600;
   margin: 0;
@@ -670,6 +670,7 @@ button, input, textarea {
 }
 
 .home-hero__parent {
+  font-family: var(--font-heading);
   color: #9ca3af;
   font-size: 3rem;
   font-weight: 600;

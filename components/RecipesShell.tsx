@@ -120,16 +120,6 @@ export function RecipesShell({
 
   return (
     <div className="space-y-4">
-      {activeCategory && (
-        <div className="category-detail-header">
-          <div className="category-detail-title">
-            <p className="eyebrow">Kategori</p>
-            <h2 className="category-detail-name">
-              {activeCategory.name} ({activeCategory.count})
-            </h2>
-          </div>
-        </div>
-      )}
       {!categorySlug && showCategoryChips && categories.length > 0 && (
         <div className="category-chips">
           <a className="chip-button chip-button--ghost" href="#/recipes">
@@ -142,7 +132,7 @@ export function RecipesShell({
           ))}
         </div>
       )}
-      <div className="recipe-grid">
+      <div className={`recipe-grid${categorySlug && filtered.length < 4 ? ' recipe-grid--center' : ''}`}>
         {filtered.map((recipe) => (
           <RecipeCard key={recipe.slug} recipe={recipe} />
         ))}
