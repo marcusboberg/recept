@@ -161,6 +161,7 @@ function convertIcaHtml(html: string, sourceUrl: string): Recipe {
     categoryBase: '',
     categoryType: '',
     categories,
+    isDrink: false,
     prepTimeMinutes,
     cookTimeMinutes,
     servings,

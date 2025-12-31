@@ -199,12 +199,16 @@ export function EditorShell({ initialJson, initialTitle, mode: _mode, forcedTab 
     const filteredGroups = groups.filter((group) => group.items.length > 0);
     const safeGroups: IngredientGroup[] =
       filteredGroups.length > 0 ? filteredGroups : [{ title: 'Huvudingredienser', items: [{ label: '', kind: 'ingredient' }] }];
-    const ingredients = safeGroups[0]?.items ?? [{ label: '', kind: 'ingredient' }];
+    const normalizedSafeGroups = safeGroups.map((group) => ({
+      ...group,
+      title: group.title ?? '',
+    }));
+    const ingredients = normalizedSafeGroups[0]?.items ?? [{ label: '', kind: 'ingredient' }];
 
     return {
       ...prev,
       ingredients,
-      ingredientGroups: safeGroups,
+      ingredientGroups: normalizedSafeGroups,
     };
   };
 
@@ -484,14 +488,31 @@ export function EditorShell({ initialJson, initialTitle, mode: _mode, forcedTab 
                 />
               </label>
             </div>
+            <div className="toggle-row" aria-label="Markera som drink">
+              <button
+                type="button"
+                className={`toggle-button${!formRecipe.isDrink ? ' is-active' : ''}`}
+                onClick={() => updateRecipe((prev) => ({ ...prev, isDrink: false }))}
+              >
+                Mat
+              </button>
+              <button
+                type="button"
+                className={`toggle-button${formRecipe.isDrink ? ' is-active' : ''}`}
+                onClick={() => updateRecipe((prev) => ({ ...prev, isDrink: true }))}
+              >
+                Drink
+              </button>
+            </div>
           </div>
         </article>
 
         <article className="workspace-card stack">
           <div className="flex" style={{ justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
             <h3 style={{ margin: 0 }}>Ingredienser</h3>
-            <button type="button" className="button-secondary" onClick={() => insertIngredientAt(flatIngredients.length, 'ingredient')}>
-              + Ny ingrediens
+            <button type="button" className="button-primary" onClick={() => insertIngredientAt(flatIngredients.length, 'ingredient')}>
+              <i className="fa-solid fa-plus" aria-hidden="true" style={{ marginRight: '0.4rem' }} />
+              Ingrediens
             </button>
           </div>
           <DndContext
@@ -680,12 +701,10 @@ export function EditorShell({ initialJson, initialTitle, mode: _mode, forcedTab 
               {status}
             </div>
           )}
-        <div className="preview-grid__device">
+        <div className="preview-grid__device preview-grid__device--full">
           {preview ? (
-            <div className="phone-preview">
-              <div className="phone-preview__frame">
-                <RecipePreview recipe={preview} />
-              </div>
+            <div className="preview-page">
+              <RecipePreview recipe={preview} />
             </div>
           ) : (
             <div className="alert error" style={{ width: '100%' }}>

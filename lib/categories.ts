@@ -7,11 +7,19 @@ export interface CategoryInfo {
   count: number;
 }
 
-export function deriveCategoriesArray(input: { categories?: string[]; categoryPlace?: string; categoryBase?: string; categoryType?: string; imageUrl?: string }): string[] {
+export function deriveCategoriesArray(input: {
+  categories?: string[];
+  categoryPlace?: string;
+  categoryBase?: string;
+  categoryType?: string;
+  imageUrl?: string;
+  isDrink?: boolean;
+}): string[] {
   const items = [
     input.categoryPlace,
     input.categoryBase,
     input.categoryType,
+    ...(input.isDrink ? ['Drinkar'] : []),
     ...(input.categories ?? []),
   ]
     .map((c) => c?.trim())

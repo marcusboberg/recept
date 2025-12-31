@@ -13,6 +13,7 @@ export const recipeSchema = z.object({
   cookTimeMinutes: z.number().int().nonnegative(),
   servings: z.number().int().positive(),
   imageUrl: z.string().url().or(z.string().startsWith('/')).optional(),
+  isDrink: z.boolean().optional().default(false),
   categoryPlace: z.string().min(1, 'Platskategori krävs').catch(''),
   categoryBase: z.string().min(1, 'Basvarukategori krävs').catch(''),
   categoryType: z.string().min(1, 'Typkategori krävs').catch(''),
@@ -44,7 +45,13 @@ export const recipeSchema = z.object({
 }).transform((data) => {
   const derivedCategories = Array.from(
     new Set(
-      [data.categoryPlace, data.categoryBase, data.categoryType, ...data.categories]
+      [
+        data.categoryPlace,
+        data.categoryBase,
+        data.categoryType,
+        ...(data.isDrink ? ['Drinkar'] : []),
+        ...data.categories,
+      ]
         .map((c) => c?.trim())
         .filter((c): c is string => Boolean(c && c.length > 0)),
     ),
@@ -59,10 +66,31 @@ export const recipeSchema = z.object({
         ...(data.titleSuffix ? [{ text: data.titleSuffix, size: 'small' as const }] : []),
       ];
 
+  const capFirst = (text?: string) => {
+    if (!text) return text;
+    return text.charAt(0).toUpperCase() + text.slice(1);
+  };
+
+  const normalizedIngredients = (data.ingredients ?? []).map((ing) => ({
+    ...ing,
+    label: capFirst(ing.label) ?? '',
+  }));
+
+  const normalizedGroups = data.ingredientGroups?.map((group) => ({
+    ...group,
+    title: capFirst(group.title ?? '') ?? '',
+    items: (group.items ?? []).map((item) => ({
+      ...item,
+      label: capFirst(item.label) ?? '',
+    })),
+  }));
+
   return {
     ...data,
     titleSegments: segments,
     categories: derivedCategories,
+    ingredients: normalizedIngredients,
+    ingredientGroups: normalizedGroups,
   };
 });
 

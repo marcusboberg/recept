@@ -382,6 +382,8 @@ export function RecipeMobile({ slug, initialRecipe }: Props) {
                     <ol className="recipe-desktop-steps__list">
                       {liveRecipe.steps.map((step, index) => {
                         const isChecked = Boolean(checkedSteps[index]);
+                        const customTitle = step.title?.trim();
+                        const displayLabel = customTitle && customTitle.length > 0 ? customTitle : `Steg ${index + 1}`;
                         return (
                           <li
                             key={index}
@@ -392,13 +394,10 @@ export function RecipeMobile({ slug, initialRecipe }: Props) {
                                 type="checkbox"
                                 checked={isChecked}
                                 onChange={() => toggleStep(index)}
-                                aria-label={`Steg ${index + 1}`}
+                                aria-label={displayLabel}
                               />
                               <div className="recipe-desktop-step__text">
-                                <span className="recipe-desktop-step__label">
-                                  Steg {index + 1}
-                                  {step.title ? `: ${step.title}` : ''}
-                                </span>
+                                <span className="recipe-desktop-step__label">{displayLabel}</span>
                                 <p>{step.body}</p>
                               </div>
                             </label>

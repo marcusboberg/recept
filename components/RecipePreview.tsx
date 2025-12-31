@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { DEFAULT_RECIPE_IMAGE } from '@/lib/images';
 import type { Recipe } from '@/schema/recipeSchema';
 
@@ -40,6 +40,9 @@ export function RecipePreview({ recipe }: Props) {
   const [activeView, setActiveView] = useState<ViewMode>('ingredients');
   const [checkedIngredients, setCheckedIngredients] = useState<Record<string, boolean>>({});
   const [checkedSteps, setCheckedSteps] = useState<Record<number, boolean>>({});
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [showScrollHint, setShowScrollHint] = useState(false);
+  const toggleDirection: 'left' | 'right' = activeView === 'ingredients' ? 'left' : 'right';
 
   const ingredientGroups = useMemo(() => toIngredientGroups(recipe), [recipe]);
   const heroImage = recipe.imageUrl?.trim() ? recipe.imageUrl : DEFAULT_RECIPE_IMAGE;
@@ -67,6 +70,34 @@ export function RecipePreview({ recipe }: Props) {
   const toggleStep = (index: number) => {
     setCheckedSteps((prev) => ({ ...prev, [index]: !prev[index] }));
   };
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const updateHint = () => {
+      const hasScroll = el.scrollHeight > el.clientHeight + 1;
+      const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
+      setShowScrollHint(hasScroll && !atBottom);
+    };
+    updateHint();
+    el.addEventListener('scroll', updateHint);
+    window.addEventListener('resize', updateHint);
+    return () => {
+      el.removeEventListener('scroll', updateHint);
+      window.removeEventListener('resize', updateHint);
+    };
+  }, [activeView, ingredientGroups.length, recipe.steps.length]);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el) {
+      el.scrollTop = 0;
+      const hasScroll = el.scrollHeight > el.clientHeight + 1;
+      const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setShowScrollHint(hasScroll && !atBottom);
+    }
+  }, [activeView, ingredientGroups.length, recipe.steps.length]);
 
   return (
     <div className="recipe-shell recipe-shell--preview" style={heroStyle}>
@@ -158,26 +189,179 @@ export function RecipePreview({ recipe }: Props) {
                 </div>
               )}
             </div>
-            <div className="recipe-floating-tabs" role="tablist" aria-label="Visa innehåll">
-              <div className="recipe-floating-tabs__backdrop" aria-hidden="true" />
+            <div className="recipe-toggle-mobile recipe-toggle-mobile--floating" role="tablist" aria-label="Visa innehåll">
+              <span className={`recipe-toggle-mobile__bg ${activeView === 'ingredients' ? 'is-left' : 'is-right'}`} aria-hidden="true">
+                <span
+                  className={`recipe-toggle-mobile__bg-inner ${toggleDirection === 'right' ? 'wobble-right' : 'wobble-left'}`}
+                />
+              </span>
               <button
-                className={activeView === 'ingredients' ? 'recipe-tab is-active' : 'recipe-tab'}
+                className={activeView === 'ingredients' ? 'recipe-toggle-mobile__tab is-active' : 'recipe-toggle-mobile__tab'}
                 onClick={() => setActiveView('ingredients')}
                 role="tab"
                 aria-selected={activeView === 'ingredients'}
+                type="button"
               >
                 Ingredienser
               </button>
               <button
-                className={activeView === 'steps' ? 'recipe-tab is-active' : 'recipe-tab'}
+                className={activeView === 'steps' ? 'recipe-toggle-mobile__tab is-active' : 'recipe-toggle-mobile__tab'}
                 onClick={() => setActiveView('steps')}
                 role="tab"
                 aria-selected={activeView === 'steps'}
+                type="button"
               >
                 Gör så här
               </button>
             </div>
           </section>
+        </div>
+      </div>
+
+      <div className="recipe-desktop-only">
+        <div className="recipe-desktop-background" />
+        <a href="#/" className="back-button desktop back-button--floating">
+          <i className="fa-solid fa-arrow-left" aria-hidden="true" /> Tillbaka
+        </a>
+        <div className="recipe-desktop-content">
+          <div className="recipe-desktop-card">
+            <div className="recipe-desktop-card__body recipe-desktop-card__ingredients">
+              <div className="recipe-desktop-toggle" role="tablist" aria-label="Visa innehåll">
+                <span className={`recipe-desktop-toggle__bg ${activeView === 'ingredients' ? 'is-left' : 'is-right'}`} aria-hidden="true">
+                  <span
+                    className={`recipe-desktop-toggle__bg-inner ${
+                      toggleDirection === 'right' ? 'wobble-right' : 'wobble-left'
+                    }`}
+                  />
+                </span>
+                <button
+                  className={
+                    activeView === 'ingredients'
+                      ? `recipe-tab is-active is-active-${toggleDirection}`
+                      : 'recipe-tab'
+                  }
+                  onClick={() => setActiveView('ingredients')}
+                  role="tab"
+                  aria-selected={activeView === 'ingredients'}
+                  type="button"
+                >
+                  Ingredienser
+                </button>
+                <button
+                  className={
+                    activeView === 'steps' ? `recipe-tab is-active is-active-${toggleDirection}` : 'recipe-tab'
+                  }
+                  onClick={() => setActiveView('steps')}
+                  role="tab"
+                  aria-selected={activeView === 'steps'}
+                  type="button"
+                >
+                  Gör så här
+                </button>
+              </div>
+
+              <div className="recipe-desktop-scroll" ref={scrollRef}>
+                {activeView === 'ingredients' ? (
+                  <div className="recipe-desktop-groups">
+                    {ingredientGroups.map((group, groupIndex) => (
+                      <div key={group.title ?? groupIndex} className="recipe-desktop-group">
+                        <p className="recipe-desktop-group__title">{group.title ?? 'Ingredienser'}</p>
+                        <ul>
+                          {group.items.map((item, itemIndex) => {
+                            const id = getIngredientKey(groupIndex, item, itemIndex);
+                            const isChecked = Boolean(checkedIngredients[id]);
+                            const amount = item.amount?.trim();
+
+                            return (
+                              <li
+                                key={id}
+                                className={
+                                  isChecked ? 'recipe-desktop-ingredient is-checked' : 'recipe-desktop-ingredient'
+                                }
+                              >
+                                <label className="recipe-desktop-ingredient__row">
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={() => toggleIngredient(id)}
+                                    aria-label={item.label}
+                                  />
+                                  <span className="recipe-desktop-ingredient__name">{item.label}</span>
+                                  {amount && <span className="recipe-desktop-ingredient__amount">{amount}</span>}
+                                </label>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="recipe-desktop-steps recipe-desktop-steps--card">
+                    <ol className="recipe-desktop-steps__list">
+                      {recipe.steps.map((step, index) => {
+                        const isChecked = Boolean(checkedSteps[index]);
+                        const customTitle = step.title?.trim();
+                        const displayLabel = customTitle && customTitle.length > 0 ? customTitle : `Steg ${index + 1}`;
+                        return (
+                          <li
+                            key={index}
+                            className={isChecked ? 'recipe-desktop-step is-checked' : 'recipe-desktop-step'}
+                          >
+                            <label className="recipe-desktop-step__row">
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => toggleStep(index)}
+                                aria-label={displayLabel}
+                              />
+                              <div className="recipe-desktop-step__text">
+                                <span className="recipe-desktop-step__label">{displayLabel}</span>
+                                <p>{step.body}</p>
+                              </div>
+                            </label>
+                          </li>
+                        );
+                      })}
+                    </ol>
+                  </div>
+                )}
+              </div>
+              <div className={showScrollHint ? 'scroll-indicator is-visible' : 'scroll-indicator'} aria-hidden="true">
+                <span className="scroll-indicator__icon">
+                  <i className="fa-solid fa-arrow-down" aria-hidden="true" />
+                </span>
+              </div>
+            </div>
+            <div className="recipe-desktop-card__image">
+              <Image src={heroImage} alt={recipe.title} fill sizes="50vw" priority className="desk-image" />
+              <div className="recipe-desktop-image-overlay">
+                {recipe.slug && (
+                  <a
+                    href={`#/edit/${recipe.slug}`}
+                    className="recipe-edit-button recipe-edit-button--fab"
+                    aria-label="Redigera"
+                    title="Redigera"
+                  >
+                    <i className="fa-solid fa-pen-to-square" aria-hidden="true" />
+                  </a>
+                )}
+                <div className="recipe-cover__title recipe-cover__title--desktop">
+                  {titleSegments.map((segment, idx) =>
+                    segment.size === 'big' ? (
+                      <div key={idx} className="recipe-cover__title-main recipe-title-segment recipe-title-segment--big">
+                        {segment.text}
+                      </div>
+                    ) : (
+                      <div key={idx} className="recipe-cover__title-small recipe-title-segment recipe-title-segment--small">
+                        {segment.text}
+                      </div>
+                    ),
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

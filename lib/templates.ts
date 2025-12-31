@@ -11,6 +11,7 @@ export const emptyRecipe: Recipe = recipeSchema.parse({
   categoryBase: 'Kyckling',
   categoryType: 'Gryta',
   categories: ['Sverige', 'Kyckling', 'Gryta'],
+  isDrink: false,
   prepTimeMinutes: 10,
   cookTimeMinutes: 15,
   servings: 2,

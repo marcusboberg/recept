@@ -242,7 +242,11 @@ function convertWordPressHtml(html: string): Recipe {
 
   const ingredientGroups = collectIngredientGroups(doc).map((group) => ({
     ...group,
-    items: group.items.map((item) => ({ ...item, kind: item.kind ?? 'ingredient' as const })),
+    title: group.title ?? '',
+    items: group.items.map((item) => ({
+      ...item,
+      kind: (item.kind ?? 'ingredient') as 'ingredient' | 'heading',
+    })),
   }));
   if (ingredientGroups.length === 0) {
     throw new Error('Hittade inga ingredientslistor i HTML:en. Säkerställ att WordPress-inlägget använder checklistor.');
@@ -268,6 +272,7 @@ function convertWordPressHtml(html: string): Recipe {
     categoryBase: '',
     categoryType: '',
     categories: [],
+    isDrink: false,
     prepTimeMinutes: 0,
     cookTimeMinutes: 0,
     servings: 4,
@@ -299,7 +304,7 @@ function collectIngredientGroups(doc: Document): IngredientGroup[] {
       if (list) {
         const items = collectIngredientsFromList(list);
         if (items.length > 0) {
-          groups.push({ title: normalizeGroupTitle(currentTitle), items });
+          groups.push({ title: normalizeGroupTitle(currentTitle) ?? '', items });
         }
         currentTitle = undefined;
       }

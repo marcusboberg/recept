@@ -38,7 +38,13 @@ export function RecipesShell({
 
   const categories = useMemo(() => buildCategories(liveRecipes, DEFAULT_RECIPE_IMAGE), [liveRecipes]);
   const activeCategory = categorySlug ? categories.find((c) => c.slug === categorySlug) : null;
-  const categoryFiltered = categorySlug ? liveRecipes.filter((recipe) => recipeInCategory(recipe, categorySlug)) : liveRecipes;
+  const categoryFiltered = useMemo(() => {
+    if (categorySlug) {
+      return liveRecipes.filter((recipe) => recipeInCategory(recipe, categorySlug));
+    }
+    // Hide drinkar from startsidan/list view
+    return liveRecipes.filter((recipe) => !recipeInCategory(recipe, 'drinkar'));
+  }, [categorySlug, liveRecipes]);
 
   const handleSearchChange = (value: string) => {
     if (!isControlled) {

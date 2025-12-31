@@ -238,6 +238,12 @@ export function AppView() {
                 </div>
               </a>
             ))}
+            <a className="category-group-card category-group-card--drink" href="#/category/drinkar">
+              <div className="category-group-card__label">Drinkar</div>
+              <div className="category-group-card__cta" aria-hidden="true">
+                →
+              </div>
+            </a>
             <button
               type="button"
               className="category-group-card category-group-card--search home-search-card"
