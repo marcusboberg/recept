@@ -646,14 +646,38 @@ button, input, textarea {
 
 .category-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-  gap: 0.75rem;
+  --grid-card-min: 400px;
+  --grid-card-max: 500px;
+  --grid-gap: clamp(8px, 1vw, 16px);
+  --grid-card-height: clamp(220px, 26vw, 320px);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--grid-card-min)), 1fr));
+  gap: var(--grid-gap);
+  padding: var(--grid-gap);
+  justify-content: stretch;
+  justify-items: stretch;
+  align-content: start;
+  container-type: inline-size;
 }
 
 .recipe-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-  gap: 0.75rem;
+  --grid-card-min: 400px;
+  --grid-card-max: 500px;
+  --grid-gap: clamp(8px, 1vw, 16px);
+  --grid-card-height: clamp(220px, 26vw, 320px);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--grid-card-min)), 1fr));
+  gap: var(--grid-gap);
+  padding: var(--grid-gap);
+  justify-content: stretch;
+  justify-items: stretch;
+  align-content: start;
+  container-type: inline-size;
+}
+
+.recipe-grid .recipe-card__image,
+.category-grid .recipe-card__image {
+  height: var(--grid-card-height);
+  padding-top: 0;
 }
 
 .home-landing {
@@ -830,8 +854,9 @@ button, input, textarea {
 }
 
 .home-landing .recipe-grid {
-  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-  gap: 0.75rem;
+  --grid-card-min: 400px;
+  --grid-card-max: 500px;
+  --grid-gap: clamp(8px, 1.2vw, 18px);
 }
 
 .category-search-row {
@@ -867,10 +892,6 @@ button, input, textarea {
   background: #000;
 }
 
-.home-landing .recipe-card:hover {
-  transform: none;
-}
-
 .home-landing .recipe-card__overlay {
   background: linear-gradient(180deg, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.6) 100%);
 }
@@ -886,7 +907,7 @@ button, input, textarea {
 
 .home-landing .recipe-grid .recipe-card {
   margin: 0;
-  max-width: 500px;
+  max-width: none;
 }
 
 .home-search-card {
@@ -2278,11 +2299,16 @@ button, input, textarea {
   border-radius: 18px;
   overflow: hidden;
   background: rgba(8, 10, 14, 0.85);
-  transition: transform 0.2s ease;
+  transform: translateZ(0) scale(1);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  will-change: transform;
 }
 
-.recipe-card:hover {
-  transform: translateY(-2px);
+@media (hover: hover) and (pointer: fine) {
+  .recipe-card:hover {
+    transform: translateZ(0) scale(1.03);
+    box-shadow: 0px 0px 100px rgba(0, 0, 0, 0,7);
+  }
 }
 
 .recipe-card__image {
@@ -2301,6 +2327,7 @@ button, input, textarea {
   object-fit: cover;
   width: 100%;
   height: 100%;
+  transition: transform 0.2s ease;
 }
 
 .recipe-card__overlay {

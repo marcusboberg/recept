@@ -1,3 +1,5 @@
+'use client';
+
 import Image from 'next/image';
 import { DEFAULT_RECIPE_IMAGE } from '@/lib/images';
 import type { CategoryInfo } from '@/lib/categories';
@@ -10,7 +12,10 @@ export function CategoryCard({ category }: Props) {
   const hero = category.image || DEFAULT_RECIPE_IMAGE;
   const segments = [{ text: category.name, size: 'big' as const }];
   return (
-    <a href={`#/category/${category.slug}`} className="recipe-card recipe-card--category">
+    <a
+      href={`#/category/${category.slug}`}
+      className="recipe-card recipe-card--category"
+    >
       <div className="recipe-card__image">
         <div className="recipe-card__media">
           <Image src={hero} alt={category.name} fill sizes="320px" />

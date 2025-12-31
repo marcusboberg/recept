@@ -1,3 +1,5 @@
+'use client';
+
 import Image from 'next/image';
 import { DEFAULT_RECIPE_IMAGE } from '@/lib/images';
 import type { Recipe } from '@/schema/recipeSchema';
@@ -18,7 +20,10 @@ export function RecipeCard({ recipe }: Props) {
         ];
 
   return (
-    <a href={`#/recipe/${recipe.slug}`} className="recipe-card">
+    <a
+      href={`#/recipe/${recipe.slug}`}
+      className="recipe-card"
+    >
       <div className="recipe-card__image">
         <div className="recipe-card__media">
           <Image src={hero} alt={recipe.title} fill sizes="320px" />
