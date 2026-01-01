@@ -67,6 +67,31 @@ body {
 
 .app-shell.is-recipe-view {
   color-scheme: dark;
+  position: relative;
+  background: #050607;
+}
+
+@supports (padding-top: env(safe-area-inset-top)) {
+  .app-shell.is-recipe-view::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: env(safe-area-inset-top);
+    background-color: #050607;
+    background-image: var(--recipe-blur-image);
+    background-size: cover;
+    background-position: center;
+    filter: blur(18px) saturate(1.2) brightness(0.5);
+    opacity: 0.9;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app-shell.is-recipe-view .recipe-shell {
+    z-index: 1;
+  }
 }
 
 .app-shell {
@@ -526,6 +551,10 @@ button, input, textarea {
 @media (max-width: 640px) {
   .category-group-row {
     grid-template-columns: 1fr;
+  }
+
+  .category-group-card__cta[aria-hidden='true'] {
+    display: none;
   }
 }
 

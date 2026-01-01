@@ -53,6 +53,7 @@ export function RecipeMobile({ slug, initialRecipe }: Props) {
   const [checkedIngredients, setCheckedIngredients] = useState<Record<string, boolean>>({});
   const [checkedSteps, setCheckedSteps] = useState<Record<number, boolean>>({});
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const wakeLockRef = useRef<WakeLockSentinel | null>(null);
   const [showScrollHint, setShowScrollHint] = useState(false);
   const toggleDirection: 'left' | 'right' = activeView === 'ingredients' ? 'left' : 'right';
 
@@ -115,6 +116,46 @@ export function RecipeMobile({ slug, initialRecipe }: Props) {
       };
     }
     return undefined;
+  }, []);
+
+  useEffect(() => {
+    if (typeof document === 'undefined' || typeof navigator === 'undefined') {
+      return;
+    }
+    if (!('wakeLock' in navigator)) {
+      return;
+    }
+    let cancelled = false;
+
+    const requestLock = async () => {
+      try {
+        const sentinel = await (navigator as Navigator & { wakeLock: WakeLock }).wakeLock.request('screen');
+        if (cancelled) {
+          await sentinel.release();
+          return;
+        }
+        wakeLockRef.current = sentinel;
+      } catch {
+        // Wake lock can fail due to permissions or unsupported contexts.
+      }
+    };
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        requestLock();
+      }
+    };
+
+    requestLock();
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      cancelled = true;
+      document.removeEventListener('visibilitychange', handleVisibility);
+      if (wakeLockRef.current) {
+        wakeLockRef.current.release().catch(() => undefined);
+        wakeLockRef.current = null;
+      }
+    };
   }, []);
 
   const toggleIngredient = (key: string) => {

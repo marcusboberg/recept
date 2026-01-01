@@ -22,6 +22,11 @@ export const metadata: Metadata = {
     template: '%s | Recept',
   },
   description: siteDescription,
+  appleWebApp: {
+    title: siteTitle,
+    statusBarStyle: 'black-translucent',
+    capable: true,
+  },
   icons: {
     icon: [
       { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
