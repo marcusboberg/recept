@@ -51,12 +51,12 @@ export function getFirestoreClient(): Firestore {
 
 function shouldForceLongPolling(): boolean {
   if (typeof navigator === 'undefined') return false;
-  const envOverride = process.env.NEXT_PUBLIC_FIRESTORE_FORCE_LONG_POLLING;
-  if (envOverride === 'true') return true;
-  if (envOverride === 'false') return false;
   const ua = navigator.userAgent;
   const isSafari =
     /Safari/i.test(ua) && !/Chrome|CriOS|EdgiOS|FxiOS|OPiOS|Android/i.test(ua);
-  if (isSafari) return true;
+  if (!isSafari) return false;
+  const versionMatch = ua.match(/Version\/(\d+)\./);
+  const version = versionMatch ? Number(versionMatch[1]) : NaN;
+  if (!Number.isNaN(version) && version <= 14) return true;
   return typeof ReadableStream === 'undefined' || typeof AbortController === 'undefined';
 }
