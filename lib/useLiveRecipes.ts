@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react';
-import { collection, getDocs, onSnapshot, orderBy, query } from 'firebase/firestore';
-import { getFirestoreClient } from '@/lib/firebaseClient';
+import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
+import {
+  collection as collectionLite,
+  getDocs as getDocsLite,
+  orderBy as orderByLite,
+  query as queryLite,
+} from 'firebase/firestore/lite';
+import { getFirestoreClient, getFirestoreLiteClient } from '@/lib/firebaseClient';
 import { getFirestorePollIntervalMs, shouldDisableFirestoreRealtime } from '@/lib/firestoreSupport';
 import { recipeSchema, type Recipe } from '@/schema/recipeSchema';
 
@@ -9,8 +15,11 @@ export function useLiveRecipes(initialRecipes: Recipe[] = []) {
 
   useEffect(() => {
     const db = getFirestoreClient();
+    const dbLite = getFirestoreLiteClient();
     const recipesRef = collection(db, 'recipes');
     const recipesQuery = query(recipesRef, orderBy('title'));
+    const recipesRefLite = collectionLite(dbLite, 'recipes');
+    const recipesQueryLite = queryLite(recipesRefLite, orderByLite('title'));
     let cancelled = false;
     let pollTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -29,7 +38,7 @@ export function useLiveRecipes(initialRecipes: Recipe[] = []) {
       if (pollTimer) return;
       const pollOnce = async () => {
         try {
-          const snapshot = await getDocs(recipesQuery);
+          const snapshot = await getDocsLite(recipesQueryLite);
           if (!cancelled) {
             applySnapshot(snapshot);
           }
