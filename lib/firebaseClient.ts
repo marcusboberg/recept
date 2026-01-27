@@ -2,7 +2,7 @@
 
 import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
 import { getAuth, type Auth } from 'firebase/auth';
-import { getFirestore, initializeFirestore, type Firestore } from 'firebase/firestore';
+import { getFirestore, type Firestore } from 'firebase/firestore';
 
 let app: FirebaseApp | null = null;
 let authInstance: Auth | null = null;
@@ -36,27 +36,6 @@ export function getFirebaseAuth(): Auth {
 
 export function getFirestoreClient(): Firestore {
   if (firestoreInstance) return firestoreInstance;
-  const forceLongPolling = shouldForceLongPolling();
-  firestoreInstance = forceLongPolling
-    ? initializeFirestore(
-        ensureApp(),
-        {
-          experimentalForceLongPolling: true,
-          useFetchStreams: false,
-        } as Parameters<typeof initializeFirestore>[1],
-      )
-    : getFirestore(ensureApp());
+  firestoreInstance = getFirestore(ensureApp());
   return firestoreInstance;
-}
-
-function shouldForceLongPolling(): boolean {
-  if (typeof navigator === 'undefined') return false;
-  const ua = navigator.userAgent;
-  const isSafari =
-    /Safari/i.test(ua) && !/Chrome|CriOS|EdgiOS|FxiOS|OPiOS|Android/i.test(ua);
-  if (!isSafari) return false;
-  const versionMatch = ua.match(/Version\/(\d+)\./);
-  const version = versionMatch ? Number(versionMatch[1]) : NaN;
-  if (!Number.isNaN(version) && version <= 14) return true;
-  return typeof ReadableStream === 'undefined' || typeof AbortController === 'undefined';
 }
