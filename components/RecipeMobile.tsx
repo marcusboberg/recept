@@ -2,10 +2,9 @@
 
 import Image from 'next/image';
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { doc, onSnapshot } from 'firebase/firestore';
-import { doc as docLite, getDoc as getDocLite } from 'firebase/firestore/lite';
+import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { DEFAULT_RECIPE_IMAGE } from '@/lib/images';
-import { getFirestoreClient, getFirestoreLiteClient } from '@/lib/firebaseClient';
+import { getFirestoreClient } from '@/lib/firebaseClient';
 import { getFirestorePollIntervalMs, shouldDisableFirestoreRealtime } from '@/lib/firestoreSupport';
 import { recipeSchema, type Recipe } from '@/schema/recipeSchema';
 
@@ -62,9 +61,7 @@ export function RecipeMobile({ slug, initialRecipe }: Props) {
   useEffect(() => {
     if (!slug) return undefined;
     const db = getFirestoreClient();
-    const dbLite = getFirestoreLiteClient();
     const ref = doc(db, 'recipes', slug);
-    const refLite = docLite(dbLite, 'recipes', slug);
     let cancelled = false;
     let pollTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -88,7 +85,7 @@ export function RecipeMobile({ slug, initialRecipe }: Props) {
       if (pollTimer) return;
       const pollOnce = async () => {
         try {
-          const snapshot = await getDocLite(refLite);
+          const snapshot = await getDoc(ref);
           if (!cancelled) {
             applySnapshot(snapshot);
           }
