@@ -119,25 +119,6 @@ body.is-home-view {
   flex-direction: column;
 }
 
-.build-stamp {
-  position: fixed;
-  right: 12px;
-  bottom: 10px;
-  z-index: 50;
-  font-size: 11px;
-  letter-spacing: 0.02em;
-  background: rgba(0, 0, 0, 0.72);
-  color: #fff;
-  padding: 4px 8px;
-  border-radius: 999px;
-  opacity: 0.75;
-  pointer-events: none;
-}
-
-.app-shell.is-recipe-view .build-stamp {
-  background: rgba(0, 0, 0, 0.5);
-}
-
 .page-shell {
   width: 100%;
   max-width: 72rem;

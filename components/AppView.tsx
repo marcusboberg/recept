@@ -10,7 +10,6 @@ import { emptyRecipe } from '@/lib/templates';
 import { recipeToJson } from '@/lib/recipes';
 import { useLiveRecipes } from '@/lib/useLiveRecipes';
 import { deriveCategoriesArray, toCategorySlug } from '@/lib/categories';
-import { BuildStamp } from '@/components/BuildStamp';
 import { SearchBar } from './SearchBar';
 
 type View =
@@ -189,8 +188,7 @@ export function AppView() {
   }
 
   return (
-    <>
-      <div className={`page-shell space-y-6 home-landing ${view.type === 'list' ? 'is-home' : ''}`}>
+    <div className={`page-shell space-y-6 home-landing ${view.type === 'list' ? 'is-home' : ''}`}>
       {(view.type === 'list' || view.type === 'categoryGroup' || view.type === 'category') && (
         <header className="home-hero">
           <div className="home-hero__title-row">
@@ -271,8 +269,6 @@ export function AppView() {
       {view.type === 'list' && (
         <RecipesShell searchQuery={searchQuery} onSearchChange={setSearchQuery} showSearchBar={false} />
       )}
-      </div>
-      <BuildStamp />
-    </>
+    </div>
   );
 }
