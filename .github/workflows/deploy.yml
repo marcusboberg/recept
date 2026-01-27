@@ -28,7 +28,13 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci --omit=dev --prefer-offline --no-audit --no-fund
+        run: npm ci
+
+      - name: Install worker dependencies
+        run: npm ci --prefix wordpress-proxy
+
+      - name: Lint and typecheck
+        run: npm run check
 
       - name: Cache Next.js build artifacts
         uses: actions/cache@v4
@@ -43,7 +49,6 @@ jobs:
         env:
           NEXT_STATIC_EXPORT: "true"
           NEXT_CACHE_DIR: ".next/cache"
-          NEXT_TELEMETRY_DISABLED: "1"
           NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
           NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
           NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
