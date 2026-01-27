@@ -2,9 +2,10 @@
 
 import Image from 'next/image';
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { DEFAULT_RECIPE_IMAGE } from '@/lib/images';
 import { getFirestoreClient } from '@/lib/firebaseClient';
+import { getFirestorePollIntervalMs, shouldDisableFirestoreRealtime } from '@/lib/firestoreSupport';
 import { recipeSchema, type Recipe } from '@/schema/recipeSchema';
 
 interface IngredientGroup {
@@ -61,7 +62,10 @@ export function RecipeMobile({ slug, initialRecipe }: Props) {
     if (!slug) return undefined;
     const db = getFirestoreClient();
     const ref = doc(db, 'recipes', slug);
-    const unsubscribe = onSnapshot(ref, (snapshot) => {
+    let cancelled = false;
+    let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+    const applySnapshot = (snapshot: { exists: () => boolean; data: () => unknown }) => {
       if (!snapshot.exists()) {
         setError('Receptet hittades inte.');
         setLiveRecipe(null);
@@ -75,8 +79,52 @@ export function RecipeMobile({ slug, initialRecipe }: Props) {
         setError('Receptet kunde inte läsas.');
         setLiveRecipe(null);
       }
-    });
-    return unsubscribe;
+    };
+
+    const startPolling = () => {
+      if (pollTimer) return;
+      const pollOnce = async () => {
+        try {
+          const snapshot = await getDoc(ref);
+          if (!cancelled) {
+            applySnapshot(snapshot);
+          }
+        } catch {
+          // Ignore transient polling errors.
+        }
+      };
+      pollOnce();
+      pollTimer = setInterval(pollOnce, getFirestorePollIntervalMs());
+    };
+
+    if (shouldDisableFirestoreRealtime()) {
+      startPolling();
+      return () => {
+        cancelled = true;
+        if (pollTimer) {
+          clearInterval(pollTimer);
+        }
+      };
+    }
+
+    let unsubscribe: (() => void) | null = null;
+    unsubscribe = onSnapshot(
+      ref,
+      (snapshot) => applySnapshot(snapshot),
+      () => {
+        if (cancelled) return;
+        unsubscribe?.();
+        unsubscribe = null;
+        startPolling();
+      },
+    );
+    return () => {
+      cancelled = true;
+      if (pollTimer) {
+        clearInterval(pollTimer);
+      }
+      unsubscribe?.();
+    };
   }, [slug]);
 
   const ingredientGroups = useMemo(() => (liveRecipe ? toIngredientGroups(liveRecipe) : []), [liveRecipe]);
