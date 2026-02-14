@@ -321,21 +321,22 @@ export function EditorShell({ initialJson, initialTitle, mode, forcedTab }: Edit
       }
       const db = getFirestoreClient();
       const now = new Date().toISOString();
-      const payload: Recipe = {
+      const draftPayload: Recipe = {
         ...formRecipe,
         categories: deriveCategoriesArray(formRecipe),
         createdAt: formRecipe.createdAt ?? now,
         updatedAt: now,
       };
       const initialSlug = initialSlugRef.current;
-      const slugChanged = Boolean(initialSlug && initialSlug !== payload.slug && initialSlug !== NEW_RECIPE_SLUG);
+      const slugChanged = Boolean(initialSlug && initialSlug !== draftPayload.slug && initialSlug !== NEW_RECIPE_SLUG);
       if (slugChanged && initialSlug) {
-        const nextHistory = new Set(payload.slugHistory ?? []);
+        const nextHistory = new Set(draftPayload.slugHistory ?? []);
         nextHistory.add(initialSlug);
-        nextHistory.delete(payload.slug);
+        nextHistory.delete(draftPayload.slug);
         nextHistory.delete(NEW_RECIPE_SLUG);
-        payload.slugHistory = Array.from(nextHistory);
+        draftPayload.slugHistory = Array.from(nextHistory);
       }
+      const payload = JSON.parse(recipeToJson(draftPayload)) as Recipe;
       setContent(recipeToJson(payload));
       await setDoc(doc(db, 'recipes', payload.slug), payload);
       if (slugChanged && initialSlug) {
