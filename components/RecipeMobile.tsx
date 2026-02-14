@@ -53,8 +53,10 @@ export function RecipeMobile({ slug, initialRecipe }: Props) {
   const [activeView, setActiveView] = useState<ViewMode>('ingredients');
   const [checkedIngredients, setCheckedIngredients] = useState<Record<string, boolean>>({});
   const [checkedSteps, setCheckedSteps] = useState<Record<number, boolean>>({});
+  const [shareStatus, setShareStatus] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
+  const shareStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showScrollHint, setShowScrollHint] = useState(false);
   const redirectAttemptedRef = useRef(false);
   const toggleDirection: 'left' | 'right' = activeView === 'ingredients' ? 'left' : 'right';
@@ -137,6 +139,14 @@ export function RecipeMobile({ slug, initialRecipe }: Props) {
   }, []);
 
   useEffect(() => {
+    return () => {
+      if (shareStatusTimerRef.current) {
+        clearTimeout(shareStatusTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     if (typeof document === 'undefined' || typeof navigator === 'undefined') {
       return;
     }
@@ -182,6 +192,41 @@ export function RecipeMobile({ slug, initialRecipe }: Props) {
 
   const toggleStep = (index: number) => {
     setCheckedSteps((prev) => ({ ...prev, [index]: !prev[index] }));
+  };
+
+  const setShareFeedback = (value: string) => {
+    setShareStatus(value);
+    if (shareStatusTimerRef.current) {
+      clearTimeout(shareStatusTimerRef.current);
+    }
+    shareStatusTimerRef.current = setTimeout(() => setShareStatus(null), 2200);
+  };
+
+  const handleShare = async () => {
+    if (!liveRecipe || typeof window === 'undefined') return;
+    const shareUrl = `${window.location.origin}/share/${liveRecipe.slug}`;
+    const nav = window.navigator as Navigator & {
+      share?: (data?: ShareData) => Promise<void>;
+      clipboard?: { writeText?: (value: string) => Promise<void> };
+    };
+    try {
+      if (typeof nav.share === 'function') {
+        await nav.share({
+          title: liveRecipe.title,
+          text: `Kolla receptet: ${liveRecipe.title}`,
+          url: shareUrl,
+        });
+        return;
+      }
+      if (typeof nav.clipboard?.writeText === 'function') {
+        await nav.clipboard.writeText(shareUrl);
+        setShareFeedback('Delningslank kopierad.');
+        return;
+      }
+      setShareFeedback(`Kopiera denna lank: ${shareUrl}`);
+    } catch {
+      // User cancelled share or clipboard failed.
+    }
   };
 
   useEffect(() => {
@@ -244,6 +289,15 @@ export function RecipeMobile({ slug, initialRecipe }: Props) {
               <button type="button" className="back-button back-button--mobile-icon" onClick={handleBack} aria-label="Tillbaka">
                 <i className="fa-solid fa-arrow-left" aria-hidden="true" />
               </button>
+              <button
+                type="button"
+                className="recipe-share-button recipe-share-button--mobile"
+                onClick={handleShare}
+                aria-label="Dela recept"
+                title="Dela recept"
+              >
+                <i className="fa-solid fa-arrow-up-from-bracket" aria-hidden="true" />
+              </button>
               <div className="recipe-cover__summary">
                 <div className="recipe-cover__title">
                   {titleSegments.map((segment, idx) =>
@@ -258,6 +312,7 @@ export function RecipeMobile({ slug, initialRecipe }: Props) {
                     ),
                   )}
                 </div>
+                {shareStatus && <div className="recipe-share-feedback recipe-share-feedback--mobile">{shareStatus}</div>}
             </div>
           </div>
         </section>
@@ -472,10 +527,20 @@ export function RecipeMobile({ slug, initialRecipe }: Props) {
                   <i className="fa-solid fa-arrow-down" aria-hidden="true" />
                 </span>
               </div>
+              {shareStatus && <div className="recipe-share-feedback">{shareStatus}</div>}
             </div>
             <div className="recipe-desktop-card__image">
               <Image src={heroImage} alt={liveRecipe.title} fill sizes="50vw" priority className="desk-image" />
               <div className="recipe-desktop-image-overlay">
+                <button
+                  type="button"
+                  className="recipe-share-button recipe-share-button--fab"
+                  onClick={handleShare}
+                  aria-label="Dela recept"
+                  title="Dela recept"
+                >
+                  <i className="fa-solid fa-arrow-up-from-bracket" aria-hidden="true" />
+                </button>
                 <a
                   href={`#/edit/${liveRecipe.slug}`}
                   className="recipe-edit-button recipe-edit-button--fab"
