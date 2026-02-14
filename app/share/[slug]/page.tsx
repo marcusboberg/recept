@@ -91,8 +91,9 @@ async function resolveRecipeWithSlug(slug: string): Promise<{ recipe: RecipeFile
   }
 }
 
-export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
-  const { recipe, canonicalSlug } = await resolveRecipeWithSlug(params.slug);
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const { recipe, canonicalSlug } = await resolveRecipeWithSlug(slug);
   if (!recipe) {
     return {
       title: 'Recept saknas',
@@ -135,18 +136,19 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   };
 }
 
-export default async function SharePage({ params }: { params: { slug: string } }) {
-  const { recipe, canonicalSlug } = await resolveRecipeWithSlug(params.slug);
+export default async function SharePage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const { recipe, canonicalSlug } = await resolveRecipeWithSlug(slug);
 
   if (!recipe) {
     notFound();
   }
 
-  if (canonicalSlug && canonicalSlug !== params.slug) {
+  if (canonicalSlug && canonicalSlug !== slug) {
     permanentRedirect(`/share/${canonicalSlug}`);
   }
 
-  const targetHref = `/#/recipe/${canonicalSlug ?? params.slug}`;
+  const targetHref = `/#/recipe/${canonicalSlug ?? slug}`;
 
   return (
     <div
