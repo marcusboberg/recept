@@ -5,6 +5,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { EditorShell } from '@/components/EditorShell';
 import { StudioSidebar } from '@/components/StudioSidebar';
 import { getFirebaseAuth, getFirestoreClient } from '@/lib/firebaseClient';
+import { resolveRecipeSlugByHistory } from '@/lib/slugHistory';
 import { recipeToJson } from '@/lib/recipes';
 import { recipeSchema } from '@/schema/recipeSchema';
 import { getUserDisplay } from '@/lib/userDisplay';
@@ -34,6 +35,11 @@ export function EditRecipeSection({ slug }: Props) {
         const db = getFirestoreClient();
         const snapshot = await getDoc(doc(db, 'recipes', slug));
         if (!snapshot.exists()) {
+          const resolved = await resolveRecipeSlugByHistory(db, slug);
+          if (resolved && resolved !== slug && typeof window !== 'undefined') {
+            window.location.hash = `#/edit/${resolved}`;
+            return;
+          }
           throw new Error('Receptet kunde inte hittas.');
         }
         const parsed = recipeSchema.parse(snapshot.data());

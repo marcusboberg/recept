@@ -154,6 +154,7 @@ function convertIcaHtml(html: string, sourceUrl: string): Recipe {
     title: cleanText(title) || 'Importerad rätt',
     titleSegments: [{ text: cleanText(title) || 'Importerad rätt', size: 'big' }],
     slug: slugify(title || 'importerad-ratt'),
+    slugHistory: [],
     description: cleanText(description),
     imageUrl,
     tags,

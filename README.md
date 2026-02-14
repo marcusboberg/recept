@@ -39,7 +39,7 @@ Add the Firebase client config so webbläsaren kan logga in och prata med Firest
 | `NEXT_PUBLIC_FIREBASE_APP_ID` | Web app ID |
 | `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID` | (Optional) GA4 measurement ID |
 
-When deploying the static site (GitHub Pages), set `NEXT_STATIC_EXPORT=true` i byggsteget så Next.js exporterar `out/`. Samma `NEXT_PUBLIC_FIREBASE_*` variabler måste finnas i CI (GitHub Secrets) eftersom klienten annars inte kan ansluta till Firebase Auth/Firestore.
+For SSR deployment on Vercel, keep `NEXT_STATIC_EXPORT=false` (or unset). Configure the same `NEXT_PUBLIC_FIREBASE_*` variables in Vercel project settings so both client features and server-rendered share routes can access Firebase.
 
 ## CI
-GitHub Actions installs deps, lints, builds, and exports the static site for GitHub Pages. Provide the same environment variables (including the Firebase credentials) as repository secrets so the build can read recipes while exporting.
+GitHub Actions installs deps, validates JSON, lints on PRs, and builds in SSR mode. Keep Firebase-related secrets available in repository settings for CI builds.

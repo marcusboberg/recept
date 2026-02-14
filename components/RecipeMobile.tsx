@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { doc, onSnapshot } from 'firebase/firestore';
 import { DEFAULT_RECIPE_IMAGE } from '@/lib/images';
 import { getFirestoreClient } from '@/lib/firebaseClient';
+import { resolveRecipeSlugByHistory } from '@/lib/slugHistory';
 import { recipeSchema, type Recipe } from '@/schema/recipeSchema';
 
 interface IngredientGroup {
@@ -55,14 +56,31 @@ export function RecipeMobile({ slug, initialRecipe }: Props) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
   const [showScrollHint, setShowScrollHint] = useState(false);
+  const redirectAttemptedRef = useRef(false);
   const toggleDirection: 'left' | 'right' = activeView === 'ingredients' ? 'left' : 'right';
+
+  useEffect(() => {
+    redirectAttemptedRef.current = false;
+  }, [slug]);
 
   useEffect(() => {
     if (!slug) return undefined;
     const db = getFirestoreClient();
     const ref = doc(db, 'recipes', slug);
-    const unsubscribe = onSnapshot(ref, (snapshot) => {
+    const unsubscribe = onSnapshot(ref, async (snapshot) => {
       if (!snapshot.exists()) {
+        if (!redirectAttemptedRef.current) {
+          redirectAttemptedRef.current = true;
+          try {
+            const resolved = await resolveRecipeSlugByHistory(db, slug);
+            if (resolved && resolved !== slug && typeof window !== 'undefined') {
+              window.location.hash = `#/recipe/${resolved}`;
+              return;
+            }
+          } catch {
+            // fall through to error state
+          }
+        }
         setError('Receptet hittades inte.');
         setLiveRecipe(null);
         return;

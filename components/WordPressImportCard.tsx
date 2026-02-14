@@ -265,6 +265,7 @@ function convertWordPressHtml(html: string): Recipe {
     title: cleanText(title),
     titleSegments: [{ text: cleanText(title), size: 'big' as const }],
     slug: slugify(title),
+    slugHistory: [],
     description: cleanText(description),
     imageUrl,
     tags: collectTags(doc),

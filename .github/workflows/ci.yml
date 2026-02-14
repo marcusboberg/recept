@@ -32,6 +32,7 @@ jobs:
       - name: Build site
         run: npm run build
         env:
+          NEXT_STATIC_EXPORT: "false"
           NEXT_CACHE_DIR: ".next/cache"
           NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
           NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}

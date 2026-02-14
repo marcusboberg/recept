@@ -22,6 +22,23 @@ import type { Recipe } from '@/schema/recipeSchema';
 import { getFirestoreClient } from '@/lib/firebaseClient';
 import { useLiveRecipes } from '@/lib/useLiveRecipes';
 
+const NEW_RECIPE_SLUG = 'new-recipe-slug';
+
+function toRecipeSlug(value: string): string {
+  const transliterated = value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[åä]/gi, 'a')
+    .replace(/ö/gi, 'o');
+
+  return transliterated
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+}
+
 interface Props {
   initialJson: string;
   initialTitle: string;
@@ -35,7 +52,7 @@ interface EditorShellProps extends Props {
 type IngredientRow = { label: string; amount?: string; kind: 'ingredient' | 'heading' };
 type IngredientGroup = { title?: string; items: IngredientRow[] };
 
-export function EditorShell({ initialJson, initialTitle, mode: _mode, forcedTab }: EditorShellProps) {
+export function EditorShell({ initialJson, initialTitle, mode, forcedTab }: EditorShellProps) {
   const [content, setContent] = useState(initialJson);
   const [errors, setErrors] = useState<string[]>([]);
   const [preview, setPreview] = useState<Recipe | null>(null);
@@ -53,6 +70,7 @@ export function EditorShell({ initialJson, initialTitle, mode: _mode, forcedTab 
   const [justDroppedId, setJustDroppedId] = useState<string | null>(null);
   const view: 'form' | 'json' = forcedTab ?? 'form';
   const formUpdateRef = useRef(false);
+  const initialSlugRef = useRef<string | null>(null);
   const ingredientRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const dropFlashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
@@ -82,6 +100,14 @@ export function EditorShell({ initialJson, initialTitle, mode: _mode, forcedTab 
     () => new Map(flatIngredients.map((item, idx) => [item.id, idx] as const)),
     [flatIngredients],
   );
+
+  useEffect(() => {
+    if (initialSlugRef.current) return;
+    const parsed = parseRecipe(initialJson);
+    if (parsed.recipe) {
+      initialSlugRef.current = parsed.recipe.slug;
+    }
+  }, [initialJson]);
 
   useEffect(() => {
     if (!insertMenu) return;
@@ -290,8 +316,21 @@ export function EditorShell({ initialJson, initialTitle, mode: _mode, forcedTab 
         createdAt: formRecipe.createdAt ?? now,
         updatedAt: now,
       };
+      const initialSlug = initialSlugRef.current;
+      const slugChanged = Boolean(initialSlug && initialSlug !== payload.slug && initialSlug !== NEW_RECIPE_SLUG);
+      if (slugChanged && initialSlug) {
+        const nextHistory = new Set(payload.slugHistory ?? []);
+        nextHistory.add(initialSlug);
+        nextHistory.delete(payload.slug);
+        nextHistory.delete(NEW_RECIPE_SLUG);
+        payload.slugHistory = Array.from(nextHistory);
+      }
       setContent(recipeToJson(payload));
       await setDoc(doc(db, 'recipes', payload.slug), payload);
+      if (slugChanged && initialSlug) {
+        await deleteDoc(doc(db, 'recipes', initialSlug));
+      }
+      initialSlugRef.current = payload.slug;
       setStatus('Recipe saved to Firebase.');
     } catch (error) {
       setStatus((error as Error).message);
@@ -339,13 +378,28 @@ export function EditorShell({ initialJson, initialTitle, mode: _mode, forcedTab 
         .join(' ')
         .trim();
       const title = titleFromSegments || 'Ny rätt';
-      updateRecipe((prev) => ({
-        ...prev,
-        title,
-        titlePrefix: '',
-        titleSuffix: '',
-        titleSegments: normalized.length > 0 ? normalized : [{ text: title, size: 'big' }],
-      }));
+      updateRecipe((prev) => {
+        const next: Recipe = {
+          ...prev,
+          title,
+          titlePrefix: '',
+          titleSuffix: '',
+          titleSegments: normalized.length > 0 ? normalized : [{ text: title, size: 'big' }],
+        };
+
+        const prevAutoSlug = toRecipeSlug(prev.title);
+        const shouldAutoSlug =
+          mode === 'new' && (prev.slug === NEW_RECIPE_SLUG || (prevAutoSlug && prev.slug === prevAutoSlug));
+
+        if (shouldAutoSlug) {
+          const nextSlug = toRecipeSlug(title);
+          if (nextSlug) {
+            next.slug = nextSlug;
+          }
+        }
+
+        return next;
+      });
     };
 
     const handleTextChange = (index: number, text: string) => {

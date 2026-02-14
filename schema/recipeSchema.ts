@@ -7,6 +7,7 @@ export const recipeSchema = z.object({
     size: z.enum(['big', 'small']),
   })).optional().default([]),
   slug: z.string().regex(/^[a-z0-9-]+$/, 'Use kebab-case for slug'),
+  slugHistory: z.array(z.string().regex(/^[a-z0-9-]+$/, 'Use kebab-case for slug')).optional().default([]),
   description: z.string().min(1, 'Description is required'),
   tags: z.array(z.string()).default([]),
   prepTimeMinutes: z.number().int().nonnegative(),
@@ -85,9 +86,18 @@ export const recipeSchema = z.object({
     })),
   }));
 
+  const normalizedSlugHistory = Array.from(
+    new Set(
+      (data.slugHistory ?? [])
+        .map((slug) => slug?.trim())
+        .filter((slug): slug is string => Boolean(slug && slug.length > 0 && slug !== data.slug)),
+    ),
+  );
+
   return {
     ...data,
     titleSegments: segments,
+    slugHistory: normalizedSlugHistory,
     categories: derivedCategories,
     ingredients: normalizedIngredients,
     ingredientGroups: normalizedGroups,
