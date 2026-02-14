@@ -402,13 +402,10 @@ export function EditorShell({ initialJson, initialTitle, mode, forcedTab }: Edit
         const prevLegacyAutoSlug = toLegacyAutoSlug(prev.title);
         const initialAutoSlug = initialSlugRef.current;
         const shouldAutoSlug =
-          mode === 'new' &&
-          (
-            prev.slug === NEW_RECIPE_SLUG ||
-            (initialAutoSlug ? prev.slug === initialAutoSlug : false) ||
-            (prevAutoSlug && prev.slug === prevAutoSlug) ||
-            (prevLegacyAutoSlug && prev.slug === prevLegacyAutoSlug)
-          );
+          prev.slug === NEW_RECIPE_SLUG ||
+          (initialAutoSlug ? prev.slug === initialAutoSlug : false) ||
+          (prevAutoSlug && prev.slug === prevAutoSlug) ||
+          (prevLegacyAutoSlug && prev.slug === prevLegacyAutoSlug);
 
         if (shouldAutoSlug) {
           const nextSlug = toRecipeSlug(title);
