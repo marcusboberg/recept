@@ -16,6 +16,11 @@ export function useLiveRecipes(initialRecipes: Recipe[] = []) {
         const parsed = recipeSchema.safeParse(docSnapshot.data());
         if (parsed.success) {
           next.push(parsed.data);
+        } else if (process.env.NODE_ENV !== 'production') {
+          const firstIssue = parsed.error.issues[0];
+          const issuePath = firstIssue?.path?.join('.') || '(root)';
+          const issueMessage = firstIssue?.message || 'Unknown schema error';
+          console.warn(`[useLiveRecipes] Ignoring invalid recipe "${docSnapshot.id}" at ${issuePath}: ${issueMessage}`);
         }
       });
       setRecipes(next);

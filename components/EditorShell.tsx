@@ -13,7 +13,7 @@ import {
 } from '@dnd-kit/core';
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { deleteDoc, doc, setDoc } from 'firebase/firestore';
+import { deleteDoc, doc, getDoc, setDoc, writeBatch } from 'firebase/firestore';
 import { deriveCategoriesArray } from '@/lib/categories';
 import { JsonEditor } from '@/components/JsonEditor';
 import { RecipePreview } from '@/components/RecipePreview';
@@ -36,7 +36,8 @@ function toRecipeSlug(value: string): string {
     .replace(/[^a-z0-9\s-]/g, '')
     .trim()
     .replace(/\s+/g, '-')
-    .replace(/-+/g, '-');
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '');
 }
 
 function toLegacyAutoSlug(value: string): string {
@@ -47,7 +48,20 @@ function toLegacyAutoSlug(value: string): string {
     .replace(/[^a-z0-9\s-]/g, '')
     .trim()
     .replace(/\s+/g, '-')
-    .replace(/-+/g, '-');
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function slugCandidatesFromTitle(title: string): Set<string> {
+  const primary = toRecipeSlug(title);
+  const legacy = toLegacyAutoSlug(title);
+  const compact = [primary, legacy].map((value) => value.replace(/-/g, ''));
+  return new Set([primary, legacy, ...compact].filter(Boolean));
+}
+
+function isAutoLikeSlug(slug: string, title: string): boolean {
+  if (!slug || !title) return false;
+  return slugCandidatesFromTitle(title).has(slug);
 }
 
 interface Props {
@@ -82,6 +96,7 @@ export function EditorShell({ initialJson, initialTitle, mode, forcedTab }: Edit
   const view: 'form' | 'json' = forcedTab ?? 'form';
   const formUpdateRef = useRef(false);
   const initialSlugRef = useRef<string | null>(null);
+  const initialSlugWasAutoRef = useRef(false);
   const ingredientRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const dropFlashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
@@ -117,6 +132,8 @@ export function EditorShell({ initialJson, initialTitle, mode, forcedTab }: Edit
     const parsed = parseRecipe(initialJson);
     if (parsed.recipe) {
       initialSlugRef.current = parsed.recipe.slug;
+      initialSlugWasAutoRef.current =
+        parsed.recipe.slug === NEW_RECIPE_SLUG || isAutoLikeSlug(parsed.recipe.slug, parsed.recipe.title);
     }
   }, [initialJson]);
 
@@ -327,6 +344,13 @@ export function EditorShell({ initialJson, initialTitle, mode, forcedTab }: Edit
         createdAt: formRecipe.createdAt ?? now,
         updatedAt: now,
       };
+      if (draftPayload.slug === NEW_RECIPE_SLUG) {
+        const fallbackSlug = toRecipeSlug(draftPayload.title);
+        if (!fallbackSlug) {
+          throw new Error('Kunde inte skapa slug från titel. Ange en giltig titel/slugg manuellt.');
+        }
+        draftPayload.slug = fallbackSlug;
+      }
       const initialSlug = initialSlugRef.current;
       const slugChanged = Boolean(initialSlug && initialSlug !== draftPayload.slug && initialSlug !== NEW_RECIPE_SLUG);
       if (slugChanged && initialSlug) {
@@ -338,11 +362,27 @@ export function EditorShell({ initialJson, initialTitle, mode, forcedTab }: Edit
       }
       const payload = JSON.parse(recipeToJson(draftPayload)) as Recipe;
       setContent(recipeToJson(payload));
-      await setDoc(doc(db, 'recipes', payload.slug), payload);
+      const targetRef = doc(db, 'recipes', payload.slug);
+      const isCreateLike = !initialSlug || initialSlug === NEW_RECIPE_SLUG;
+      const shouldCheckCollision = isCreateLike || slugChanged;
+      if (shouldCheckCollision) {
+        const existing = await getDoc(targetRef);
+        const isSameDoc = Boolean(initialSlug && existing.exists() && existing.id === initialSlug);
+        if (existing.exists() && !isSameDoc) {
+          throw new Error(`Sluggen "${payload.slug}" finns redan. Välj en annan slug.`);
+        }
+      }
+
       if (slugChanged && initialSlug) {
-        await deleteDoc(doc(db, 'recipes', initialSlug));
+        const batch = writeBatch(db);
+        batch.set(targetRef, payload);
+        batch.delete(doc(db, 'recipes', initialSlug));
+        await batch.commit();
+      } else {
+        await setDoc(targetRef, payload);
       }
       initialSlugRef.current = payload.slug;
+      initialSlugWasAutoRef.current = payload.slug === NEW_RECIPE_SLUG || isAutoLikeSlug(payload.slug, payload.title);
       setStatus('Recipe saved to Firebase.');
     } catch (error) {
       setStatus((error as Error).message);
@@ -399,14 +439,12 @@ export function EditorShell({ initialJson, initialTitle, mode, forcedTab }: Edit
           titleSegments: normalized.length > 0 ? normalized : [{ text: title, size: 'big' }],
         };
 
-        const prevAutoSlug = toRecipeSlug(prev.title);
-        const prevLegacyAutoSlug = toLegacyAutoSlug(prev.title);
+        const prevAutoSlug = isAutoLikeSlug(prev.slug, prev.title);
         const initialAutoSlug = initialSlugRef.current;
         const shouldAutoSlug =
           prev.slug === NEW_RECIPE_SLUG ||
-          (initialAutoSlug ? prev.slug === initialAutoSlug : false) ||
-          (prevAutoSlug && prev.slug === prevAutoSlug) ||
-          (prevLegacyAutoSlug && prev.slug === prevLegacyAutoSlug);
+          prevAutoSlug ||
+          (initialSlugWasAutoRef.current && initialAutoSlug ? prev.slug === initialAutoSlug : false);
 
         if (shouldAutoSlug) {
           const nextSlug = toRecipeSlug(title);
@@ -438,9 +476,9 @@ export function EditorShell({ initialJson, initialTitle, mode, forcedTab }: Edit
       setSegments(next);
     };
 
-  const handleAdd = () => {
-    setSegments([...fallbackSegments, { text: 'Ny del', size: 'small' }]);
-  };
+    const handleAdd = () => {
+      setSegments([...fallbackSegments, { text: 'Ny del', size: 'small' }]);
+    };
 
     return (
       <div className="stack">
