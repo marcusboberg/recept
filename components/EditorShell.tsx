@@ -39,6 +39,17 @@ function toRecipeSlug(value: string): string {
     .replace(/-+/g, '-');
 }
 
+function toLegacyAutoSlug(value: string): string {
+  return value
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+}
+
 interface Props {
   initialJson: string;
   initialTitle: string;
@@ -388,8 +399,16 @@ export function EditorShell({ initialJson, initialTitle, mode, forcedTab }: Edit
         };
 
         const prevAutoSlug = toRecipeSlug(prev.title);
+        const prevLegacyAutoSlug = toLegacyAutoSlug(prev.title);
+        const initialAutoSlug = initialSlugRef.current;
         const shouldAutoSlug =
-          mode === 'new' && (prev.slug === NEW_RECIPE_SLUG || (prevAutoSlug && prev.slug === prevAutoSlug));
+          mode === 'new' &&
+          (
+            prev.slug === NEW_RECIPE_SLUG ||
+            (initialAutoSlug ? prev.slug === initialAutoSlug : false) ||
+            (prevAutoSlug && prev.slug === prevAutoSlug) ||
+            (prevLegacyAutoSlug && prev.slug === prevLegacyAutoSlug)
+          );
 
         if (shouldAutoSlug) {
           const nextSlug = toRecipeSlug(title);
