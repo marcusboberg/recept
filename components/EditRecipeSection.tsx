@@ -1,16 +1,20 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { Alert, Avatar, Button, Divider, Group, Paper, Stack, Text } from '@mantine/core';
 import { doc, getDoc } from 'firebase/firestore';
 import { EditorShell } from '@/components/EditorShell';
 import { StudioSidebar } from '@/components/StudioSidebar';
 import { getFirebaseAuth, getFirestoreClient } from '@/lib/firebaseClient';
+import { normalizeLegacyRecipeForRead } from '@/lib/legacyRecipes';
 import { resolveRecipeSlugByHistory } from '@/lib/slugHistory';
 import { recipeToJson } from '@/lib/recipes';
 import { recipeSchema } from '@/schema/recipeSchema';
 import { getUserDisplay } from '@/lib/userDisplay';
 import { onAuthStateChanged, signOut, type User } from 'firebase/auth';
+import { BackupRecipesButton } from './BackupRecipesButton';
 import { StudioLoginCard } from './StudioLoginCard';
+import { StudioMantineProvider } from './StudioMantineProvider';
 
 interface Props {
   slug: string;
@@ -42,7 +46,7 @@ export function EditRecipeSection({ slug }: Props) {
           }
           throw new Error('Receptet kunde inte hittas.');
         }
-        const parsed = recipeSchema.parse(snapshot.data());
+        const parsed = recipeSchema.parse(normalizeLegacyRecipeForRead(snapshot.data()));
         if (!isMounted) return;
         setJson(recipeToJson(parsed));
         setTitle(parsed.title);
@@ -114,40 +118,45 @@ export function EditRecipeSection({ slug }: Props) {
   const sidebarFooter = (
     <>
       {authStatus === 'loading' && (
-        <div className="new-recipe-auth">
-          <p className="text-sm text-muted" style={{ marginBottom: 0 }}>Kontrollerar behörighet…</p>
-        </div>
+        <Text size="sm" c="dimmed">
+          Kontrollerar behörighet…
+        </Text>
       )}
       {authStatus === 'unauthenticated' && (
-        <div className="new-recipe-auth">
-          <p className="text-sm text-muted" style={{ marginBottom: 0 }}>Logga in i huvudrutan för att låsa upp studion.</p>
-          <button type="button" className="nav-action" onClick={handleBack} style={{ marginTop: '0.5rem' }}>
-            <i className="fa-solid fa-right-left" aria-hidden="true"></i>
-            <span>Tillbaka</span>
-          </button>
-        </div>
+        <Stack gap="sm">
+          <Text size="sm" c="dimmed">
+            Logga in i huvudrutan för att låsa upp studion.
+          </Text>
+          <Button type="button" variant="light" color="gray" onClick={handleBack}>
+            Tillbaka
+          </Button>
+        </Stack>
       )}
       {authStatus === 'authenticated' && (
-        <div className="new-recipe-auth">
-          <div className="new-recipe-profile">
-            <div className="new-recipe-profile__avatar">{profileInitial}</div>
-            <div className="new-recipe-profile__meta">
-              <p>{profileName}</p>
-              <span>{user?.email ?? ''}</span>
+        <Stack gap="md">
+          <Group gap="sm" wrap="nowrap">
+            <Avatar color="studioBlue" radius="xl">
+              {profileInitial}
+            </Avatar>
+            <div>
+              <Text fw={600}>{profileName}</Text>
+              <Text size="sm" c="dimmed">
+                {user?.email ?? ''}
+              </Text>
             </div>
-          </div>
-          <div className="new-recipe-footer__divider" />
-          <div className="new-recipe-footer__actions">
-            <button type="button" className="nav-action" onClick={handleBack}>
-              <i className="fa-solid fa-right-left" aria-hidden="true"></i>
-              <span>Tillbaka</span>
-            </button>
-            <button type="button" className="nav-action" onClick={handleLogout}>
-              <i className="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i>
-              <span>Logga ut</span>
-            </button>
-          </div>
-        </div>
+          </Group>
+          <Divider />
+          <BackupRecipesButton />
+          <Divider />
+          <Group grow>
+            <Button type="button" variant="light" color="gray" onClick={handleBack}>
+              Tillbaka
+            </Button>
+            <Button type="button" variant="subtle" color="red" onClick={handleLogout}>
+              Logga ut
+            </Button>
+          </Group>
+        </Stack>
       )}
     </>
   );
@@ -155,32 +164,33 @@ export function EditRecipeSection({ slug }: Props) {
   const contentClass = 'new-recipe-shell__content new-recipe-shell__content--locked';
 
   return (
-    <div className="new-recipe-shell">
-      <StudioSidebar
-        title="Redigera recept"
-        navSections={navSections}
-        activeId={activeView}
-        onSelect={(id) => setActiveView(id as 'preview' | 'json')}
-        footer={sidebarFooter}
-      />
+    <StudioMantineProvider>
+      <div className="new-recipe-shell">
+        <StudioSidebar
+          title="Redigera recept"
+          navSections={navSections}
+          activeId={activeView}
+          onSelect={(id) => setActiveView(id as 'preview' | 'json')}
+          footer={sidebarFooter}
+        />
 
-      <div className={contentClass}>
-        {status === 'loading' && (
-          <div className="new-recipe-workspace">
-            <div className="workspace-card stack">
-              <p className="card-subtitle" style={{ marginBottom: 0 }}>Laddar recept…</p>
+        <div className={contentClass}>
+          {status === 'loading' && (
+            <div className="new-recipe-workspace">
+              <Paper withBorder shadow="sm" radius="xl" p="lg">
+                <Text c="dimmed">Laddar recept…</Text>
+              </Paper>
             </div>
-          </div>
-        )}
-        {status === 'error' && (
-          <div className="new-recipe-workspace">
-            <div className="alert error">
-              <p style={{ margin: 0 }}>{error ?? 'Kunde inte läsa receptet.'}</p>
+          )}
+          {status === 'error' && (
+            <div className="new-recipe-workspace">
+              <Alert color="red" variant="light">
+                {error ?? 'Kunde inte läsa receptet.'}
+              </Alert>
             </div>
-          </div>
-        )}
-        {status === 'ready' && json && (
-          <>
+          )}
+          {status === 'ready' && json && (
+            <>
             {authStatus === 'authenticated' ? (
               <>
                 {activeView === 'preview' && (
@@ -202,9 +212,10 @@ export function EditRecipeSection({ slug }: Props) {
                 subtitle="Snabbinloggning med färdiga konton eller valfri e-post. Lösenord krävs alltid."
               />
             )}
-          </>
-        )}
+            </>
+          )}
+        </div>
       </div>
-    </div>
+    </StudioMantineProvider>
   );
 }

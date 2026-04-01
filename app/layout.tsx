@@ -7,7 +7,11 @@ import '@fontsource/montserrat-alternates/400-italic.css';
 import '@fontsource/montserrat-alternates/600.css';
 import '@fontsource/montserrat-alternates/600-italic.css';
 import '@fontsource/momo-trust-display/400.css';
+import '@mantine/core/styles.css';
+import '@mantine/notifications/styles.css';
 import './globals.css';
+import './studio.css';
+import './recipe.css';
 
 const defaultSiteUrl = 'http://localhost:3000';
 const rawSiteUrl = process.env.NEXT_PUBLIC_APP_URL ?? defaultSiteUrl;

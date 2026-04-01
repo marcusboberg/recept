@@ -1,22 +1,38 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import {
+  ActionIcon,
+  Alert,
+  Button,
+  Group,
+  Modal,
+  Paper,
+  SegmentedControl,
+  Stack,
+  Text,
+  TextInput,
+  Textarea,
+  Title,
+} from '@mantine/core';
 import {
   DndContext,
+  DragOverlay,
   PointerSensor,
   closestCenter,
   type DragEndEvent,
-  type DragOverEvent,
   type DragStartEvent,
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
+import { restrictToParentElement, restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { deleteDoc, doc, getDoc, setDoc, writeBatch } from 'firebase/firestore';
 import { deriveCategoriesArray } from '@/lib/categories';
 import { JsonEditor } from '@/components/JsonEditor';
 import { RecipePreview } from '@/components/RecipePreview';
+import { StudioCategoryField } from '@/components/StudioCategoryField';
 import { parseRecipe, recipeToJson } from '@/lib/recipes';
 import type { Recipe } from '@/schema/recipeSchema';
 import { getFirestoreClient } from '@/lib/firebaseClient';
@@ -76,6 +92,54 @@ interface EditorShellProps extends Props {
 
 type IngredientRow = { label: string; amount?: string; kind: 'ingredient' | 'heading' };
 type IngredientGroup = { title?: string; items: IngredientRow[] };
+type FlatIngredientRow = { id: string; label: string; amount?: string; kind: 'ingredient' | 'heading' };
+const editorSegmentedClassNames = {
+  root: 'studio-segmented-root',
+  indicator: 'studio-segmented-indicator',
+  label: 'studio-segmented-label',
+  innerLabel: 'studio-segmented-inner-label',
+} as const;
+
+type FloatingFieldProps = {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  textarea?: boolean;
+  rows?: number;
+};
+
+function FloatingField({ id, label, value, onChange, textarea = false, rows = 3 }: FloatingFieldProps) {
+  const sharedProps = {
+    id,
+    value,
+    placeholder: ' ',
+    radius: 'md' as const,
+    'aria-label': label,
+  };
+
+  return (
+    <div className={`studio-floating-field${value.trim().length > 0 ? ' is-filled' : ''}${textarea ? ' is-textarea' : ''}`}>
+      {textarea ? (
+        <Textarea
+          {...sharedProps}
+          rows={rows}
+          classNames={{ input: 'studio-floating-field__input studio-floating-field__input--textarea' }}
+          onChange={(event) => onChange(event.currentTarget.value)}
+        />
+      ) : (
+        <TextInput
+          {...sharedProps}
+          classNames={{ input: 'studio-floating-field__input' }}
+          onChange={(event) => onChange(event.currentTarget.value)}
+        />
+      )}
+      <label className="studio-floating-field__label" htmlFor={id}>
+        {label}
+      </label>
+    </div>
+  );
+}
 
 export function EditorShell({ initialJson, initialTitle, mode, forcedTab }: EditorShellProps) {
   const [content, setContent] = useState(initialJson);
@@ -87,18 +151,15 @@ export function EditorShell({ initialJson, initialTitle, mode, forcedTab }: Edit
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [insertMenu, setInsertMenu] = useState<{ index: number; x: number; y: number } | null>(null);
-  const [flatIngredients, setFlatIngredients] = useState<Array<{ id: string; label: string; amount?: string; kind: 'ingredient' | 'heading' }>>([]);
+  const [flatIngredients, setFlatIngredients] = useState<FlatIngredientRow[]>([]);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
-  const [overId, setOverId] = useState<string | null>(null);
-  const [dropIndicatorIndex, setDropIndicatorIndex] = useState<number | null>(null);
+  const [activeDragWidth, setActiveDragWidth] = useState<number | null>(null);
   const [focusIngredientId, setFocusIngredientId] = useState<string | null>(null);
-  const [justDroppedId, setJustDroppedId] = useState<string | null>(null);
   const view: 'form' | 'json' = forcedTab ?? 'form';
   const formUpdateRef = useRef(false);
   const initialSlugRef = useRef<string | null>(null);
   const initialSlugWasAutoRef = useRef(false);
   const ingredientRefs = useRef<Record<string, HTMLInputElement | null>>({});
-  const dropFlashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const liveRecipes = useLiveRecipes();
 
@@ -125,6 +186,10 @@ export function EditorShell({ initialJson, initialTitle, mode, forcedTab }: Edit
   const indexById = useMemo(
     () => new Map(flatIngredients.map((item, idx) => [item.id, idx] as const)),
     [flatIngredients],
+  );
+  const activeDraggedItem = useMemo(
+    () => flatIngredients.find((item) => item.id === activeDragId) ?? null,
+    [activeDragId, flatIngredients],
   );
 
   useEffect(() => {
@@ -164,14 +229,6 @@ export function EditorShell({ initialJson, initialTitle, mode, forcedTab }: Edit
   }, [focusIngredientId]);
 
   useEffect(() => {
-    return () => {
-      if (dropFlashTimer.current) {
-        clearTimeout(dropFlashTimer.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
     const parsed = parseRecipe(content);
     if (parsed.errors) {
       setErrors(parsed.errors);
@@ -185,7 +242,7 @@ export function EditorShell({ initialJson, initialTitle, mode, forcedTab }: Edit
       setFormRecipe(recipe);
 
       if (!formUpdateRef.current) {
-        const flattened: Array<{ id: string; label: string; amount?: string; kind: 'ingredient' | 'heading' }> = [];
+        const flattened: FlatIngredientRow[] = [];
 
         const groupsToFlatten =
           recipe.ingredientGroups && recipe.ingredientGroups.length > 0
@@ -294,15 +351,7 @@ export function EditorShell({ initialJson, initialTitle, mode, forcedTab }: Edit
 
   const moveIngredient = (from: number, to: number) => {
     setFlatAndRecipe((prev) => {
-      const next = arrayMove(prev, from, to);
-      const item = next[to];
-      if (dropFlashTimer.current) {
-        clearTimeout(dropFlashTimer.current);
-      }
-      setJustDroppedId(item?.id);
-      dropFlashTimer.current = setTimeout(() => setJustDroppedId(null), 900);
-
-      return next;
+      return arrayMove(prev, from, to);
     });
   };
 
@@ -384,6 +433,9 @@ export function EditorShell({ initialJson, initialTitle, mode, forcedTab }: Edit
       initialSlugRef.current = payload.slug;
       initialSlugWasAutoRef.current = payload.slug === NEW_RECIPE_SLUG || isAutoLikeSlug(payload.slug, payload.title);
       setStatus('Recipe saved to Firebase.');
+      if (typeof window !== 'undefined') {
+        window.location.hash = `#/recipe/${payload.slug}`;
+      }
     } catch (error) {
       setStatus((error as Error).message);
     } finally {
@@ -481,52 +533,83 @@ export function EditorShell({ initialJson, initialTitle, mode, forcedTab }: Edit
     };
 
     return (
-      <div className="stack">
-        <span className="text-sm text-muted">Titel (bygg valfria stora/små delar)</span>
+      <Stack gap="sm" className="editor-meta-section">
+        <div className="editor-meta-section__header">
+          <Text size="sm" c="dimmed" className="editor-meta-section__eyebrow">
+            Titel
+          </Text>
+          <Text size="sm" c="dimmed" className="editor-meta-section__hint">
+            Bygg visningsrubriken i delar. Stor eller liten styr hur varje segment visas i kortet.
+          </Text>
+        </div>
         <div className="title-composer title-composer--segments">
-          <div className="title-composer__segments">
+          <Stack gap="sm" className="title-composer__segments">
             {fallbackSegments.map((segment, idx) => (
-              <div key={idx} className="title-segment-row">
-                <input
-                  className="input title-segment-row__input"
+              <Group key={idx} className="title-segment-row" align="flex-start" wrap="nowrap">
+                <TextInput
+                  className="title-segment-row__input"
                   value={segment.text}
-                  onChange={(e) => handleTextChange(idx, e.target.value)}
+                  onChange={(event) => handleTextChange(idx, event.currentTarget.value)}
+                  placeholder={segment.size === 'big' ? 'Huvudtitel' : 'Delrubrik'}
+                  radius="md"
+                  size="md"
+                  styles={{ root: { flex: 1 } }}
                 />
-                <div className="title-segment-row__actions">
-                  <button
+                <Group gap="xs" className="title-segment-row__actions" wrap="nowrap">
+                  <Button
                     type="button"
-                    className={segment.size === 'big' ? 'title-size-pill is-big' : 'title-size-pill'}
+                    className={
+                      segment.size === 'big'
+                        ? 'title-segment-row__size-button title-segment-row__size-button--active'
+                        : 'title-segment-row__size-button'
+                    }
+                    variant={segment.size === 'big' ? 'filled' : 'default'}
+                    color={segment.size === 'big' ? 'studioBlue' : 'gray'}
+                    radius="xl"
                     aria-label={segment.size === 'big' ? 'Stor del' : 'Liten del'}
                     onClick={() => handleSizeToggle(idx)}
+                    styles={{ root: { minWidth: 76 }, label: { fontWeight: 700 } }}
                   >
                     {segment.size === 'big' ? 'Stor' : 'Liten'}
-                  </button>
+                  </Button>
                   {fallbackSegments.length > 1 && (
-                    <button
+                    <ActionIcon
                       type="button"
-                      className="chip-button chip-button--icon chip-button--danger"
+                      variant="subtle"
+                      color="red"
+                      radius="xl"
                       aria-label="Ta bort"
                       onClick={() => handleRemove(idx)}
                     >
                       <i className="fa-solid fa-trash-can" aria-hidden="true"></i>
-                    </button>
+                    </ActionIcon>
                   )}
-                </div>
-              </div>
+                </Group>
+              </Group>
             ))}
-          </div>
-          <div className="title-composer__toolbar">
-            <button type="button" className="chip-button" onClick={handleAdd}>
-              +
-            </button>
-            <span className="text-sm text-muted">Titel byggs av alla delar i ordning. Stor/liten visas per segment.</span>
-          </div>
-          <div className="title-composer__preview">
-            <span className="text-sm text-muted">Förhandsvisning:</span>{' '}
-            <strong>{fallbackSegments.map((seg) => seg.text).join(' ') || 'Ny rätt'}</strong>
-          </div>
+          </Stack>
+          <Group justify="space-between" align="center" mt="sm" className="title-composer__toolbar">
+            <Button
+              type="button"
+              className="title-composer__add-button"
+              variant="light"
+              color="studioBlue"
+              radius="xl"
+              onClick={handleAdd}
+            >
+              + Lägg till del
+            </Button>
+          </Group>
+          <Text size="sm" mt="sm" className="title-composer__preview">
+            <Text component="span" c="dimmed" inherit>
+              Förhandsvisning:
+            </Text>{' '}
+            <Text component="strong" inherit>
+              {fallbackSegments.map((seg) => seg.text).join(' ') || 'Ny rätt'}
+            </Text>
+          </Text>
         </div>
-      </div>
+      </Stack>
     );
   };
 
@@ -550,107 +633,95 @@ export function EditorShell({ initialJson, initialTitle, mode, forcedTab }: Edit
     if (!formRecipe) return null;
     return (
       <div className="workspace-grid">
-        <article className="workspace-card stack">
-          <h3>Grunddata &amp; kategorier</h3>
-          {renderTitleComposer()}
-          <label className="stack">
-            <span className="text-sm text-muted">Bild-URL</span>
-            <input
-              className="input"
-              type="url"
-              placeholder="https://example.com/bild.jpg"
-              value={formRecipe.imageUrl ?? ''}
-              onChange={(e) => updateRecipe((prev) => ({ ...prev, imageUrl: e.target.value }))}
-            />
-          </label>
-          <div className="two-col" />
-          <div className="stack" style={{ gap: '0.5rem' }}>
-            <p className="text-sm text-muted" style={{ marginBottom: '-0.25rem' }}>
-              Kategorier
-            </p>
-            <div className="three-col">
-              <label className="stack">
-                <span className="text-sm text-muted">Plats</span>
-                <input
-                  className="input"
-                  list="category-place-options"
-                  value={formRecipe.categoryPlace ?? ''}
-                  onChange={(e) => updateRecipe((prev) => ({ ...prev, categoryPlace: e.target.value }))}
-                />
-              </label>
-              <label className="stack">
-                <span className="text-sm text-muted">Basvara</span>
-                <input
-                  className="input"
-                  list="category-base-options"
-                  value={formRecipe.categoryBase ?? ''}
-                  onChange={(e) => updateRecipe((prev) => ({ ...prev, categoryBase: e.target.value }))}
-                />
-              </label>
-              <label className="stack">
-                <span className="text-sm text-muted">Typ</span>
-                <input
-                  className="input"
-                  list="category-type-options"
-                  value={formRecipe.categoryType ?? ''}
-                  onChange={(e) => updateRecipe((prev) => ({ ...prev, categoryType: e.target.value }))}
-                />
-              </label>
+        <Paper className="workspace-card stack" withBorder radius="xl" p="xl" shadow="sm">
+          <Stack gap="lg">
+            <div>
+              <Title order={3}>Grunddata &amp; kategorier</Title>
             </div>
-            <div className="toggle-row" aria-label="Markera som drink">
-              <button
-                type="button"
-                className={`toggle-button${!formRecipe.isDrink ? ' is-active' : ''}`}
-                onClick={() => updateRecipe((prev) => ({ ...prev, isDrink: false }))}
-              >
-                Mat
-              </button>
-              <button
-                type="button"
-                className={`toggle-button${formRecipe.isDrink ? ' is-active' : ''}`}
-                onClick={() => updateRecipe((prev) => ({ ...prev, isDrink: true }))}
-              >
-                Drink
-              </button>
+            <div className="editor-meta">
+              {renderTitleComposer()}
+              <Stack gap="sm" className="editor-meta-section">
+                <div className="editor-meta-section__header">
+                  <Text size="sm" c="dimmed" className="editor-meta-section__eyebrow">
+                    Media
+                  </Text>
+                  <Text size="sm" c="dimmed" className="editor-meta-section__hint">
+                    Ange bild för receptkortet och förhandsvisningen.
+                  </Text>
+                </div>
+                <TextInput
+                  label="Bild-URL"
+                  type="url"
+                  placeholder="https://example.com/bild.jpg"
+                  value={formRecipe.imageUrl ?? ''}
+                  onChange={(event) => updateRecipe((prev) => ({ ...prev, imageUrl: event.currentTarget.value }))}
+                  radius="md"
+                />
+              </Stack>
+              <Stack gap="sm" className="editor-meta-section">
+                <div className="editor-meta-section__header">
+                  <Text size="sm" c="dimmed" className="editor-meta-section__eyebrow">
+                    Kategorisering
+                  </Text>
+                  <Text size="sm" c="dimmed" className="editor-meta-section__hint">
+                    Hjälper till med filtrering, sökbarhet och rätt placering i receptlistorna.
+                  </Text>
+                </div>
+                <div className="three-col">
+                  <StudioCategoryField
+                    label="Plats"
+                    value={formRecipe.categoryPlace ?? ''}
+                    options={categoryOptions.place}
+                    onChange={(value) => updateRecipe((prev) => ({ ...prev, categoryPlace: value }))}
+                  />
+                  <StudioCategoryField
+                    label="Basvara"
+                    value={formRecipe.categoryBase ?? ''}
+                    options={categoryOptions.base}
+                    onChange={(value) => updateRecipe((prev) => ({ ...prev, categoryBase: value }))}
+                  />
+                  <StudioCategoryField
+                    label="Typ"
+                    value={formRecipe.categoryType ?? ''}
+                    options={categoryOptions.type}
+                    onChange={(value) => updateRecipe((prev) => ({ ...prev, categoryType: value }))}
+                  />
+                </div>
+                <SegmentedControl
+                  aria-label="Markera som drink"
+                  value={formRecipe.isDrink ? 'drink' : 'mat'}
+                  onChange={(value) => updateRecipe((prev) => ({ ...prev, isDrink: value === 'drink' }))}
+                  data={[
+                    { label: 'Mat', value: 'mat' },
+                    { label: 'Drink', value: 'drink' },
+                  ]}
+                  radius="xl"
+                  color="studioBlue"
+                  classNames={editorSegmentedClassNames}
+                  fullWidth
+                />
+              </Stack>
             </div>
-          </div>
-        </article>
+          </Stack>
+        </Paper>
 
-        <article className="workspace-card stack">
-          <div className="flex" style={{ justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
-            <h3 style={{ margin: 0 }}>Ingredienser</h3>
-            <button type="button" className="button-primary" onClick={() => insertIngredientAt(flatIngredients.length, 'ingredient')}>
+        <Paper className="workspace-card stack" withBorder radius="xl" p="xl" shadow="sm">
+          <Stack gap="lg">
+            <Group justify="space-between" align="center" gap="sm">
+              <Title order={3}>Ingredienser</Title>
+              <Button type="button" color="studioBlue" radius="xl" onClick={() => insertIngredientAt(flatIngredients.length, 'ingredient')}>
               <i className="fa-solid fa-plus" aria-hidden="true" style={{ marginRight: '0.4rem' }} />
               Ingrediens
-            </button>
-          </div>
+              </Button>
+            </Group>
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
+            modifiers={[restrictToVerticalAxis, restrictToParentElement]}
             onDragStart={(event: DragStartEvent) => {
               const id = event.active.id as string;
               setActiveDragId(id);
-              setOverId(id);
-              const currentIndex = indexById.get(id);
-              setDropIndicatorIndex(currentIndex ?? null);
-            }}
-            onDragOver={(event: DragOverEvent) => {
-              const over = event.over?.id as string | undefined;
-              if (!over) {
-                setOverId(null);
-                setDropIndicatorIndex(null);
-                return;
-              }
-              setOverId(over);
-              const activeId = event.active.id as string;
-              const activeIndex = indexById.get(activeId);
-              const overIndex = indexById.get(over);
-              if (activeIndex == null || overIndex == null) {
-                setDropIndicatorIndex(null);
-                return;
-              }
-              const insertionIndex = activeIndex < overIndex ? overIndex + 1 : overIndex;
-              setDropIndicatorIndex(insertionIndex);
+              setActiveDragWidth(event.active.rect.current.initial?.width ?? null);
             }}
             onDragEnd={(event: DragEndEvent) => {
               const over = event.over?.id as string | undefined;
@@ -658,16 +729,13 @@ export function EditorShell({ initialJson, initialTitle, mode, forcedTab }: Edit
               const activeIndex = indexById.get(activeId);
               const overIndex = over ? indexById.get(over) : null;
               setActiveDragId(null);
-              setOverId(null);
-              setDropIndicatorIndex(null);
+              setActiveDragWidth(null);
               if (activeIndex == null || overIndex == null || activeIndex === overIndex) return;
-              const targetIndex = activeIndex < overIndex ? overIndex : overIndex;
-              moveIngredient(activeIndex, targetIndex);
+              moveIngredient(activeIndex, overIndex);
             }}
             onDragCancel={() => {
               setActiveDragId(null);
-              setOverId(null);
-              setDropIndicatorIndex(null);
+              setActiveDragWidth(null);
             }}
           >
             <SortableContext items={flatIngredients.map((i) => i.id)} strategy={verticalListSortingStrategy}>
@@ -677,15 +745,15 @@ export function EditorShell({ initialJson, initialTitle, mode, forcedTab }: Edit
                     key={item.id}
                     item={item}
                     index={index}
-                    dropIndicatorIndex={dropIndicatorIndex}
-                    justDroppedId={justDroppedId}
-                    overId={overId}
                     onUpdateIngredient={updateIngredient}
-                    onToggleKind={() =>
+                    onSetKind={(kind) =>
                       setFlatAndRecipe((prev) => {
                         const next = [...prev];
-                        const nextKind = next[index].kind === 'heading' ? 'ingredient' : 'heading';
-                        next[index] = { ...next[index], kind: nextKind, amount: nextKind === 'heading' ? '' : next[index].amount };
+                        next[index] = {
+                          ...next[index],
+                          kind,
+                          amount: kind === 'heading' ? '' : next[index].amount,
+                        };
                         return next;
                       })
                     }
@@ -701,78 +769,113 @@ export function EditorShell({ initialJson, initialTitle, mode, forcedTab }: Edit
                     }}
                   />
                 ))}
-                {dropIndicatorIndex === flatIngredients.length && activeDragId && (
-                  <div className="ingredient-drop-indicator" aria-hidden="true" />
-                )}
               </div>
             </SortableContext>
-          </DndContext>
-        </article>
-
-        <article className="workspace-card stack">
-          <div className="flex" style={{ justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
-            <h3>Gör så här</h3>
-            <button type="button" className="button-primary" onClick={addStep}>
-              Lägg till steg
-            </button>
-          </div>
-          <div className="stack" style={{ gap: '1rem' }}>
-            {(formRecipe.steps ?? []).map((step, index) => (
-              <div key={index} className="stack" style={{ border: '1px solid #e5e7eb', borderRadius: '16px', padding: '1rem' }}>
-                <div className="flex" style={{ justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
-                  <span className="text-sm text-muted">Steg {index + 1}</span>
-                  <button
-                    type="button"
-                    className="button-ghost"
-                    onClick={() => removeStep(index)}
-                    aria-label={`Ta bort steg ${index + 1}`}
-                    style={{ padding: '0.35rem 0.6rem', color: '#b91c1c' }}
-                  >
-                    <i className="fa-solid fa-trash-can" aria-hidden="true" /> Ta bort
-                  </button>
-                </div>
-                <label className="stack">
-                  <span className="text-sm text-muted">Stegrubrik (valfri)</span>
-                  <input className="input" value={step.title ?? ''} onChange={(e) => updateStep(index, 'title', e.target.value)} />
-                </label>
-                <label className="stack">
-                  <span className="text-sm text-muted">Instruktion</span>
-                  <textarea
-                    className="input"
-                    rows={3}
-                    value={step.body}
-                    onChange={(e) => updateStep(index, 'body', e.target.value)}
+            <DragOverlay zIndex={1000}>
+              {activeDraggedItem ? (
+                <div
+                  className={`ingredient-row ingredient-row--overlay ${
+                    activeDraggedItem.kind === 'heading' ? 'ingredient-row--heading' : 'ingredient-row--item'
+                  }`}
+                  style={activeDragWidth ? { width: activeDragWidth } : undefined}
+                >
+                  <IngredientRowContent
+                    item={activeDraggedItem}
+                    index={-1}
+                    readOnly
+                    dragHandle={
+                      <ActionIcon
+                        type="button"
+                        className="ingredient-drag"
+                        aria-label="Dra för att flytta"
+                        variant="default"
+                        color="gray"
+                        radius="xl"
+                        disabled
+                      >
+                        <i className="fa-solid fa-grip-vertical" aria-hidden="true"></i>
+                      </ActionIcon>
+                    }
+                    deleteAction={
+                      <ActionIcon
+                        type="button"
+                        className="chip-button chip-button--icon chip-button--danger"
+                        aria-label="Ta bort"
+                        variant="subtle"
+                        color="red"
+                        radius="xl"
+                        disabled
+                      >
+                        <i className="fa-solid fa-trash-can" aria-hidden="true"></i>
+                      </ActionIcon>
+                    }
+                    onUpdateIngredient={() => {}}
+                    onSetKind={() => {}}
                   />
-                </label>
-              </div>
+                </div>
+              ) : null}
+            </DragOverlay>
+          </DndContext>
+          </Stack>
+        </Paper>
+
+        <Paper className="workspace-card stack" withBorder radius="xl" p="xl" shadow="sm">
+          <Stack gap="lg">
+            <Group justify="space-between" align="center" gap="md">
+              <Title order={3}>Gör så här</Title>
+              <Button type="button" color="studioBlue" radius="xl" onClick={addStep}>
+              Lägg till steg
+              </Button>
+            </Group>
+            <Stack gap="sm" className="studio-steps-list">
+            {(formRecipe.steps ?? []).map((step, index) => (
+                <div key={index} className="studio-step-row">
+                  <div className="studio-step-row__header">
+                    <Text size="sm" c="dimmed" fw={700} className="studio-step-row__index">
+                        Steg {index + 1}
+                    </Text>
+                    <Button
+                      type="button"
+                      className="studio-step-row__remove"
+                        variant="subtle"
+                        color="red"
+                      onClick={() => removeStep(index)}
+                      aria-label={`Ta bort steg ${index + 1}`}
+                    >
+                      <i className="fa-solid fa-trash-can" aria-hidden="true" /> Ta bort
+                    </Button>
+                  </div>
+                  <div className="studio-step-row__body">
+                    <FloatingField
+                      id={`step-title-${index}`}
+                      label="Stegrubrik (valfri)"
+                      value={step.title ?? ''}
+                      onChange={(value) => updateStep(index, 'title', value)}
+                    />
+                    <FloatingField
+                      id={`step-body-${index}`}
+                      label="Instruktion"
+                      value={step.body}
+                      onChange={(value) => updateStep(index, 'body', value)}
+                      textarea
+                      rows={3}
+                    />
+                  </div>
+                </div>
             ))}
-          </div>
-        </article>
-        <datalist id="category-place-options">
-          {categoryOptions.place.map((opt) => (
-            <option key={opt} value={opt} />
-          ))}
-        </datalist>
-        <datalist id="category-base-options">
-          {categoryOptions.base.map((opt) => (
-            <option key={opt} value={opt} />
-          ))}
-        </datalist>
-        <datalist id="category-type-options">
-          {categoryOptions.type.map((opt) => (
-            <option key={opt} value={opt} />
-          ))}
-        </datalist>
+            </Stack>
+          </Stack>
+        </Paper>
       </div>
     );
   };
 
   return (
-      <div className="preview-grid">
-        <div className="preview-grid__left">
+    <div className="preview-grid">
+      <div className="preview-grid__left">
         <div className="preview-grid__copy">
           <p className="eyebrow">Redigera</p>
-          <h2>Arbeta i formulär eller JSON – allt synkas med mobilen till höger.</h2>
+          <Title order={2}>Arbeta i formulär eller JSON. Allt synkas med mobilen till höger.</Title>
         </div>
         <div className="preview-grid__editor">
           {view === 'form' && formReady && (
@@ -786,93 +889,157 @@ export function EditorShell({ initialJson, initialTitle, mode, forcedTab }: Edit
             </div>
           )}
           {!formReady && errors.length > 0 && (
-            <div className="alert error" style={{ marginTop: '1rem' }}>
+            <Alert color="red" variant="light" mt="md">
               Ogiltig JSON: {errors.join('; ')}
-            </div>
+            </Alert>
           )}
         </div>
       </div>
-        <div className="preview-grid__right">
-          <button className="button-primary button-hero preview-grid__save" onClick={submit} disabled={saveDisabled}>
+      <div className="preview-grid__right">
+        <Button className="preview-grid__save" color="studioBlue" radius="xl" size="lg" onClick={submit} disabled={saveDisabled} loading={saving}>
             {saving ? 'Sparar…' : 'Spara recept'}
-          </button>
-          {formReady && (
-            <button
-              type="button"
-              className="text-link text-danger preview-grid__delete"
-              onClick={() => setShowDeleteModal(true)}
-            >
+        </Button>
+        {formReady && (
+          <Button type="button" variant="subtle" color="red" className="preview-grid__delete" onClick={() => setShowDeleteModal(true)}>
               <i className="fa-solid fa-trash-can" aria-hidden="true" /> Radera recept
-            </button>
-          )}
-          {status && (
-            <div className="text-sm text-muted" style={{ marginTop: '-0.35rem' }}>
-              {status}
-            </div>
-          )}
+          </Button>
+        )}
+        {status && (
+          <Alert color={status.toLowerCase().includes('raderat') || status.toLowerCase().includes('saved') ? 'studioBlue' : 'red'} variant="light">
+            {status}
+          </Alert>
+        )}
         <div className="preview-grid__device preview-grid__device--full">
           {preview ? (
             <div className="preview-page">
               <RecipePreview recipe={preview} />
             </div>
           ) : (
-            <div className="alert error" style={{ width: '100%' }}>
+            <Alert color="red" variant="light" style={{ width: '100%' }}>
               Invalid JSON
-            </div>
+            </Alert>
           )}
         </div>
       </div>
-      {showDeleteModal && formRecipe && (
-        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="delete-modal-title">
-          <div className="modal">
-            <h4 id="delete-modal-title">Radera recept</h4>
-            <p>Detta kommer att radera &quot;{formRecipe.title}&quot;. Är du säker?</p>
-            <div className="modal__actions">
-              <button type="button" className="button-secondary" onClick={() => setShowDeleteModal(false)}>
+      <Modal
+        opened={showDeleteModal && Boolean(formRecipe)}
+        onClose={() => setShowDeleteModal(false)}
+        title="Radera recept"
+        centered
+        radius="xl"
+      >
+        {formRecipe && (
+          <Stack gap="md">
+            <Text>
+              Detta kommer att radera &quot;{formRecipe.title}&quot;. Är du säker?
+            </Text>
+            <Group justify="flex-end">
+              <Button type="button" variant="default" onClick={() => setShowDeleteModal(false)}>
                 Avbryt
-              </button>
-              <button
-                type="button"
-                className="button-danger"
-                onClick={handleDelete}
-                disabled={deleting}
-              >
+              </Button>
+              <Button type="button" color="red" onClick={handleDelete} loading={deleting}>
                 {deleting ? 'Raderar…' : 'Radera'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+              </Button>
+            </Group>
+          </Stack>
+        )}
+      </Modal>
     </div>
   );
 }
 
 type SortableIngredientRowProps = {
-  item: { id: string; label: string; amount?: string; kind: 'ingredient' | 'heading' };
+  item: FlatIngredientRow;
   index: number;
-  dropIndicatorIndex: number | null;
-  overId: string | null;
-  justDroppedId: string | null;
   onUpdateIngredient: (index: number, field: 'label' | 'amount', value: string) => void;
-  onToggleKind: () => void;
+  onSetKind: (kind: 'ingredient' | 'heading') => void;
   onDelete: () => void;
   setInputRef: (el: HTMLInputElement | null) => void;
 };
 
+type IngredientRowContentProps = {
+  item: FlatIngredientRow;
+  index: number;
+  onUpdateIngredient: (index: number, field: 'label' | 'amount', value: string) => void;
+  onSetKind: (kind: 'ingredient' | 'heading') => void;
+  dragHandle: ReactNode;
+  deleteAction: ReactNode;
+  readOnly?: boolean;
+  setInputRef?: (el: HTMLInputElement | null) => void;
+};
+
+function IngredientRowContent({
+  item,
+  index,
+  onUpdateIngredient,
+  onSetKind,
+  dragHandle,
+  deleteAction,
+  readOnly = false,
+  setInputRef,
+}: IngredientRowContentProps) {
+  return (
+    <div className="ingredient-row__grid">
+      {dragHandle}
+      <TextInput
+        classNames={{
+          input:
+            item.kind === 'heading'
+              ? 'ingredient-row__name ingredient-row__name--heading'
+              : 'ingredient-row__name',
+        }}
+        ref={setInputRef}
+        value={item.label}
+        onChange={(event) => onUpdateIngredient(index, 'label', event.currentTarget.value)}
+        placeholder={item.kind === 'heading' ? 'Rubrik' : 't.ex. Smör'}
+        variant="default"
+        radius="md"
+        size="md"
+        readOnly={readOnly}
+      />
+      {item.kind !== 'heading' && (
+        <TextInput
+          classNames={{ input: 'ingredient-row__amount' }}
+          value={item.amount ?? ''}
+          onChange={(event) => onUpdateIngredient(index, 'amount', event.currentTarget.value)}
+          placeholder="1 dl"
+          variant="filled"
+          radius="md"
+          size="md"
+          readOnly={readOnly}
+        />
+      )}
+      {item.kind === 'heading' && <div className="ingredient-row__amount-spacer" aria-hidden="true" />}
+      <SegmentedControl
+        className="ingredient-kind-toggle"
+        aria-label="Välj radtyp"
+        value={item.kind}
+        onChange={(value) => onSetKind(value as 'ingredient' | 'heading')}
+        size="sm"
+        radius="xl"
+        color="studioBlue"
+        classNames={editorSegmentedClassNames}
+        data={[
+          { label: 'Ingrediens', value: 'ingredient' },
+          { label: 'Rubrik', value: 'heading' },
+        ]}
+        disabled={readOnly}
+      />
+      {deleteAction}
+    </div>
+  );
+}
+
 function SortableIngredientRow({
   item,
   index,
-  dropIndicatorIndex,
-  overId,
-  justDroppedId,
   onUpdateIngredient,
-  onToggleKind,
+  onSetKind,
   onDelete,
   setInputRef,
 }: SortableIngredientRowProps) {
-  const { attributes, listeners, setActivatorNodeRef, setNodeRef, transform, transition, isOver, isDragging } = useSortable({
+  const { attributes, listeners, setActivatorNodeRef, setNodeRef, transform, transition, isDragging } = useSortable({
     id: item.id,
-    animateLayoutChanges: () => false,
   });
 
   const style = {
@@ -880,69 +1047,53 @@ function SortableIngredientRow({
     transition,
   };
 
-  const showDropIndicatorBefore = dropIndicatorIndex === index;
   const rowClass = [
     'ingredient-row',
     item.kind === 'heading' ? 'ingredient-row--heading' : 'ingredient-row--item',
-    isOver ? 'ingredient-row--dragover' : '',
     isDragging ? 'ingredient-row--dragging' : '',
-    justDroppedId === item.id ? 'ingredient-row--dropped' : '',
   ]
     .filter(Boolean)
     .join(' ');
 
   return (
     <>
-      {showDropIndicatorBefore && <div className="ingredient-drop-indicator" aria-hidden="true" />}
-      <div ref={setNodeRef} className={rowClass} style={style} data-over={overId === item.id}>
-        <div className="ingredient-row__grid">
-          <button
-            type="button"
-            className="ingredient-drag"
-            ref={setActivatorNodeRef}
-            {...listeners}
-            {...attributes}
-            aria-label="Dra för att flytta"
-          >
-            <i className="fa-solid fa-grip-vertical" aria-hidden="true"></i>
-          </button>
-          <input
-            className={
-              item.kind === 'heading'
-                ? 'input ingredient-row__name ingredient-row__name--heading'
-                : 'input ingredient-row__name'
-            }
-            ref={setInputRef}
-            value={item.label}
-            onChange={(e) => onUpdateIngredient(index, 'label', e.target.value)}
-            placeholder={item.kind === 'heading' ? 'Rubrik' : 't.ex. Smör'}
-          />
-          {item.kind !== 'heading' && (
-            <input
-              className="input ingredient-row__amount"
-              value={item.amount ?? ''}
-              onChange={(e) => onUpdateIngredient(index, 'amount', e.target.value)}
-              placeholder="1 dl"
-            />
-          )}
-          <button
-            type="button"
-            className="ingredient-kind-toggle"
-            aria-label={item.kind === 'heading' ? 'Gör till ingrediens' : 'Gör till rubrik'}
-            onClick={onToggleKind}
-          >
-            <i className={item.kind === 'heading' ? 'fa-solid fa-heading' : 'fa-solid fa-list-ul'} aria-hidden="true"></i>
-          </button>
-          <button
-            type="button"
-            className="chip-button chip-button--icon chip-button--danger"
-            aria-label="Ta bort"
-            onClick={onDelete}
-            disabled={item.kind === 'heading'}
-          >
-            <i className="fa-solid fa-trash-can" aria-hidden="true"></i>
-          </button>
-        </div>
+      <div ref={setNodeRef} className={rowClass} style={style}>
+        <IngredientRowContent
+          item={item}
+          index={index}
+          onUpdateIngredient={onUpdateIngredient}
+          onSetKind={onSetKind}
+          setInputRef={setInputRef}
+          dragHandle={
+            <ActionIcon
+              type="button"
+              className="ingredient-drag"
+              ref={setActivatorNodeRef}
+              {...listeners}
+              {...attributes}
+              aria-label="Dra för att flytta"
+              variant="subtle"
+              color="gray"
+              radius="xl"
+            >
+              <i className="fa-solid fa-grip-vertical" aria-hidden="true"></i>
+            </ActionIcon>
+          }
+          deleteAction={
+            <ActionIcon
+              type="button"
+              className="chip-button chip-button--icon chip-button--danger"
+              aria-label="Ta bort"
+              onClick={onDelete}
+              disabled={item.kind === 'heading'}
+              variant="subtle"
+              color="red"
+              radius="xl"
+            >
+              <i className="fa-solid fa-trash-can" aria-hidden="true"></i>
+            </ActionIcon>
+          }
+        />
       </div>
     </>
   );

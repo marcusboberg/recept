@@ -1,9 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import { Alert, Badge, Button, Group, List, SimpleGrid, Stack, Text, TextInput, ThemeIcon } from '@mantine/core';
 import { recipeSchema, type Recipe } from '@/schema/recipeSchema';
 import { recipeToJson } from '@/lib/recipes';
 import { useLiveRecipes } from '@/lib/useLiveRecipes';
+import { StudioCategoryField } from './StudioCategoryField';
+import { StudioSectionCard } from './StudioSectionCard';
 
 interface Props {
   onImport: (json: string, title: string) => void;
@@ -61,6 +64,10 @@ export function WordPressImportCard({ onImport, className }: Props) {
       setError('Ange en WordPress-länk att importera.');
       return;
     }
+    if (!categoryPlace.trim() || !categoryBase.trim() || !categoryType.trim()) {
+      setError('Fyll i plats, basvara och typ före import.');
+      return;
+    }
     const normalizedUrl = /^https?:\/\//i.test(trimmedUrl) ? trimmedUrl : `https://${trimmedUrl}`;
     try {
       setIsProcessing(true);
@@ -79,13 +86,11 @@ export function WordPressImportCard({ onImport, className }: Props) {
         throw new Error((payload.error ?? 'Kunde inte hämta sidan.') + detail);
       }
       const recipe = convertWordPressHtml(payload.html ?? '');
-      const categories = [categoryPlace, categoryBase, categoryType].map((c) => c.trim()).filter(Boolean);
-      if (categories.length === 3) {
-        recipe.categoryPlace = categoryPlace.trim();
-        recipe.categoryBase = categoryBase.trim();
-        recipe.categoryType = categoryType.trim();
-        recipe.categories = categories;
-      }
+      const categories = [categoryPlace, categoryBase, categoryType].map((c) => c.trim());
+      recipe.categoryPlace = categories[0];
+      recipe.categoryBase = categories[1];
+      recipe.categoryType = categories[2];
+      recipe.categories = categories;
       const parsed = recipeSchema.parse(recipe);
       const json = recipeToJson(parsed);
       onImport(json, parsed.title);
@@ -100,102 +105,110 @@ export function WordPressImportCard({ onImport, className }: Props) {
   };
 
   return (
-    <div className={`card space-y-3 studio-card ${className ?? ''}`} style={{ color: '#0f172a' }}>
-      <div className="space-y-1">
-        <h3 className="card-title">WordPress-import</h3>
-        <p className="card-subtitle">Klistra in en WordPress-URL så hämtar vi HTML och bygger JSON åt dig.</p>
-      </div>
-      <label className="stack">
-        <span className="text-sm text-muted">WordPress-länk</span>
-        <input
+    <StudioSectionCard
+      className={className}
+      iconClass="fa-brands fa-wordpress"
+      title="Importera från WordPress"
+      description="Klistra in en länk från recept.marcusboberg.se. Vi hämtar HTML, tolkar receptet och öppnar resultatet direkt i editorn."
+    >
+      <SimpleGrid cols={{ base: 1, xl: 2 }} spacing="xl">
+        <Stack gap="md">
+          <TextInput
+            label="1. WordPress-länk"
           type="url"
-          className="input"
+            radius="md"
           placeholder="https://recept.marcusboberg.se/vegetariskt/black-bean-burger/"
           value={url}
-          onChange={(event) => setUrl(event.target.value)}
-        />
-      </label>
-      <div className="studio-row">
-        <label className="stack">
-          <span className="text-sm text-muted">Plats</span>
-          <input
-            type="text"
-            className="input"
-            placeholder="t.ex. Italien"
-            value={categoryPlace}
-            list="wp-category-place-options"
-            onChange={(event) => setCategoryPlace(event.target.value)}
-            style={{ color: '#0f172a' }}
+            onChange={(event) => setUrl(event.currentTarget.value)}
           />
-        </label>
-        <label className="stack">
-          <span className="text-sm text-muted">Basvara</span>
-          <input
-            type="text"
-            className="input"
-            placeholder="t.ex. Kyckling"
-            value={categoryBase}
-            list="wp-category-base-options"
-            onChange={(event) => setCategoryBase(event.target.value)}
-            style={{ color: '#0f172a' }}
-          />
-        </label>
-        <label className="stack">
-          <span className="text-sm text-muted">Typ</span>
-          <input
-            type="text"
-            className="input"
-            placeholder="t.ex. Gryta"
-            value={categoryType}
-            list="wp-category-type-options"
-            onChange={(event) => setCategoryType(event.target.value)}
-            style={{ color: '#0f172a' }}
-          />
-        </label>
-      </div>
-      <div className="flex" style={{ gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-        <button
-          type="button"
-          className="button-primary"
-          onClick={handleConvert}
-          disabled={isProcessing || url.trim().length === 0}
-        >
-          {isProcessing ? 'Analyserar…' : 'Konvertera och fyll editor'}
-        </button>
-        {status && <span className="text-sm">{status}</span>}
-        {error && (
-          <span className="text-sm" style={{ color: '#b91c1c' }}>
-            {error}
-          </span>
-        )}
-      </div>
-      {preview && (
-        <div className="text-sm text-muted">
-          <p style={{ marginBottom: '0.25rem' }}>
-            {preview.title} • {preview.ingredients.length} ingredienser • {preview.steps.length} steg
-          </p>
-          <p style={{ marginBottom: 0 }}>
-            Tags: {preview.tags.length === 0 ? '—' : preview.tags.join(', ')} • Kategorier:{' '}
-            {preview.categories?.length ? preview.categories.join(', ') : '—'}
-          </p>
-        </div>
-      )}
-      <datalist id="wp-category-place-options">
-        {categoryOptions.place.map((opt) => (
-          <option key={opt} value={opt} />
-        ))}
-      </datalist>
-      <datalist id="wp-category-base-options">
-        {categoryOptions.base.map((opt) => (
-          <option key={opt} value={opt} />
-        ))}
-      </datalist>
-      <datalist id="wp-category-type-options">
-        {categoryOptions.type.map((opt) => (
-          <option key={opt} value={opt} />
-        ))}
-      </datalist>
-    </div>
+          <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
+            <StudioCategoryField
+              label="2. Plats"
+              placeholder="t.ex. Italien"
+              value={categoryPlace}
+              options={categoryOptions.place}
+              onChange={setCategoryPlace}
+            />
+            <StudioCategoryField
+              label="3. Basvara"
+              placeholder="t.ex. Kyckling"
+              value={categoryBase}
+              options={categoryOptions.base}
+              onChange={setCategoryBase}
+            />
+            <StudioCategoryField
+              label="4. Typ"
+              placeholder="t.ex. Gryta"
+              value={categoryType}
+              options={categoryOptions.type}
+              onChange={setCategoryType}
+            />
+          </SimpleGrid>
+          <Group gap="sm" align="center">
+            <Button type="button" color="studioBlue" radius="xl" onClick={handleConvert} disabled={isProcessing || url.trim().length === 0} loading={isProcessing}>
+              {isProcessing ? 'Analyserar…' : 'Importera till editorn'}
+            </Button>
+            <Badge variant="light" color="grape" radius="xl">
+              HTML + checklistor
+            </Badge>
+          </Group>
+          {status ? (
+            <Alert color="studioBlue" variant="light">
+              {status}
+            </Alert>
+          ) : null}
+          {error ? (
+            <Alert color="red" variant="light">
+              {error}
+            </Alert>
+          ) : null}
+        </Stack>
+
+        <Stack gap="md">
+          <Text size="sm" fw={700} c="dimmed" tt="uppercase" style={{ letterSpacing: '0.08em' }}>
+            Vad som händer
+          </Text>
+          <List
+            spacing="sm"
+            icon={
+              <ThemeIcon color="studioBlue" size={22} radius="xl" variant="light">
+                <i className="fa-solid fa-check" aria-hidden="true" />
+              </ThemeIcon>
+            }
+          >
+            <List.Item>Vi hämtar HTML via den säkrade proxyn.</List.Item>
+            <List.Item>Checklistor och rubriker blir ingredienser och sektioner.</List.Item>
+            <List.Item>Du landar direkt i editorn och kan justera allt innan sparning.</List.Item>
+          </List>
+
+          {preview ? (
+            <Alert color="studioBlue" variant="light" title={preview.title}>
+              <Text size="sm">
+                {preview.ingredients.length} ingredienser, {preview.steps.length} steg
+              </Text>
+              <Text size="sm" c="dimmed">
+                {preview.categories?.length ? preview.categories.join(', ') : 'Inga kategorier satta'}
+              </Text>
+            </Alert>
+          ) : (
+            <Alert color="gray" variant="light" title="Tips före import">
+              <Text size="sm" c="dimmed">
+                Fyll i kategorierna först. De följer med direkt in i receptet och sparar tid i editorn.
+              </Text>
+            </Alert>
+          )}
+
+          <Group gap="xs">
+            <Badge variant="dot" color="studioBlue">
+              Endast recept.marcusboberg.se
+            </Badge>
+            <Badge variant="dot" color="gray">
+              Kategorier krävs
+            </Badge>
+          </Group>
+        </Stack>
+      </SimpleGrid>
+    </StudioSectionCard>
   );
 }
 
@@ -268,7 +281,6 @@ function convertWordPressHtml(html: string): Recipe {
     slugHistory: [],
     description: cleanText(description),
     imageUrl,
-    tags: collectTags(doc),
     categoryPlace: '',
     categoryBase: '',
     categoryType: '',
@@ -395,23 +407,6 @@ function collectSteps(doc: Document): Recipe['steps'] {
     title: paragraphs.length > 1 ? `Steg ${index + 1}` : undefined,
     body: text,
   }));
-}
-
-function collectTags(doc: Document): string[] {
-  const selectors = ['a[href*="/tag/"]', 'a[href*="/recept/"]'];
-  const seen = new Map<string, string>();
-  selectors.forEach((selector) => {
-    doc.querySelectorAll(selector).forEach((element) => {
-      const text = cleanText(element.textContent ?? '');
-      if (!text) return;
-      const key = text.toLowerCase();
-      if (!seen.has(key)) {
-        seen.set(key, text);
-      }
-    });
-  });
-
-  return Array.from(seen.values()).slice(0, 5);
 }
 
 function cleanText(input: string | null | undefined): string {

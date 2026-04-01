@@ -12,7 +12,7 @@ interface Props {
 export function SearchBar({
   value,
   onChange,
-  placeholder = 'Search title, description or tags',
+  placeholder = 'Search title, description or categories',
   className,
   inputClassName,
   id,

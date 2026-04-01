@@ -2,45 +2,26 @@
 
 import Image from 'next/image';
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { onAuthStateChanged, type User } from 'firebase/auth';
+import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { useRecipeChecklistState } from '@/components/useRecipeChecklistState';
 import { DEFAULT_RECIPE_IMAGE } from '@/lib/images';
-import { getFirestoreClient } from '@/lib/firebaseClient';
+import { getFirebaseAuth, getFirestoreClient } from '@/lib/firebaseClient';
+import { normalizeLegacyRecipeForRead } from '@/lib/legacyRecipes';
+import {
+  applyEditableIngredientGroups,
+  cloneRecipe,
+  getEditableIngredientGroups,
+  getEditableTitleSegments,
+  getIngredientKey,
+  getRecipeHeroImage,
+  getRecipeStepLabel,
+  getTitleSegments,
+  toIngredientGroups,
+  type IngredientGroup,
+} from '@/lib/recipePresentation';
 import { resolveRecipeSlugByHistory } from '@/lib/slugHistory';
 import { recipeSchema, type Recipe } from '@/schema/recipeSchema';
-
-interface IngredientGroup {
-  title?: string;
-  items: Recipe['ingredients'];
-}
-
-type ViewMode = 'ingredients' | 'steps';
-
-function toIngredientGroups(recipe: Recipe): IngredientGroup[] {
-  if (recipe.ingredientGroups?.length) {
-    return recipe.ingredientGroups;
-  }
-  return [
-    {
-      title: 'Ingredienser',
-      items: recipe.ingredients,
-    },
-  ];
-}
-
-function getIngredientKey(groupIndex: number, item: Recipe['ingredients'][number], itemIndex: number) {
-  return `${groupIndex}-${item.label}-${itemIndex}`;
-}
-
-function getTitleSegments(recipe: Recipe) {
-  if (recipe.titleSegments && recipe.titleSegments.length > 0) {
-    return recipe.titleSegments;
-  }
-  return [
-    ...(recipe.titlePrefix ? [{ text: recipe.titlePrefix, size: 'small' as const }] : []),
-    { text: recipe.title, size: 'big' as const },
-    ...(recipe.titleSuffix ? [{ text: recipe.titleSuffix, size: 'small' as const }] : []),
-  ];
-}
 
 interface Props {
   slug: string;
@@ -50,16 +31,17 @@ interface Props {
 export function RecipeMobile({ slug, initialRecipe }: Props) {
   const [liveRecipe, setLiveRecipe] = useState<Recipe | null>(initialRecipe ?? null);
   const [error, setError] = useState<string | null>(null);
-  const [activeView, setActiveView] = useState<ViewMode>('ingredients');
-  const [checkedIngredients, setCheckedIngredients] = useState<Record<string, boolean>>({});
-  const [checkedSteps, setCheckedSteps] = useState<Record<number, boolean>>({});
+  const [isQuickEditing, setIsQuickEditing] = useState(false);
+  const [draftRecipe, setDraftRecipe] = useState<Recipe | null>(null);
+  const [authStatus, setAuthStatus] = useState<'loading' | 'authenticated' | 'unauthenticated'>('loading');
+  const [authUser, setAuthUser] = useState<User | null>(null);
+  const [editStatus, setEditStatus] = useState<string | null>(null);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [shareStatus, setShareStatus] = useState<string | null>(null);
-  const scrollRef = useRef<HTMLDivElement | null>(null);
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
   const shareStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [showScrollHint, setShowScrollHint] = useState(false);
+  const editStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const redirectAttemptedRef = useRef(false);
-  const toggleDirection: 'left' | 'right' = activeView === 'ingredients' ? 'left' : 'right';
 
   useEffect(() => {
     redirectAttemptedRef.current = false;
@@ -87,7 +69,7 @@ export function RecipeMobile({ slug, initialRecipe }: Props) {
         setLiveRecipe(null);
         return;
       }
-      const parsed = recipeSchema.safeParse(snapshot.data());
+      const parsed = recipeSchema.safeParse(normalizeLegacyRecipeForRead(snapshot.data()));
       if (parsed.success) {
         setLiveRecipe(parsed.data);
         setError(null);
@@ -99,9 +81,60 @@ export function RecipeMobile({ slug, initialRecipe }: Props) {
     return unsubscribe;
   }, [slug]);
 
-  const ingredientGroups = useMemo(() => (liveRecipe ? toIngredientGroups(liveRecipe) : []), [liveRecipe]);
-  const heroImage = liveRecipe?.imageUrl?.trim() ? liveRecipe.imageUrl : DEFAULT_RECIPE_IMAGE;
-  const titleSegments = liveRecipe ? getTitleSegments(liveRecipe) : [];
+  useEffect(() => {
+    const auth = getFirebaseAuth();
+    const unsubscribe = onAuthStateChanged(auth, (current) => {
+      if (current) {
+        setAuthUser(current);
+        setAuthStatus('authenticated');
+      } else {
+        setAuthUser(null);
+        setAuthStatus('unauthenticated');
+      }
+    });
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    if (!isQuickEditing) {
+      setDraftRecipe(null);
+    }
+  }, [isQuickEditing]);
+
+  useEffect(() => {
+    if (editStatus !== 'Sparat.') {
+      return undefined;
+    }
+    editStatusTimerRef.current = setTimeout(() => setEditStatus(null), 2200);
+    return () => {
+      if (editStatusTimerRef.current) {
+        clearTimeout(editStatusTimerRef.current);
+      }
+    };
+  }, [editStatus]);
+
+  const displayRecipe = isQuickEditing && draftRecipe ? draftRecipe : liveRecipe;
+  const ingredientGroups = useMemo(() => (displayRecipe ? toIngredientGroups(displayRecipe) : []), [displayRecipe]);
+  const heroImage = displayRecipe ? getRecipeHeroImage(displayRecipe) : DEFAULT_RECIPE_IMAGE;
+  const titleSegments = displayRecipe
+    ? isQuickEditing
+      ? getEditableTitleSegments(displayRecipe)
+      : getTitleSegments(displayRecipe)
+    : [];
+  const {
+    activeView,
+    setActiveView,
+    checkedIngredients,
+    checkedSteps,
+    scrollRef,
+    showScrollHint,
+    toggleDirection,
+    toggleIngredient,
+    toggleStep,
+  } = useRecipeChecklistState({
+    ingredientGroupCount: ingredientGroups.length,
+    stepCount: displayRecipe?.steps.length ?? 0,
+  });
   const handleBack = () => {
     if (typeof window === 'undefined') return;
     if (window.history.length > 1) {
@@ -142,6 +175,9 @@ export function RecipeMobile({ slug, initialRecipe }: Props) {
     return () => {
       if (shareStatusTimerRef.current) {
         clearTimeout(shareStatusTimerRef.current);
+      }
+      if (editStatusTimerRef.current) {
+        clearTimeout(editStatusTimerRef.current);
       }
     };
   }, []);
@@ -186,12 +222,69 @@ export function RecipeMobile({ slug, initialRecipe }: Props) {
     };
   }, []);
 
-  const toggleIngredient = (key: string) => {
-    setCheckedIngredients((prev) => ({ ...prev, [key]: !prev[key] }));
+  const updateDraftRecipe = (updater: (prev: Recipe) => Recipe) => {
+    setDraftRecipe((prev) => (prev ? updater(prev) : prev));
   };
 
-  const toggleStep = (index: number) => {
-    setCheckedSteps((prev) => ({ ...prev, [index]: !prev[index] }));
+  const updateDraftIngredientGroups = (updater: (prev: IngredientGroup[]) => IngredientGroup[]) => {
+    updateDraftRecipe((prev) => applyEditableIngredientGroups(prev, updater(getEditableIngredientGroups(prev))));
+  };
+
+  const handleStartQuickEdit = () => {
+    if (!liveRecipe) {
+      return;
+    }
+
+    if (authStatus !== 'authenticated') {
+      if (typeof window !== 'undefined') {
+        window.location.hash = `#/edit/${liveRecipe.slug}`;
+      }
+      return;
+    }
+
+    setDraftRecipe(cloneRecipe(liveRecipe));
+    setEditStatus(null);
+    setIsQuickEditing(true);
+  };
+
+  const handleCancelQuickEdit = () => {
+    setEditStatus(null);
+    setIsQuickEditing(false);
+  };
+
+  const handleSaveQuickEdit = async () => {
+    if (!draftRecipe || !liveRecipe) {
+      return;
+    }
+
+    if (authStatus !== 'authenticated' || !authUser) {
+      setEditStatus('Logga in för att spara ändringar.');
+      return;
+    }
+
+    setIsSavingEdit(true);
+    setEditStatus(null);
+
+    try {
+      const db = getFirestoreClient();
+      const now = new Date().toISOString();
+      const payload = recipeSchema.parse({
+        ...draftRecipe,
+        slug: liveRecipe.slug,
+        slugHistory: liveRecipe.slugHistory ?? draftRecipe.slugHistory ?? [],
+        titleSegments: getEditableTitleSegments(draftRecipe),
+        createdAt: draftRecipe.createdAt ?? liveRecipe.createdAt ?? now,
+        updatedAt: now,
+      });
+
+      await setDoc(doc(db, 'recipes', liveRecipe.slug), payload);
+      setEditStatus('Sparat.');
+      setIsQuickEditing(false);
+    } catch (saveError) {
+      setEditStatus((saveError as Error).message || 'Kunde inte spara ändringarna.');
+    } finally {
+      setIsSavingEdit(false);
+    }
   };
 
   const setShareFeedback = (value: string) => {
@@ -229,33 +322,184 @@ export function RecipeMobile({ slug, initialRecipe }: Props) {
     }
   };
 
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const updateHint = () => {
-      const hasScroll = el.scrollHeight > el.clientHeight + 1;
-      const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
-      setShowScrollHint(hasScroll && !atBottom);
-    };
-    updateHint();
-    el.addEventListener('scroll', updateHint);
-    window.addEventListener('resize', updateHint);
-    return () => {
-      el.removeEventListener('scroll', updateHint);
-      window.removeEventListener('resize', updateHint);
-    };
-  }, [activeView, ingredientGroups.length, liveRecipe?.steps.length]);
+  const renderQuickEditIngredients = () => {
+    if (!draftRecipe) return null;
+    const groups = getEditableIngredientGroups(draftRecipe);
+    const showGroupTitles = groups.length > 1 || groups.some((group) => Boolean(group.title?.trim() && group.title.trim() !== 'Ingredienser'));
 
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (el) {
-      el.scrollTop = 0;
-      const hasScroll = el.scrollHeight > el.clientHeight + 1;
-      const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setShowScrollHint(hasScroll && !atBottom);
-    }
-  }, [activeView, ingredientGroups.length, liveRecipe?.steps.length]);
+    return (
+      <div className="recipe-quick-edit__section">
+        {groups.map((group, groupIndex) => (
+          <div key={`${groupIndex}-${group.title ?? 'group'}`} className="recipe-quick-edit__group">
+            {showGroupTitles ? (
+              <input
+                className="recipe-quick-edit__group-title"
+                value={group.title ?? ''}
+                onChange={(event) =>
+                  updateDraftIngredientGroups((prev) =>
+                    prev.map((entry, idx) =>
+                      idx === groupIndex ? { ...entry, title: event.target.value } : entry,
+                    ),
+                  )
+                }
+                placeholder="Rubrik"
+              />
+            ) : null}
+            <div className="recipe-quick-edit__rows">
+              {group.items.map((item, itemIndex) => (
+                <div key={`${groupIndex}-${itemIndex}`} className="recipe-quick-edit__row">
+                  <input
+                    className="recipe-quick-edit__input recipe-quick-edit__input--label"
+                    value={item.label}
+                    onChange={(event) =>
+                      updateDraftIngredientGroups((prev) =>
+                        prev.map((entry, idx) =>
+                          idx === groupIndex
+                            ? {
+                                ...entry,
+                                items: entry.items.map((current, currentIndex) =>
+                                  currentIndex === itemIndex ? { ...current, label: event.target.value } : current,
+                                ),
+                              }
+                            : entry,
+                        ),
+                      )
+                    }
+                    placeholder="Ingrediens"
+                  />
+                  <input
+                    className="recipe-quick-edit__input recipe-quick-edit__input--amount"
+                    value={item.amount ?? ''}
+                    onChange={(event) =>
+                      updateDraftIngredientGroups((prev) =>
+                        prev.map((entry, idx) =>
+                          idx === groupIndex
+                            ? {
+                                ...entry,
+                                items: entry.items.map((current, currentIndex) =>
+                                  currentIndex === itemIndex ? { ...current, amount: event.target.value } : current,
+                                ),
+                              }
+                            : entry,
+                        ),
+                      )
+                    }
+                    placeholder="Mängd"
+                  />
+                  <button
+                    type="button"
+                    className="recipe-quick-edit__icon"
+                    onClick={() =>
+                      updateDraftIngredientGroups((prev) =>
+                        prev.map((entry, idx) =>
+                          idx === groupIndex
+                            ? {
+                                ...entry,
+                                items:
+                                  entry.items.length > 1
+                                    ? entry.items.filter((_, currentIndex) => currentIndex !== itemIndex)
+                                    : [{ label: '', amount: '', kind: 'ingredient' }],
+                              }
+                            : entry,
+                        ),
+                      )
+                    }
+                    aria-label="Ta bort ingrediens"
+                  >
+                    <i className="fa-solid fa-trash-can" aria-hidden="true" />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="recipe-quick-edit__add"
+              onClick={() =>
+                updateDraftIngredientGroups((prev) =>
+                  prev.map((entry, idx) =>
+                    idx === groupIndex
+                      ? {
+                          ...entry,
+                          items: [...entry.items, { label: '', amount: '', kind: 'ingredient' }],
+                        }
+                      : entry,
+                  ),
+                )
+              }
+            >
+              + Lägg till ingrediens
+            </button>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const renderQuickEditSteps = () => {
+    if (!draftRecipe) return null;
+
+    return (
+      <div className="recipe-quick-edit__section recipe-quick-edit__section--steps">
+        {(draftRecipe.steps ?? []).map((step, index) => (
+          <div key={index} className="recipe-quick-edit__step">
+            <div className="recipe-quick-edit__step-header">
+              <span className="recipe-quick-edit__step-index">Steg {index + 1}</span>
+              <button
+                type="button"
+                className="recipe-quick-edit__text-button"
+                onClick={() =>
+                  updateDraftRecipe((prev) => {
+                    const nextSteps = [...(prev.steps ?? [])];
+                    nextSteps.splice(index, 1);
+                    return { ...prev, steps: nextSteps.length > 0 ? nextSteps : [{ title: '', body: '' }] };
+                  })
+                }
+              >
+                Ta bort
+              </button>
+            </div>
+            <input
+              className="recipe-quick-edit__input"
+              value={step.title ?? ''}
+              onChange={(event) =>
+                updateDraftRecipe((prev) => {
+                  const nextSteps = [...(prev.steps ?? [])];
+                  nextSteps[index] = { ...nextSteps[index], title: event.target.value };
+                  return { ...prev, steps: nextSteps };
+                })
+              }
+              placeholder="Stegrubrik (valfri)"
+            />
+            <textarea
+              className="recipe-quick-edit__textarea"
+              value={step.body}
+              onChange={(event) =>
+                updateDraftRecipe((prev) => {
+                  const nextSteps = [...(prev.steps ?? [])];
+                  nextSteps[index] = { ...nextSteps[index], body: event.target.value };
+                  return { ...prev, steps: nextSteps };
+                })
+              }
+              placeholder="Instruktion"
+              rows={4}
+            />
+          </div>
+        ))}
+        <button
+          type="button"
+          className="recipe-quick-edit__add"
+          onClick={() =>
+            updateDraftRecipe((prev) => ({
+              ...prev,
+              steps: [...(prev.steps ?? []), { title: '', body: '' }],
+            }))
+          }
+        >
+          + Lägg till steg
+        </button>
+      </div>
+    );
+  };
 
   const heroStyle = {
     '--recipe-hero-image': `url(${heroImage})`,
@@ -276,19 +520,32 @@ export function RecipeMobile({ slug, initialRecipe }: Props) {
     );
   }
 
+  const currentRecipe = displayRecipe ?? liveRecipe;
+
   return (
     <div className="recipe-shell" style={heroStyle}>
       <div className="recipe-mobile-only recipe-mobile-simple">
         <div className="recipe-cover__media2">
-        <Image src={heroImage} alt={liveRecipe.title} fill sizes="100vw" priority className="recipe-cover__image-background"/>
-        <section className="recipe-cover">
-          <div className="recipe-cover__media">
-            <Image src={heroImage} alt={liveRecipe.title} fill sizes="100vw" priority className="recipe-cover__image" />
+          <Image src={heroImage} alt={currentRecipe.title} fill sizes="100vw" priority className="recipe-cover__image-background" />
+          <section className="recipe-cover">
+            <div className="recipe-cover__media">
+              <Image src={heroImage} alt={currentRecipe.title} fill sizes="100vw" priority className="recipe-cover__image" />
             </div>
             <div className="recipe-cover__overlay">
               <button type="button" className="back-button back-button--mobile-icon" onClick={handleBack} aria-label="Tillbaka">
                 <i className="fa-solid fa-arrow-left" aria-hidden="true" />
               </button>
+              {!isQuickEditing ? (
+                <button
+                  type="button"
+                  className="recipe-edit-button recipe-edit-button--mobile"
+                  onClick={handleStartQuickEdit}
+                  aria-label="Redigera recept"
+                  title="Redigera recept"
+                >
+                  <i className="fa-solid fa-pen-to-square" aria-hidden="true" />
+                </button>
+              ) : null}
               <button
                 type="button"
                 className="recipe-share-button recipe-share-button--mobile"
@@ -312,104 +569,173 @@ export function RecipeMobile({ slug, initialRecipe }: Props) {
                     ),
                   )}
                 </div>
-                {shareStatus && <div className="recipe-share-feedback recipe-share-feedback--mobile">{shareStatus}</div>}
+                {shareStatus ? <div className="recipe-share-feedback recipe-share-feedback--mobile">{shareStatus}</div> : null}
+                {editStatus ? <div className="recipe-share-feedback recipe-share-feedback--mobile">{editStatus}</div> : null}
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
 
-        <section className="recipe-mobile-main">
-          <div className="recipe-mobile-content">
-            {activeView === 'ingredients' ? (
-              <div className="recipe-panel">
-                {ingredientGroups.map((group, groupIndex) => (
-                  <div key={group.title ?? groupIndex} className="recipe-block">
-                    <div className="recipe-block__title">{group.title ?? 'Ingredienser'}</div>
-                    <ul className="checklist" aria-label={`${group.title ?? 'Ingredienser'}`}>
-                      {group.items.map((item, itemIndex) => {
-                        const id = getIngredientKey(groupIndex, item, itemIndex);
-                        const isChecked = Boolean(checkedIngredients[id]);
-                        const amount = item.amount?.trim();
+          <section className={isQuickEditing ? 'recipe-mobile-main recipe-mobile-main--editing' : 'recipe-mobile-main'}>
+            <div className="recipe-mobile-content">
+              {isQuickEditing && draftRecipe ? (
+                <div className="recipe-quick-edit">
+                  <div className="recipe-quick-edit__meta">
+                    <label className="recipe-quick-edit__field">
+                      <span>Rubrik</span>
+                      <input
+                        className="recipe-quick-edit__input"
+                        value={draftRecipe.title}
+                        onChange={(event) =>
+                          updateDraftRecipe((prev) => ({
+                            ...prev,
+                            title: event.target.value,
+                          }))
+                        }
+                        placeholder="Rubrik"
+                      />
+                    </label>
+                    <label className="recipe-quick-edit__field">
+                      <span>Bild</span>
+                      <input
+                        className="recipe-quick-edit__input"
+                        value={draftRecipe.imageUrl}
+                        onChange={(event) =>
+                          updateDraftRecipe((prev) => ({
+                            ...prev,
+                            imageUrl: event.target.value,
+                          }))
+                        }
+                        placeholder="Bild-URL"
+                      />
+                    </label>
+                  </div>
+                  <div className="recipe-toggle-mobile" role="tablist" aria-label="Redigera innehåll">
+                    <span className={`recipe-toggle-mobile__bg ${activeView === 'ingredients' ? 'is-left' : 'is-right'}`} aria-hidden="true">
+                      <span
+                        className={`recipe-toggle-mobile__bg-inner ${toggleDirection === 'right' ? 'wobble-right' : 'wobble-left'}`}
+                      />
+                    </span>
+                    <button
+                      className={activeView === 'ingredients' ? 'recipe-toggle-mobile__tab is-active' : 'recipe-toggle-mobile__tab'}
+                      onClick={() => setActiveView('ingredients')}
+                      role="tab"
+                      aria-selected={activeView === 'ingredients'}
+                      type="button"
+                    >
+                      Ingredienser
+                    </button>
+                    <button
+                      className={activeView === 'steps' ? 'recipe-toggle-mobile__tab is-active' : 'recipe-toggle-mobile__tab'}
+                      onClick={() => setActiveView('steps')}
+                      role="tab"
+                      aria-selected={activeView === 'steps'}
+                      type="button"
+                    >
+                      Gör så här
+                    </button>
+                  </div>
+                  {activeView === 'ingredients' ? renderQuickEditIngredients() : renderQuickEditSteps()}
+                </div>
+              ) : activeView === 'ingredients' ? (
+                <div className="recipe-panel">
+                  {ingredientGroups.map((group, groupIndex) => (
+                    <div key={group.title ?? groupIndex} className="recipe-block">
+                      <div className="recipe-block__title">{group.title ?? 'Ingredienser'}</div>
+                      <ul className="checklist" aria-label={`${group.title ?? 'Ingredienser'}`}>
+                        {group.items.map((item, itemIndex) => {
+                          const id = getIngredientKey(groupIndex, item, itemIndex);
+                          const isChecked = Boolean(checkedIngredients[id]);
+                          const amount = item.amount?.trim();
+                          return (
+                            <li key={id} className={isChecked ? 'checklist__item is-checked' : 'checklist__item'}>
+                              <label className="checklist__row">
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={() => toggleIngredient(id)}
+                                  aria-label={item.label}
+                                />
+                                <div className="checklist__text">
+                                  <div className="checklist__line">
+                                    <span className="checklist__label">{item.label}</span>
+                                    {amount && <span className="checklist__amount">{amount}</span>}
+                                  </div>
+                                </div>
+                              </label>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="recipe-panel">
+                  <div className="recipe-block">
+                    <div className="recipe-block__title">Gör så här</div>
+                    <ol className="checklist" aria-label="Gör så här">
+                      {currentRecipe.steps.map((step, index) => {
+                        const isChecked = Boolean(checkedSteps[index]);
+                        const displayTitle = getRecipeStepLabel(step, index);
                         return (
-                          <li key={id} className={isChecked ? 'checklist__item is-checked' : 'checklist__item'}>
+                          <li key={index} className={isChecked ? 'checklist__item is-checked' : 'checklist__item'}>
                             <label className="checklist__row">
                               <input
                                 type="checkbox"
                                 checked={isChecked}
-                                onChange={() => toggleIngredient(id)}
-                                aria-label={item.label}
+                                onChange={() => toggleStep(index)}
+                                aria-label={displayTitle}
                               />
                               <div className="checklist__text">
-                                <div className="checklist__line">
-                                  <span className="checklist__label">{item.label}</span>
-                                  {amount && <span className="checklist__amount">{amount}</span>}
-                                </div>
+                                <span className="checklist__label">{displayTitle}</span>
+                                <span className="checklist__meta">{step.body}</span>
                               </div>
                             </label>
                           </li>
                         );
                       })}
-                    </ul>
+                    </ol>
                   </div>
-                ))}
+                </div>
+              )}
+            </div>
+            {isQuickEditing ? (
+              <div className="recipe-quick-edit__actions">
+                <button type="button" className="recipe-quick-edit__cancel" onClick={handleCancelQuickEdit}>
+                  Avbryt
+                </button>
+                <button type="button" className="recipe-quick-edit__save" onClick={handleSaveQuickEdit} disabled={isSavingEdit}>
+                  {isSavingEdit ? 'Sparar…' : 'Spara'}
+                </button>
               </div>
             ) : (
-              <div className="recipe-panel">
-                <div className="recipe-block">
-                  <div className="recipe-block__title">Gör så här</div>
-                  <ol className="checklist" aria-label="Gör så här">
-                    {liveRecipe.steps.map((step, index) => {
-                      const isChecked = Boolean(checkedSteps[index]);
-                      const fallback = `Steg ${index + 1}`;
-                      const customTitle = step.title?.trim();
-                      const displayTitle = customTitle && customTitle.length > 0 ? customTitle : fallback;
-                      return (
-                        <li key={index} className={isChecked ? 'checklist__item is-checked' : 'checklist__item'}>
-                          <label className="checklist__row">
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={() => toggleStep(index)}
-                              aria-label={displayTitle}
-                            />
-                            <div className="checklist__text">
-                              <span className="checklist__label">{displayTitle}</span>
-                              <span className="checklist__meta">{step.body}</span>
-                            </div>
-                          </label>
-                        </li>
-                      );
-                    })}
-                  </ol>
-                </div>
+              <div className="recipe-toggle-mobile recipe-toggle-mobile--floating" role="tablist" aria-label="Visa innehåll">
+                <span className={`recipe-toggle-mobile__bg ${activeView === 'ingredients' ? 'is-left' : 'is-right'}`} aria-hidden="true">
+                  <span
+                    className={`recipe-toggle-mobile__bg-inner ${toggleDirection === 'right' ? 'wobble-right' : 'wobble-left'}`}
+                  />
+                </span>
+                <button
+                  className={activeView === 'ingredients' ? 'recipe-toggle-mobile__tab is-active' : 'recipe-toggle-mobile__tab'}
+                  onClick={() => setActiveView('ingredients')}
+                  role="tab"
+                  aria-selected={activeView === 'ingredients'}
+                  type="button"
+                >
+                  Ingredienser
+                </button>
+                <button
+                  className={activeView === 'steps' ? 'recipe-toggle-mobile__tab is-active' : 'recipe-toggle-mobile__tab'}
+                  onClick={() => setActiveView('steps')}
+                  role="tab"
+                  aria-selected={activeView === 'steps'}
+                  type="button"
+                >
+                  Gör så här
+                </button>
               </div>
             )}
-          </div>
-          <div className="recipe-toggle-mobile recipe-toggle-mobile--floating" role="tablist" aria-label="Visa innehåll">
-            <span className={`recipe-toggle-mobile__bg ${activeView === 'ingredients' ? 'is-left' : 'is-right'}`} aria-hidden="true">
-              <span
-                className={`recipe-toggle-mobile__bg-inner ${toggleDirection === 'right' ? 'wobble-right' : 'wobble-left'}`}
-              />
-            </span>
-            <button
-              className={activeView === 'ingredients' ? 'recipe-toggle-mobile__tab is-active' : 'recipe-toggle-mobile__tab'}
-              onClick={() => setActiveView('ingredients')}
-              role="tab"
-              aria-selected={activeView === 'ingredients'}
-              type="button"
-            >
-              Ingredienser
-            </button>
-            <button
-              className={activeView === 'steps' ? 'recipe-toggle-mobile__tab is-active' : 'recipe-toggle-mobile__tab'}
-              onClick={() => setActiveView('steps')}
-              role="tab"
-              aria-selected={activeView === 'steps'}
-              type="button"
-            >
-              Gör så här
-            </button>
-          </div>
-        </section>
+          </section>
         </div>
       </div>
 
@@ -496,8 +822,7 @@ export function RecipeMobile({ slug, initialRecipe }: Props) {
                     <ol className="recipe-desktop-steps__list">
                       {liveRecipe.steps.map((step, index) => {
                         const isChecked = Boolean(checkedSteps[index]);
-                        const customTitle = step.title?.trim();
-                        const displayLabel = customTitle && customTitle.length > 0 ? customTitle : `Steg ${index + 1}`;
+                        const displayLabel = getRecipeStepLabel(step, index);
                         return (
                           <li
                             key={index}

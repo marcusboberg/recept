@@ -8,11 +8,13 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
+    "test:recipe-presentation": "node --loader ts-node/esm scripts/test-recipe-presentation.ts",
     "typecheck": "tsc --pretty --noEmit",
     "typecheck:worker": "npm run --prefix wordpress-proxy typecheck",
     "check": "npm run lint && npm run typecheck && npm run typecheck:worker",
     "validate": "node --loader ts-node/esm scripts/validate-recipes.ts",
-    "validate:recipes": "node --loader ts-node/esm scripts/validate-recipes.ts"
+    "validate:recipes": "node --loader ts-node/esm scripts/validate-recipes.ts",
+    "backup:recipes": "node --loader ts-node/esm scripts/export-firestore-recipes.ts"
   },
   "dependencies": {
     "@awesome.me/kit-212dd48cdb": "^1.0.10",
@@ -23,6 +25,9 @@
     "@fontsource/fraunces": "^5.2.9",
     "@fontsource/momo-trust-display": "^5.2.1",
     "@fontsource/montserrat-alternates": "^5.2.8",
+    "@mantine/core": "^8.3.0",
+    "@mantine/hooks": "^8.3.0",
+    "@mantine/notifications": "^8.3.0",
     "@monaco-editor/react": "^4.6.0",
     "firebase": "^10.14.1",
     "monaco-editor": "^0.55.1",

@@ -1,46 +1,14 @@
-import path from 'path';
-import { promises as fs } from 'fs';
 import { ImageResponse } from 'next/og';
 import type { NextRequest } from 'next/server';
+import { resolveShareRecipeWithSlug } from '@/lib/firebaseServer';
 
-export const dynamic = 'force-static';
+export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 export const runtime = 'nodejs';
 
-type RecipeFile = {
-  title: string;
-  description?: string;
-  imageUrl?: string;
-  slug: string;
-};
-
-async function loadRecipe(slug: string): Promise<RecipeFile | null> {
-  const filePath = path.join(process.cwd(), 'data', 'recipes', `${slug}.json`);
-  try {
-    const raw = await fs.readFile(filePath, 'utf8');
-    return JSON.parse(raw) as RecipeFile;
-  } catch (error) {
-    console.error('Failed to load recipe for share card', slug, error);
-    return null;
-  }
-}
-
-export async function generateStaticParams() {
-  const dir = path.join(process.cwd(), 'data', 'recipes');
-  try {
-    const files = await fs.readdir(dir);
-    return files
-      .filter((file) => file.endsWith('.json'))
-      .map((file) => ({ slug: file.replace(/\.json$/, '') }));
-  } catch (error) {
-    console.error('Failed to read recipes for share card params', error);
-    return [];
-  }
-}
-
 export async function GET(_: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const recipe = await loadRecipe(slug);
+  const { recipe } = await resolveShareRecipeWithSlug(slug);
   if (!recipe) {
     return new Response('Recipe not found', { status: 404 });
   }

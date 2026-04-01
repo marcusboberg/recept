@@ -20,23 +20,16 @@ export function recipeToJson(recipe: Recipe): string {
   return JSON.stringify(normalizeCategories(recipe), null, 2);
 }
 
-export function summarizeRecipe(recipe: Recipe): string {
-  const totalTime = recipe.prepTimeMinutes + recipe.cookTimeMinutes;
-  return `${recipe.servings} servings • ${totalTime} mins total`;
-}
-
-export function matchQuery(recipe: Recipe, query: string, activeTags: string[], categorySlug?: string): boolean {
+export function matchQuery(recipe: Recipe, query: string, categorySlug?: string): boolean {
   const search = query.toLowerCase();
   const categorySlugs = (recipe.categories ?? []).map(toCategorySlug);
   const matchesText = [
     recipe.title,
     recipe.description,
-    recipe.tags.join(' '),
     (recipe.categories ?? []).join(' '),
   ].some((value) => value.toLowerCase().includes(search));
-  const matchesTags = activeTags.length === 0 || activeTags.every((tag) => recipe.tags.includes(tag));
   const matchesCategory = !categorySlug || categorySlugs.includes(categorySlug);
-  return matchesText && matchesTags && matchesCategory;
+  return matchesText && matchesCategory;
 }
 
 function normalizeCategories(recipe: Recipe): Recipe {

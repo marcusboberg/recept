@@ -23,6 +23,12 @@ npm run dev
 ```
 Make sure the environment variables below are present in `.env.local`.
 
+## Free backups
+- In the studio, authenticated users can click `Ladda ner backup` to download all recipes as a JSON file directly from Firestore.
+- For a file-based local backup, run `npm run backup:recipes`.
+- The script writes a timestamped backup under `backups/firestore-recipes/` with both `all-recipes.json` and one file per recipe.
+- The script requires these extra env vars in your shell: `FIREBASE_EXPORT_EMAIL` and `FIREBASE_EXPORT_PASSWORD`.
+
 ## Images
 Set the `imageUrl` field in the JSON to any publicly reachable image (WordPress CDN, your own hosting, etc.). The current editor does not upload images; it only rewrites `imageUrl` if you paste a different link.
 

@@ -1,6 +1,20 @@
 'use client';
 
 import { FormEvent, useRef, useState } from 'react';
+import {
+  Alert,
+  Button,
+  Divider,
+  Group,
+  Paper,
+  PasswordInput,
+  SegmentedControl,
+  Stack,
+  Text,
+  TextInput,
+  ThemeIcon,
+  Title,
+} from '@mantine/core';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { getFirebaseAuth } from '@/lib/firebaseClient';
 
@@ -20,6 +34,13 @@ const DEFAULT_QUICK_ACCOUNTS: QuickAccount[] = [
   { id: 'philip', label: 'Philip', value: 'philip.ottosson@gmail.com' },
   { id: 'marcus', label: 'Marcus', value: 'marcusboberg@icloud.com' },
 ];
+
+const loginSegmentedClassNames = {
+  root: 'studio-segmented-root',
+  indicator: 'studio-segmented-indicator',
+  label: 'studio-segmented-label',
+  innerLabel: 'studio-segmented-inner-label',
+} as const;
 
 export function StudioLoginCard({
   status,
@@ -66,91 +87,85 @@ export function StudioLoginCard({
 
   return (
     <div className="new-recipe-locked">
-      <div className="workspace-card login-card">
-        <div className="login-grid">
-          <div className="login-pane">
-            <div className="login-header">
-              <h3 className="card-title">{title}</h3>
-              <p className="card-subtitle" style={{ marginBottom: 0 }}>
+      <Paper shadow="lg" radius="xl" withBorder p="xl" maw={720} mx="auto" w="100%">
+        <Stack gap="lg">
+          <Group gap="sm">
+            <ThemeIcon radius="xl" size="lg" color="studioBlue">
+              <i className="fa-solid fa-lock" aria-hidden="true"></i>
+            </ThemeIcon>
+            <div>
+              <Title order={3}>{title}</Title>
+              <Text c="dimmed" size="sm">
                 {subtitle}
-              </p>
+              </Text>
             </div>
-            {status === 'loading' ? (
-              <p className="text-sm text-muted" style={{ margin: 0 }}>Kontrollerar behörighet…</p>
-            ) : (
-              <form className="new-recipe-auth login-form" onSubmit={handleLogin}>
-                <div className="login-block login-block--quick">
-                  <div className="login-toggle" role="tablist" aria-label="Snabbinloggning">
-                    {quickAccounts.map((account) => (
-                      <button
-                        key={account.id}
-                        type="button"
-                        role="tab"
-                        aria-selected={activeQuick === account.id}
-                        className={activeQuick === account.id ? 'login-toggle__item is-active' : 'login-toggle__item'}
-                        onClick={() => handleSelectQuick(account.id)}
-                      >
-                        {account.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="login-block login-block--fields">
-                  <label className="space-y-1" style={{ width: '100%' }}>
-                    <span className="text-sm text-muted">Lösenord</span>
-                    <input
-                      className="input"
-                      type="password"
-                      value={password}
-                      onChange={(event) => setPassword(event.target.value)}
-                      required
-                    />
-                  </label>
-                </div>
-                <button type="submit" className="button-primary login-submit" disabled={authSubmitting}>
+          </Group>
+
+          {status === 'loading' ? (
+            <Text c="dimmed" size="sm">
+              Kontrollerar behörighet…
+            </Text>
+          ) : (
+            <form onSubmit={handleLogin}>
+              <Stack gap="md">
+                <SegmentedControl
+                  fullWidth
+                  value={activeQuick}
+                  onChange={handleSelectQuick}
+                  data={quickAccounts.map((account) => ({ label: account.label, value: account.id }))}
+                  classNames={loginSegmentedClassNames}
+                />
+
+                <PasswordInput
+                  label="Lösenord"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  required
+                />
+
+                <Button type="submit" color="studioBlue" loading={authSubmitting}>
                   {authSubmitting ? 'Loggar in…' : 'Logga in'}
-                </button>
-                {authError && (
-                  <p className="text-sm" style={{ color: '#b91c1c', margin: 0 }}>
+                </Button>
+
+                {authError ? (
+                  <Alert color="red" variant="light">
                     {authError}
-                  </p>
-                )}
-                <div className="login-divider">
-                  <span>eller</span>
-                </div>
+                  </Alert>
+                ) : null}
+
+                <Divider label="eller" labelPosition="center" />
+
                 {showCustomEmail ? (
-                  <div className="login-block login-block--custom">
-                    <label className="space-y-1" style={{ width: '100%' }}>
-                      <span className="text-sm text-muted">Annan e-postadress</span>
-                      <input
-                        className="input"
-                        type="email"
-                        value={email}
-                        onChange={(event) => setEmail(event.target.value)}
-                        required
-                        ref={emailInputRef}
-                      />
-                    </label>
-                    <div className="login-secondary">
-                      <button
-                        type="button"
-                        className="nav-action login-back"
-                        onClick={() => {
-                          handleSelectQuick(quickAccounts[0]?.id ?? 'primary');
-                          setShowCustomEmail(false);
-                        }}
-                      >
-                        <i className="fa-solid fa-xmark" aria-hidden="true"></i>
-                        <span>Avbryt annan adress</span>
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="login-secondary">
-                    <p className="text-sm text-muted" style={{ margin: 0 }}>Behöver du en annan e-postadress?</p>
-                    <button
+                  <Stack gap="sm">
+                    <TextInput
+                      label="Annan e-postadress"
+                      type="email"
+                      value={email}
+                      onChange={(event) => setEmail(event.target.value)}
+                      required
+                      ref={emailInputRef}
+                    />
+                    <Button
                       type="button"
-                      className="nav-action login-secondary__link"
+                      variant="light"
+                      color="gray"
+                      onClick={() => {
+                        handleSelectQuick(quickAccounts[0]?.id ?? 'primary');
+                        setShowCustomEmail(false);
+                      }}
+                    >
+                      Avbryt annan adress
+                    </Button>
+                  </Stack>
+                ) : (
+                  <Stack gap="xs">
+                    <Text size="sm" c="dimmed">
+                      Behöver du en annan e-postadress?
+                    </Text>
+                    <Button
+                      type="button"
+                      variant="subtle"
+                      color="studioBlue"
                       onClick={() => {
                         setShowCustomEmail(true);
                         setActiveQuick('custom');
@@ -159,27 +174,23 @@ export function StudioLoginCard({
                         setTimeout(() => emailInputRef.current?.focus(), 0);
                       }}
                     >
-                      <i className="fa-solid fa-envelope" aria-hidden="true"></i>
-                      <span>Annan e-postadress</span>
-                    </button>
-                  </div>
+                      Annan e-postadress
+                    </Button>
+                  </Stack>
                 )}
-                {onBack && (
-                  <div className="new-recipe-footer__actions login-footer" style={{ alignItems: 'center' }}>
-                    <button type="button" className="nav-action login-back" onClick={onBack}>
-                      <i className="fa-solid fa-right-left" aria-hidden="true"></i>
-                      <span>Tillbaka</span>
-                    </button>
-                  </div>
-                )}
-              </form>
-            )}
-          </div>
-          <div className="login-visual" aria-hidden="true">
-            <div className="login-visual__blur"></div>
-          </div>
-        </div>
-      </div>
+
+                {onBack ? (
+                  <Group justify="center">
+                    <Button type="button" variant="subtle" color="gray" onClick={onBack}>
+                      Tillbaka
+                    </Button>
+                  </Group>
+                ) : null}
+              </Stack>
+            </form>
+          )}
+        </Stack>
+      </Paper>
     </div>
   );
 }

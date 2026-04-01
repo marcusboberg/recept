@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { Alert, Button, Code, Group, Paper, Stack, Text, Textarea } from '@mantine/core';
+import { StudioSectionCard } from './StudioSectionCard';
 
 interface Props {
   prompt: string;
@@ -50,103 +52,99 @@ export function ChatPromptCard({ prompt, className, title, subtitle, defaultOpen
   };
 
   return (
-    <div className={`card space-y-3 studio-card ${className ?? ''}`}>
-      <div className="wizard-row">
-        <div className="wizard-step-content" style={{ gridColumn: '1 / -1' }}>
-          <textarea
+    <StudioSectionCard
+      className={className}
+      iconClass="fa-solid fa-sparkles"
+      title={title ?? 'ChatGPT-flöde'}
+      description={subtitle ?? 'Klistra in fritexten, kopiera prompten och gå sedan vidare till preview eller JSON.'}
+    >
+      <Stack gap="lg">
+        <Stack gap="xs">
+          <Text size="sm" fw={700} c="dimmed" tt="uppercase" style={{ letterSpacing: '0.08em' }}>
+            1. Recepttext
+          </Text>
+          <Textarea
             rows={7}
             value={customText}
             onChange={(event) => setCustomText(event.target.value)}
             placeholder="Klistra in hela receptet här. När du kopierar prompten följer texten med."
-            style={{ minHeight: '200px', fontSize: '1rem' }}
+            styles={{ input: { minHeight: 220, fontSize: '1rem' } }}
           />
-        </div>
-      </div>
+        </Stack>
 
-      <div className="wizard-row wizard-row--prompt">
-        <div className="wizard-step-content" style={{ gridColumn: '1 / -1' }}>
+        <Stack gap="xs">
+          <Group justify="space-between" align="center">
+            <Text size="sm" fw={700} c="dimmed" tt="uppercase" style={{ letterSpacing: '0.08em' }}>
+              2. Prompt
+            </Text>
+            <Button type="button" variant="subtle" color="studioBlue" onClick={() => setIsOpen((prev) => !prev)}>
+              {isOpen ? 'Dölj prompt' : 'Visa prompt'}
+            </Button>
+          </Group>
           {isOpen && (
-            <pre
-              className="code-block"
-              style={{
-                whiteSpace: 'pre-wrap',
-                maxHeight: '260px',
-                fontSize: '0.9rem',
-                borderRadius: '16px',
-                marginTop: '0.75rem',
+            <Paper withBorder radius="lg" p="md">
+              <Text component="pre" size="sm" style={{ whiteSpace: 'pre-wrap', maxHeight: 260, overflow: 'auto', margin: 0 }}>
+                {prompt}
+              </Text>
+            </Paper>
+          )}
+        </Stack>
+
+        <Group justify="space-between" align="flex-start" gap="md">
+          <Group gap="sm">
+            <Button type="button" color="studioBlue" radius="xl" onClick={copyPrompt}>
+              Kopiera prompt
+            </Button>
+            <Button
+              type="button"
+              variant="light"
+              color="gray"
+              radius="xl"
+              onClick={() => {
+                setShowHint(true);
+                try {
+                  window.open('https://chatgpt.com', '_blank');
+                } catch {
+                  // ignore if blocked
+                }
               }}
             >
-              {prompt}
-            </pre>
-          )}
+              Öppna ChatGPT
+            </Button>
+          </Group>
+          {message ? (
+            <Text size="sm" c={isError ? 'red' : 'dimmed'}>
+              {message}
+            </Text>
+          ) : null}
+        </Group>
 
-          <div
-            className="flex"
-            style={{
-              gap: '0.5rem',
-              flexWrap: 'wrap',
-              alignItems: 'center',
-              marginTop: '0.75rem',
-              justifyContent: 'space-between',
-            }}
+        {showHint ? (
+          <Alert
+            color="studioBlue"
+            variant="light"
+            title="Nästa steg"
+            withCloseButton
+            onClose={() => setShowHint(false)}
           >
-            <div className="flex" style={{ gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-              <button type="button" className="button-primary" onClick={copyPrompt}>
-                Kopiera prompt
-              </button>
-              <button
-                type="button"
-                className="button-ghost"
-                onClick={() => {
-                  setShowHint(true);
-                  try {
-                    window.open('https://chatgpt.com', '_blank');
-                  } catch {
-                    // ignore if blocked
-                  }
-                }}
-              >
-                Öppna ChatGPT
-              </button>
-            </div>
-            <div className="flex" style={{ gap: '0.5rem', alignItems: 'center' }}>
-              <button type="button" className="button-ghost" onClick={() => setIsOpen((prev) => !prev)}>
-                {isOpen ? 'Dölj prompt' : 'Visa prompt'}
-              </button>
-              {message && (
-                <span className="text-sm" style={{ color: isError ? '#b91c1c' : 'inherit' }}>
-                  {message}
-                </span>
-              )}
-            </div>
-          </div>
+            <Text size="sm">Klistra in prompt + text i ChatGPT och kom sedan tillbaka med JSON-resultatet.</Text>
+          </Alert>
+        ) : null}
 
-          {showHint && (
-            <div
-              className="chatgpt-hint"
-              style={{
-                marginTop: '0.75rem',
-                padding: '0.8rem 1rem',
-                borderRadius: '12px',
-                border: '1px solid rgba(148, 163, 184, 0.35)',
-                background: '#f8fafc',
-                color: '#0f172a',
-                display: 'flex',
-                justifyContent: 'space-between',
-                gap: '0.75rem',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-              }}
-            >
-              <span className="text-sm">Klistra in prompt + text i ChatGPT.</span>
-              <button type="button" className="button-ghost" onClick={() => setShowHint(false)}>
-                Stäng
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-
-    </div>
+        <Paper withBorder radius="lg" p="md">
+          <Stack gap={6}>
+            <Text size="sm" fw={700}>
+              Snabbguide
+            </Text>
+            <Text size="sm" c="dimmed">
+              1. Klistra in recepttexten. 2. Kopiera prompten. 3. Kör den i ChatGPT. 4. Klistra in JSON i preview eller JSON-vyn.
+            </Text>
+            <Text size="sm" c="dimmed">
+              Prompten skickar med din text automatiskt om fältet ovan är ifyllt.
+            </Text>
+          </Stack>
+        </Paper>
+      </Stack>
+    </StudioSectionCard>
   );
 }

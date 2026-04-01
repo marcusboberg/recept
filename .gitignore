@@ -6,3 +6,7 @@ out
 .env.production
 npm-debug.log
 .DS_Store
+backups
+*.log
+.playwright-cli/page-2026-04-01T16-59-18-956Z.yml
+/.playwright-cli

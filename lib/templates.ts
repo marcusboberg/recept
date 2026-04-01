@@ -6,7 +6,6 @@ export const emptyRecipe: Recipe = recipeSchema.parse({
   titleSuffix: '',
   slug: 'new-recipe-slug',
   description: 'Describe the dish in one or two sentences.',
-  tags: ['quick', 'weekday'],
   categoryPlace: 'Sverige',
   categoryBase: 'Kyckling',
   categoryType: 'Gryta',

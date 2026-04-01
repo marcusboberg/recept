@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { Avatar, Button, Code, Divider, Group, List, Paper, Stack, Text, Textarea, ThemeIcon, Title } from '@mantine/core';
 import { onAuthStateChanged, signOut, type User } from 'firebase/auth';
 import { ChatPromptCard } from './ChatPromptCard';
+import { BackupRecipesButton } from './BackupRecipesButton';
 import { EditorShell } from './EditorShell';
 import { WordPressImportCard } from './WordPressImportCard';
 import { IcaImportCard } from './IcaImportCard';
@@ -10,6 +12,9 @@ import { getFirebaseAuth } from '@/lib/firebaseClient';
 import { getUserDisplay } from '@/lib/userDisplay';
 import { StudioSidebar } from './StudioSidebar';
 import { StudioLoginCard } from './StudioLoginCard';
+import { StudioMantineProvider } from './StudioMantineProvider';
+import { StudioPageHeader } from './StudioPageHeader';
+import { StudioSectionCard } from './StudioSectionCard';
 
 interface Props {
   initialJson: string;
@@ -32,24 +37,30 @@ function ManualJsonCard({ onImport }: { onImport: (json: string, title: string) 
   };
 
   return (
-    <div className="workspace-card stack studio-card">
-      <div>
-        <h3 className="card-title">Klistra in JSON</h3>
-        <p className="card-subtitle">Hoppa över importflöden och klistra in JSON direkt.</p>
-      </div>
-      <textarea
-        rows={10}
-        value={value}
-        onChange={(event) => setValue(event.target.value)}
-        placeholder='{ "title": "Ny rätt", ... }'
-      />
-      <div className="flex" style={{ gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-        <button type="button" className="button-primary" onClick={handleLoad}>
-          Ladda i editor
-        </button>
-        {status && <span className="text-sm text-muted">{status}</span>}
-      </div>
-    </div>
+    <StudioSectionCard
+      title="Klistra in JSON"
+      description="Hoppa över importflöden och öppna receptet direkt i editorn."
+      iconClass="fa-solid fa-brackets-curly"
+    >
+      <Stack gap="md">
+        <Textarea
+          rows={10}
+          value={value}
+          onChange={(event) => setValue(event.target.value)}
+          placeholder='{ "title": "Ny rätt", ... }'
+        />
+        <Group gap="sm" align="center">
+          <Button type="button" color="studioBlue" onClick={handleLoad}>
+            Ladda i editor
+          </Button>
+          {status ? (
+            <Text size="sm" c="dimmed">
+              {status}
+            </Text>
+          ) : null}
+        </Group>
+      </Stack>
+    </StudioSectionCard>
   );
 }
 
@@ -129,103 +140,107 @@ export function NewRecipeSection({ initialJson, initialTitle }: Props) {
   const sidebarFooter = (
     <>
       {authStatus === 'loading' && (
-        <div className="new-recipe-auth">
-          <p className="text-sm text-muted" style={{ marginBottom: 0 }}>Kontrollerar behörighet…</p>
-        </div>
+        <Text size="sm" c="dimmed">
+          Kontrollerar behörighet…
+        </Text>
       )}
       {authStatus === 'unauthenticated' && (
-        <div className="new-recipe-auth">
-          <p className="text-sm text-muted" style={{ marginBottom: 0 }}>Logga in i huvudrutan för att låsa upp studion.</p>
-          <button type="button" className="nav-action" onClick={handleBack}>
-            <i className="fa-solid fa-right-left" aria-hidden="true"></i>
-            <span>Tillbaka</span>
-          </button>
-        </div>
+        <Stack gap="sm">
+          <Text size="sm" c="dimmed">
+            Logga in i huvudrutan för att låsa upp studion.
+          </Text>
+          <Button type="button" variant="light" color="gray" onClick={handleBack}>
+            Tillbaka
+          </Button>
+        </Stack>
       )}
       {authStatus === 'authenticated' && (
-        <div className="new-recipe-auth">
-          <div className="new-recipe-profile">
-            <div className="new-recipe-profile__avatar">{profileInitial}</div>
-            <div className="new-recipe-profile__meta">
-              <p>{profileName}</p>
-              <span>{user?.email ?? ''}</span>
+        <Stack gap="md">
+          <Group gap="sm" wrap="nowrap">
+            <Avatar color="studioBlue" radius="xl">
+              {profileInitial}
+            </Avatar>
+            <div>
+              <Text fw={600}>{profileName}</Text>
+              <Text size="sm" c="dimmed">
+                {user?.email ?? ''}
+              </Text>
             </div>
-          </div>
-          <div className="new-recipe-footer__divider" />
-          <div className="new-recipe-footer__actions">
-            <button type="button" className="nav-action" onClick={handleBack}>
-              <i className="fa-solid fa-right-left" aria-hidden="true"></i>
-              <span>Tillbaka</span>
-            </button>
-            <button type="button" className="nav-action" onClick={handleLogout}>
-              <i className="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i>
-              <span>Logga ut</span>
-            </button>
-          </div>
-        </div>
+          </Group>
+          <Divider />
+          <BackupRecipesButton />
+          <Divider />
+          <Group grow>
+            <Button type="button" variant="light" color="gray" onClick={handleBack}>
+              Tillbaka
+            </Button>
+            <Button type="button" variant="subtle" color="red" onClick={handleLogout}>
+              Logga ut
+            </Button>
+          </Group>
+        </Stack>
       )}
     </>
   );
 
   return (
-    <div className="new-recipe-shell">
-      <StudioSidebar
-        title="Ny rätt"
-        navSections={navSections}
-        activeId={activeView}
-        onSelect={(id) => setActiveView(id as ImportView)}
-        footer={sidebarFooter}
-      />
-      <div className={contentClass}>
-        {!isAuthenticated && (
-          <StudioLoginCard status={authStatus} onBack={handleBack} />
-        )}
-        {isAuthenticated && (
-          <>
+    <StudioMantineProvider>
+      <div className="new-recipe-shell">
+        <StudioSidebar
+          title="Ny rätt"
+          navSections={navSections}
+          activeId={activeView}
+          onSelect={(id) => setActiveView(id as ImportView)}
+          footer={sidebarFooter}
+        />
+        <div className={contentClass}>
+          {!isAuthenticated && <StudioLoginCard status={authStatus} onBack={handleBack} />}
+          {isAuthenticated && (
+            <>
             {activeView === 'wordpress' && (
               <section className="new-recipe-workspace">
-                <header className="workspace-hero">
-                  <p className="eyebrow">WordPress-import</p>
-                  <h2>Klistra in länken, vi hämtar HTML och bygger JSON.</h2>
-                  <p>
-                    Skriv in en offentlig WordPress-URL så hämtar vi källkoden, tolkar checklistor och flikar och fyller editorn automatiskt.
-                    Dubbelkolla alltid tider och portioner i preview-läget.
-                  </p>
-                </header>
+                <StudioPageHeader
+                  eyebrow="WordPress"
+                  iconClass="fa-brands fa-wordpress"
+                  badge="Automatisk import"
+                  title="Klistra in länken och låt studion bygga receptet."
+                  description="Använd den här vyn när receptet redan finns på recept.marcusboberg.se. Flödet är gjort för att få dig till editorn snabbt med så lite manuellt arbete som möjligt."
+                />
                 <div className="workspace-single">
-                  <WordPressImportCard onImport={handleImport} className="workspace-card stack studio-card" />
+                  <WordPressImportCard onImport={handleImport} />
                 </div>
               </section>
             )}
 
             {activeView === 'ica' && (
               <section className="new-recipe-workspace">
-                <header className="workspace-hero">
-                  <p className="eyebrow">ICA.se-import</p>
-                  <h2>Klistra in ICA-länken, vi läser JSON-LD och bygger receptet.</h2>
-                  <p>
-                    Vi hämtar schema.org/Recipe direkt från sidan och fyller editorn. Dubbelkolla tider och
-                    kategorier i preview-läget.
-                  </p>
-                </header>
+                <StudioPageHeader
+                  eyebrow="ICA.se"
+                  iconClass="fa-solid fa-cart-shopping"
+                  badge="JSON-LD import"
+                  title="Låt ICA-data bli ett redigerbart recept."
+                  description="När ett recept finns på ica.se kan vi läsa dess strukturerade metadata, mappa om det till ert format och öppna det direkt i studion."
+                />
                 <div className="workspace-single">
-                  <IcaImportCard onImport={handleImport} className="workspace-card stack studio-card" />
+                  <IcaImportCard onImport={handleImport} />
                 </div>
               </section>
             )}
 
             {activeView === 'chatgpt' && (
               <section className="new-recipe-workspace">
-                <header className="workspace-hero workspace-hero--left chatgpt-hero">
-                  <p className="eyebrow">ChatGPT</p>
-                  <h2>Klistra in texten och kopiera prompten.</h2>
-                  <p>Kopiera prompt + text till GPT, hämta JSON och klistra in i preview.</p>
-                </header>
-                <div className="workspace-single">
+                <StudioPageHeader
+                  eyebrow="ChatGPT"
+                  iconClass="fa-solid fa-sparkles"
+                  badge="Halvautomatisk"
+                  title="Förvandla fritext till recept-JSON."
+                  description="Det här läget passar när du bara har rå text, anteckningar eller ett recept från en källa vi inte importerar direkt. Studion hjälper dig att paketera rätt prompt och sedan fortsätter du i editorn."
+                />
+                <div className="workspace-grid">
                   <ChatPromptCard
-                    className="workspace-card stack studio-card chatgpt-card"
                     defaultOpen={false}
-                    title="Kopiera prompten"
+                    title="Skicka till ChatGPT"
+                    subtitle="Studion ger dig en färdig prompt och tar dig sedan vidare till preview när du har JSON-svaret."
                     prompt={`Du är en formatkonverterare som tar ett recept i fritext och svarar med exakt JSON för webbplatsen Recept. Svara ALLTID med ett enda kodblock \`\`\`json ... \`\`\` (inga kommentarer, ingen extra text).
 
 1) Läs texten och hämta titel, beskrivning, tider, portioner, ingredienser (ev. grupper) och steg.
@@ -239,7 +254,6 @@ export function NewRecipeSection({ initialJson, initialTitle }: Props) {
   "categoryBase": "",
   "categoryType": "",
   "categories": [],
-  "tags": [],
   "prepTimeMinutes": 0,
   "cookTimeMinutes": 0,
   "servings": 0,
@@ -255,7 +269,6 @@ Regler:
 - Behåll svensk stavning/diakritik i text (endast raka ASCII-citattecken runt nycklar/värden).
 - "slug" = kebab-case av titeln (endast a-z, 0-9, bindestreck). Konvertera å/ä/ö → a, övriga accenter till närmaste ASCII.
 - "categoryPlace" (plats), "categoryBase" (basvara), "categoryType" (typ) måste alltid fyllas. Lägg även in dem i "categories" + ev. extra etiketter.
-- "tags": 3–5 korta etiketter.
 - Tider: heltal minuter, sätt 0 om saknas.
 - "servings": heltal >= 1. Om okänt, sätt 4.
 - "ingredients": alltid minst ett objekt. Lämna bort fält som saknas (ingen tom sträng).
@@ -265,33 +278,74 @@ Regler:
 - "createdAt"/"updatedAt": ISO 8601 i UTC (t.ex. 2024-01-05T12:00:00.000Z). Använd dagens datum om inget anges.
 - Svara ENDAST med JSON-objektet, inga kommentarer eller extra tecken.`}
                   />
+                  <StudioSectionCard
+                    title="Vad du får ut"
+                    description="Följ samma flöde varje gång så blir resultatet mer förutsägbart."
+                    iconClass="fa-solid fa-list-check"
+                  >
+                    <List
+                      spacing="sm"
+                      icon={
+                        <ThemeIcon color="studioBlue" size={22} radius="xl" variant="light">
+                          <i className="fa-solid fa-check" aria-hidden="true" />
+                        </ThemeIcon>
+                      }
+                    >
+                      <List.Item>Rätt fältnamn för ert receptschema</List.Item>
+                      <List.Item>Tvingade kategorier, tider och portioner</List.Item>
+                      <List.Item>JSON som kan klistras direkt in i studion</List.Item>
+                    </List>
+                    <Text size="sm" c="dimmed">
+                      Viktigt: om modellen svarar med extra text, be om endast ett JSON-objekt eller ett enda <Code>json</Code>-block.
+                    </Text>
+                  </StudioSectionCard>
                 </div>
               </section>
             )}
 
             {activeView === 'manual' && (
               <section className="new-recipe-workspace">
-                <header className="workspace-hero">
-                  <p className="eyebrow">Manuell JSON</p>
-                  <h2>Pasta in JSON direkt om du redan har den färdig.</h2>
-                  <p>Vi validerar när du sparar, men här kan du snabbtesta strukturen och hoppa direkt till editor.</p>
-                  <div className="workspace-hero__cta">
-                    <button type="button" className="button-ghost" onClick={() => setActiveView('preview')}>
+                <StudioPageHeader
+                  eyebrow="Manuell JSON"
+                  iconClass="fa-solid fa-brackets-curly"
+                  badge="Direktläge"
+                  title="Klistra in färdig JSON och gå vidare."
+                  description="När du redan har receptet i rätt format behöver du inte gå omvägen via importer eller ChatGPT. Det här är det snabbaste sättet in i editorn."
+                  aside={
+                    <Button type="button" variant="light" color="gray" radius="xl" onClick={() => setActiveView('preview')}>
                       Till preview
-                    </button>
-                  </div>
-                </header>
+                    </Button>
+                  }
+                />
                 <div className="workspace-grid">
                   <ManualJsonCard onImport={handleImport} />
-                  <article className="workspace-card stack studio-card">
-                    <h3>Tips</h3>
-                    <ul className="workspace-list">
-                      <li>Fyll alltid i <code>createdAt</code> och <code>updatedAt</code> med ISO-datum.</li>
-                      <li>Glöm inte <code>slug</code> – används i URL:en.</li>
-                      <li>Om du saknar grupper, ta bort hela <code>ingredientGroups</code>-fältet.</li>
-                    </ul>
-                    <p className="text-sm text-muted">Obs! Klicka på preview efter import för att redigera fälten visuellt.</p>
-                  </article>
+                  <StudioSectionCard
+                    title="Tips innan du går vidare"
+                    description="De här tre sakerna sparar flest minuter senare i flödet."
+                    iconClass="fa-solid fa-lightbulb"
+                  >
+                    <List
+                      spacing="sm"
+                      icon={
+                        <ThemeIcon color="studioBlue" size={22} radius="xl" variant="light">
+                          <i className="fa-solid fa-check" aria-hidden="true" />
+                        </ThemeIcon>
+                      }
+                    >
+                      <List.Item>
+                        Fyll alltid i <Code>createdAt</Code> och <Code>updatedAt</Code> med ISO-datum.
+                      </List.Item>
+                      <List.Item>
+                        Glöm inte <Code>slug</Code> eftersom den används i URL:en.
+                      </List.Item>
+                      <List.Item>
+                        Om du saknar grupper, ta bort hela <Code>ingredientGroups</Code>-fältet.
+                      </List.Item>
+                    </List>
+                    <Text size="sm" c="dimmed">
+                      Efter import kan du öppna preview och göra resten visuellt i editorn.
+                    </Text>
+                  </StudioSectionCard>
                 </div>
               </section>
             )}
@@ -307,9 +361,10 @@ Regler:
                 <EditorShell key={`${editorKey}-json`} initialJson={editorPayload.json} initialTitle={editorPayload.title} mode="new" forcedTab="json" />
               </section>
             )}
-          </>
-        )}
+            </>
+          )}
+        </div>
       </div>
-    </div>
+    </StudioMantineProvider>
   );
 }

@@ -1,8 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import { Alert, Badge, Button, Group, List, SimpleGrid, Stack, Text, TextInput, ThemeIcon } from '@mantine/core';
 import { recipeSchema, type Recipe } from '@/schema/recipeSchema';
 import { recipeToJson } from '@/lib/recipes';
+import { useLiveRecipes } from '@/lib/useLiveRecipes';
+import { StudioCategoryField } from './StudioCategoryField';
+import { StudioSectionCard } from './StudioSectionCard';
 
 interface Props {
   onImport: (json: string, title: string) => void;
@@ -11,10 +15,34 @@ interface Props {
 
 export function IcaImportCard({ onImport, className }: Props) {
   const [url, setUrl] = useState('');
+  const [categoryPlace, setCategoryPlace] = useState('');
+  const [categoryBase, setCategoryBase] = useState('');
+  const [categoryType, setCategoryType] = useState('');
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [preview, setPreview] = useState<Recipe | null>(null);
+  const liveRecipes = useLiveRecipes();
+
+  const categoryOptions = (() => {
+    const place = new Set<string>();
+    const base = new Set<string>();
+    const type = new Set<string>();
+    liveRecipes.forEach((recipe) => {
+      const p = recipe.categoryPlace?.trim();
+      const b = recipe.categoryBase?.trim();
+      const t = recipe.categoryType?.trim();
+      if (p) place.add(p);
+      if (b) base.add(b);
+      if (t) type.add(t);
+    });
+    const sortFn = (a: string, b: string) => a.localeCompare(b, 'sv');
+    return {
+      place: Array.from(place).sort(sortFn),
+      base: Array.from(base).sort(sortFn),
+      type: Array.from(type).sort(sortFn),
+    };
+  })();
 
   const handleConvert = async () => {
     setStatus(null);
@@ -22,6 +50,10 @@ export function IcaImportCard({ onImport, className }: Props) {
     const trimmedUrl = url.trim();
     if (!trimmedUrl) {
       setError('Ange en ICA-länk att importera.');
+      return;
+    }
+    if (!categoryPlace.trim() || !categoryBase.trim() || !categoryType.trim()) {
+      setError('Fyll i plats, basvara och typ före import.');
       return;
     }
     const normalizedUrl = /^https?:\/\//i.test(trimmedUrl) ? trimmedUrl : `https://${trimmedUrl}`;
@@ -42,6 +74,11 @@ export function IcaImportCard({ onImport, className }: Props) {
       }
       const html = (payload as { html?: string }).html ?? '';
       const recipe = convertIcaHtml(html, normalizedUrl);
+      const categories = [categoryPlace, categoryBase, categoryType].map((c) => c.trim());
+      recipe.categoryPlace = categories[0];
+      recipe.categoryBase = categories[1];
+      recipe.categoryType = categories[2];
+      recipe.categories = categories;
       const parsed = recipeSchema.parse(recipe);
       const json = recipeToJson(parsed);
       onImport(json, parsed.title);
@@ -56,49 +93,110 @@ export function IcaImportCard({ onImport, className }: Props) {
   };
 
   return (
-    <div className={`card space-y-3 studio-card ${className ?? ''}`} style={{ color: '#0f172a' }}>
-      <div className="space-y-1">
-        <h3 className="card-title">ICA.se-import</h3>
-        <p className="card-subtitle">Klistra in en ICA.se-URL så plockar vi ut JSON-LD (schema.org/Recipe).</p>
-      </div>
-      <label className="stack">
-        <span className="text-sm text-muted">ICA-länk</span>
-        <input
+    <StudioSectionCard
+      className={className}
+      iconClass="fa-solid fa-cart-shopping"
+      title="Importera från ICA.se"
+      description="Klistra in en receptlänk från ICA. Vi plockar ut JSON-LD och förbereder receptet för redigering."
+    >
+      <SimpleGrid cols={{ base: 1, xl: 2 }} spacing="xl">
+        <Stack gap="md">
+          <TextInput
+            label="1. ICA-länk"
           type="url"
-          className="input"
+            radius="md"
           placeholder="https://www.ica.se/recept/bakad-blomkal-med-parmesansas-och-citronpesto-750729/"
           value={url}
-          onChange={(event) => setUrl(event.target.value)}
-        />
-      </label>
-      <div className="flex" style={{ gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-        <button
-          type="button"
-          className="button-primary"
-          onClick={handleConvert}
-          disabled={isProcessing || url.trim().length === 0}
-        >
-          {isProcessing ? 'Analyserar…' : 'Konvertera och fyll editor'}
-        </button>
-        {status && <span className="text-sm">{status}</span>}
-        {error && (
-          <span className="text-sm" style={{ color: '#b91c1c' }}>
-            {error}
-          </span>
-        )}
-      </div>
-      {preview && (
-        <div className="text-sm text-muted">
-          <p style={{ marginBottom: '0.25rem' }}>
-            {preview.title} • {preview.ingredients.length} ingredienser • {preview.steps.length} steg
-          </p>
-          <p style={{ marginBottom: 0 }}>
-            Tags: {preview.tags.length === 0 ? '—' : preview.tags.join(', ')} • Kategorier:{' '}
-            {preview.categories?.length ? preview.categories.join(', ') : '—'}
-          </p>
-        </div>
-      )}
-    </div>
+            onChange={(event) => setUrl(event.currentTarget.value)}
+          />
+          <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
+            <StudioCategoryField
+              label="2. Plats"
+              placeholder="t.ex. Sverige"
+              value={categoryPlace}
+              options={categoryOptions.place}
+              onChange={setCategoryPlace}
+            />
+            <StudioCategoryField
+              label="3. Basvara"
+              placeholder="t.ex. Blomkål"
+              value={categoryBase}
+              options={categoryOptions.base}
+              onChange={setCategoryBase}
+            />
+            <StudioCategoryField
+              label="4. Typ"
+              placeholder="t.ex. Ugnsbakat"
+              value={categoryType}
+              options={categoryOptions.type}
+              onChange={setCategoryType}
+            />
+          </SimpleGrid>
+          <Group gap="sm" align="center">
+            <Button type="button" color="studioBlue" radius="xl" onClick={handleConvert} disabled={isProcessing || url.trim().length === 0} loading={isProcessing}>
+              {isProcessing ? 'Analyserar…' : 'Importera till editorn'}
+            </Button>
+            <Badge variant="light" color="orange" radius="xl">
+              JSON-LD
+            </Badge>
+          </Group>
+          {status ? (
+            <Alert color="studioBlue" variant="light">
+              {status}
+            </Alert>
+          ) : null}
+          {error ? (
+            <Alert color="red" variant="light">
+              {error}
+            </Alert>
+          ) : null}
+        </Stack>
+
+        <Stack gap="md">
+          <Text size="sm" fw={700} c="dimmed" tt="uppercase" style={{ letterSpacing: '0.08em' }}>
+            Vad som händer
+          </Text>
+          <List
+            spacing="sm"
+            icon={
+              <ThemeIcon color="studioBlue" size={22} radius="xl" variant="light">
+                <i className="fa-solid fa-check" aria-hidden="true" />
+              </ThemeIcon>
+            }
+          >
+            <List.Item>Vi läser recipe-data direkt från sidans strukturerade metadata.</List.Item>
+            <List.Item>Tider, portioner, ingredienser och steg fylls automatiskt.</List.Item>
+            <List.Item>Du finjusterar allt i samma editor som övriga recept.</List.Item>
+          </List>
+
+          {preview ? (
+            <Alert color="studioBlue" variant="light" title={preview.title}>
+              <Text size="sm">
+                {preview.ingredients.length} ingredienser, {preview.steps.length} steg
+              </Text>
+              <Text size="sm" c="dimmed">
+                {preview.categories?.length ? preview.categories.join(', ') : 'Inga kategorier satta'}
+              </Text>
+            </Alert>
+          ) : (
+            <Alert color="gray" variant="light" title="Tips före import">
+              <Text size="sm" c="dimmed">
+                ICA-data är ofta bra på tider och portioner. Lägg mest energi på rätt kategorier före import.
+              </Text>
+            </Alert>
+          )}
+
+          <Group gap="xs">
+            <Badge variant="dot" color="orange">
+              Endast ica.se
+            </Badge>
+            <Badge variant="dot" color="gray">
+              Kategorier krävs
+            </Badge>
+          </Group>
+        </Stack>
+      </SimpleGrid>
+    </StudioSectionCard>
   );
 }
 
@@ -147,8 +245,6 @@ function convertIcaHtml(html: string, sourceUrl: string): Recipe {
   }
 
   const categories = collectStrings(recipeLd?.recipeCategory ?? initialRecipe?.mdsaCategories);
-  const keywordTags = collectStrings(recipeLd?.keywords ?? initialRecipe?.keywords);
-  const tags = keywordTags.slice(0, 5);
 
   return {
     title: cleanText(title) || 'Importerad rätt',
@@ -157,7 +253,6 @@ function convertIcaHtml(html: string, sourceUrl: string): Recipe {
     slugHistory: [],
     description: cleanText(description),
     imageUrl,
-    tags,
     categoryPlace: '',
     categoryBase: '',
     categoryType: '',

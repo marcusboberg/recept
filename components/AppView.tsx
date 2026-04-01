@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { AuthGate } from '@/components/AuthGate';
 import { RecipesShell } from '@/components/RecipesShell';
 import { RecipeMobile } from '@/components/RecipeMobile';
 import { EditRecipeSection } from '@/components/EditRecipeSection';
@@ -9,17 +8,18 @@ import { NewRecipeSection } from '@/components/NewRecipeSection';
 import { emptyRecipe } from '@/lib/templates';
 import { recipeToJson } from '@/lib/recipes';
 import { useLiveRecipes } from '@/lib/useLiveRecipes';
-import { deriveCategoriesArray, toCategorySlug } from '@/lib/categories';
+import { derivePublicCategoriesArray, SWEETNESS_CATEGORY_NAME, recipeInSweetnessCollection, toCategorySlug } from '@/lib/categories';
 import { SearchBar } from './SearchBar';
 
 type View =
   | { type: 'categories' }
   | { type: 'category'; slug: string }
+  | { type: 'sweetness' }
   | { type: 'list' }
   | { type: 'recipe'; slug: string }
   | { type: 'edit'; slug: string }
   | { type: 'new' }
-  | { type: 'categoryGroup'; group: 'place' | 'base' | 'type' };
+  | { type: 'categoryGroup'; group: 'place' | 'base' };
 
 function parseHash(hash: string): View {
   const trimmed = hash.startsWith('#') ? hash.slice(1) : hash;
@@ -29,12 +29,14 @@ function parseHash(hash: string): View {
   }
   switch (segment) {
     case 'categories':
-      if (slug === 'place' || slug === 'base' || slug === 'type') {
+      if (slug === 'place' || slug === 'base') {
         return { type: 'categoryGroup', group: slug };
       }
       return { type: 'categories' };
     case 'category':
       return slug ? { type: 'category', slug } : { type: 'categories' };
+    case 'sweetness':
+      return { type: 'sweetness' };
     case 'recipes':
       return { type: 'list' };
     case 'recipe':
@@ -50,10 +52,11 @@ function parseHash(hash: string): View {
 
 export function AppView() {
   // Start with a deterministic view for SSR; hydrate with the real hash once the client is available.
-  const [view, setView] = useState<View>(() => (typeof window === 'undefined' ? { type: 'list' } : parseHash(window.location.hash)));
+  const [view, setView] = useState<View>({ type: 'list' });
 
   useEffect(() => {
     const handleHashChange = () => setView(parseHash(window.location.hash));
+    handleHashChange();
     window.addEventListener('hashchange', handleHashChange);
     return () => {
       window.removeEventListener('hashchange', handleHashChange);
@@ -87,7 +90,7 @@ export function AppView() {
   const categoryGroups = [
     { key: 'place' as const, label: 'Region', href: '#/categories/place', accent: 'place' },
     { key: 'base' as const, label: 'Basvara', href: '#/categories/base', accent: 'base' },
-    { key: 'type' as const, label: 'Tillagning', href: '#/categories/type', accent: 'type' },
+    { key: 'sweetness' as const, label: 'Sötma', href: '#/sweetness', accent: 'type' },
   ];
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -116,22 +119,21 @@ export function AppView() {
     if (view.type !== 'category') return null;
     const place = new Set<string>();
     const base = new Set<string>();
-    const type = new Set<string>();
-    liveRecipes.forEach((recipe) => {
-      if (recipe.categoryPlace) place.add(toCategorySlug(recipe.categoryPlace));
-      if (recipe.categoryBase) base.add(toCategorySlug(recipe.categoryBase));
-      if (recipe.categoryType) type.add(toCategorySlug(recipe.categoryType));
-    });
+    liveRecipes
+      .filter((recipe) => !recipeInSweetnessCollection(recipe))
+      .forEach((recipe) => {
+        if (recipe.categoryPlace) place.add(toCategorySlug(recipe.categoryPlace));
+        if (recipe.categoryBase) base.add(toCategorySlug(recipe.categoryBase));
+      });
     if (place.has(view.slug)) return 'Alla Regioner';
     if (base.has(view.slug)) return 'Alla Basvaror';
-    if (type.has(view.slug)) return 'Alla Tillagningar';
     return 'Alla Recept';
   }, [liveRecipes, view]);
 
   const categoryDisplayName = useMemo(() => {
     if (view.type !== 'category') return null;
-    for (const recipe of liveRecipes) {
-      for (const name of deriveCategoriesArray(recipe)) {
+    for (const recipe of liveRecipes.filter((item) => !recipeInSweetnessCollection(item))) {
+      for (const name of derivePublicCategoriesArray(recipe)) {
         if (toCategorySlug(name) === view.slug) {
           return name;
         }
@@ -143,8 +145,10 @@ export function AppView() {
   const headerTitle = (() => {
     if (view.type === 'categoryGroup') {
       if (view.group === 'place') return 'Alla Regioner';
-      if (view.group === 'base') return 'Alla Basvaror';
-      return 'Alla Tillagningar';
+      return 'Alla Basvaror';
+    }
+    if (view.type === 'sweetness') {
+      return SWEETNESS_CATEGORY_NAME;
     }
     if (view.type === 'category') {
       return categoryDisplayName ?? formatTitle(view.slug);
@@ -153,7 +157,7 @@ export function AppView() {
   })();
 
   const prevTitle = (() => {
-    if (view.type === 'categoryGroup') return 'Alla Recept';
+    if (view.type === 'categoryGroup' || view.type === 'sweetness') return 'Alla Recept';
     if (view.type === 'category') return categoryParentLabel;
     return null;
   })();
@@ -189,10 +193,10 @@ export function AppView() {
 
   return (
     <div className={`page-shell space-y-6 home-landing ${view.type === 'list' ? 'is-home' : ''}`}>
-      {(view.type === 'list' || view.type === 'categoryGroup' || view.type === 'category') && (
+      {(view.type === 'list' || view.type === 'categoryGroup' || view.type === 'category' || view.type === 'sweetness') && (
         <header className="home-hero">
           <div className="home-hero__title-row">
-            {(view.type === 'categoryGroup' || view.type === 'category') && (
+            {(view.type === 'categoryGroup' || view.type === 'category' || view.type === 'sweetness') && (
               <button type="button" className="home-hero__back" onClick={goBack} aria-label="Tillbaka">
                 <i className="fa-solid fa-arrow-left" aria-hidden="true" />
               </button>
@@ -263,11 +267,12 @@ export function AppView() {
           </div>
         </div>
       )}
-      {view.type === 'categories' && <RecipesShell showCategories />}
-      {view.type === 'categoryGroup' && <RecipesShell categoryGroup={view.group} showSearchBar={false} />}
-      {view.type === 'category' && <RecipesShell categorySlug={view.slug} showSearchBar={false} />}
+      {view.type === 'categories' && <RecipesShell recipes={liveRecipes} showCategories />}
+      {view.type === 'categoryGroup' && <RecipesShell recipes={liveRecipes} categoryGroup={view.group} showSearchBar={false} />}
+      {view.type === 'category' && <RecipesShell recipes={liveRecipes} categorySlug={view.slug} showSearchBar={false} />}
+      {view.type === 'sweetness' && <RecipesShell recipes={liveRecipes} collection="sweetness" showSearchBar={false} />}
       {view.type === 'list' && (
-        <RecipesShell searchQuery={searchQuery} onSearchChange={setSearchQuery} showSearchBar={false} />
+        <RecipesShell recipes={liveRecipes} searchQuery={searchQuery} onSearchChange={setSearchQuery} showSearchBar={false} />
       )}
     </div>
   );

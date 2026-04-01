@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { matchQuery } from '@/lib/recipes';
 import { DEFAULT_RECIPE_IMAGE } from '@/lib/images';
-import { buildCategories, recipeInCategory, toCategorySlug } from '@/lib/categories';
+import { buildPublicCategories, recipeInPublicCategory, recipeInSweetnessCollection, toCategorySlug } from '@/lib/categories';
 import { useLiveRecipes } from '@/lib/useLiveRecipes';
 import { type Recipe } from '@/schema/recipeSchema';
 import { RecipeCard } from './RecipeCard';
@@ -11,10 +11,12 @@ import { SearchBar } from './SearchBar';
 import { CategoryCard } from './CategoryCard';
 
 interface Props {
+  recipes?: Recipe[];
   initialRecipes?: Recipe[];
   categorySlug?: string | null;
   showCategories?: boolean;
-  categoryGroup?: 'place' | 'base' | 'type';
+  categoryGroup?: 'place' | 'base';
+  collection?: 'default' | 'sweetness';
   showCategoryChips?: boolean;
   searchQuery?: string;
   onSearchChange?: (value: string) => void;
@@ -22,29 +24,44 @@ interface Props {
 }
 
 export function RecipesShell({
+  recipes,
   initialRecipes = [],
   categorySlug = null,
   showCategories = false,
   categoryGroup = undefined,
+  collection = 'default',
   showCategoryChips = false,
   searchQuery: searchQueryProp,
   onSearchChange,
   showSearchBar = true,
 }: Props = {}) {
-  const liveRecipes = useLiveRecipes(initialRecipes);
+  const subscribedRecipes = useLiveRecipes(initialRecipes, { enabled: !recipes });
+  const liveRecipes = recipes ?? subscribedRecipes;
   const isControlled = searchQueryProp !== undefined;
   const [internalSearch, setInternalSearch] = useState(searchQueryProp ?? '');
   const searchQuery = isControlled ? (searchQueryProp as string) : internalSearch;
 
-  const categories = useMemo(() => buildCategories(liveRecipes, DEFAULT_RECIPE_IMAGE), [liveRecipes]);
-  const activeCategory = categorySlug ? categories.find((c) => c.slug === categorySlug) : null;
+  const collectionRecipes = useMemo(() => {
+    if (collection === 'sweetness') {
+      return liveRecipes.filter((recipe) => recipeInSweetnessCollection(recipe));
+    }
+
+    return liveRecipes.filter((recipe) => !recipeInSweetnessCollection(recipe));
+  }, [collection, liveRecipes]);
+
+  const categories = useMemo(() => buildPublicCategories(collectionRecipes, DEFAULT_RECIPE_IMAGE), [collectionRecipes]);
   const categoryFiltered = useMemo(() => {
     if (categorySlug) {
-      return liveRecipes.filter((recipe) => recipeInCategory(recipe, categorySlug));
+      return collectionRecipes.filter((recipe) => recipeInPublicCategory(recipe, categorySlug));
     }
+
+    if (collection === 'sweetness') {
+      return collectionRecipes;
+    }
+
     // Hide drinkar from startsidan/list view
-    return liveRecipes.filter((recipe) => !recipeInCategory(recipe, 'drinkar'));
-  }, [categorySlug, liveRecipes]);
+    return collectionRecipes.filter((recipe) => !recipeInPublicCategory(recipe, 'drinkar'));
+  }, [categorySlug, collection, collectionRecipes]);
 
   const handleSearchChange = (value: string) => {
     if (!isControlled) {
@@ -54,14 +71,14 @@ export function RecipesShell({
   };
 
   const filtered = useMemo(
-    () => categoryFiltered.filter((recipe) => matchQuery(recipe, searchQuery, [], categorySlug ?? undefined)),
+    () => categoryFiltered.filter((recipe) => matchQuery(recipe, searchQuery, categorySlug ?? undefined)),
     [categoryFiltered, searchQuery, categorySlug],
   );
 
   const groupByField = useMemo(() => {
-    const makeGroup = (field: 'categoryPlace' | 'categoryBase' | 'categoryType') => {
+    const makeGroup = (field: 'categoryPlace' | 'categoryBase') => {
       const map = new Map<string, { name: string; slug: string; image: string; count: number }>();
-      liveRecipes.forEach((recipe) => {
+      collectionRecipes.forEach((recipe) => {
         const value = recipe[field];
         if (!value) return;
         const slug = toCategorySlug(value);
@@ -85,9 +102,8 @@ export function RecipesShell({
     return {
       place: makeGroup('categoryPlace'),
       base: makeGroup('categoryBase'),
-      type: makeGroup('categoryType'),
     };
-  }, [liveRecipes]);
+  }, [collectionRecipes]);
 
   if (showCategories) {
     return (
@@ -106,7 +122,7 @@ export function RecipesShell({
     const items = groupByField[categoryGroup].filter((item) =>
       item.name.toLowerCase().includes(searchQuery.toLowerCase()),
     );
-    const label = categoryGroup === 'place' ? 'Region' : categoryGroup === 'base' ? 'Basvara' : 'Tillagning';
+    const label = categoryGroup === 'place' ? 'Region' : 'Basvara';
     return (
       <div className="space-y-4">
         {showSearchBar && (

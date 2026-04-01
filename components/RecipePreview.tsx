@@ -1,103 +1,43 @@
 'use client';
 
 import Image from 'next/image';
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { DEFAULT_RECIPE_IMAGE } from '@/lib/images';
+import { useMemo, type CSSProperties } from 'react';
+import { useRecipeChecklistState } from '@/components/useRecipeChecklistState';
+import {
+  getIngredientKey,
+  getRecipeHeroImage,
+  getRecipeStepLabel,
+  getTitleSegments,
+  toIngredientGroups,
+} from '@/lib/recipePresentation';
 import type { Recipe } from '@/schema/recipeSchema';
-
-type ViewMode = 'ingredients' | 'steps';
-
-interface IngredientGroup {
-  title?: string;
-  items: Recipe['ingredients'];
-}
 
 interface Props {
   recipe: Recipe;
 }
 
-function formatMinutes(minutes: number) {
-  return `${minutes} min`;
-}
-
-function toIngredientGroups(recipe: Recipe): IngredientGroup[] {
-  if (recipe.ingredientGroups?.length) {
-    return recipe.ingredientGroups;
-  }
-  return [
-    {
-      title: 'Ingredienser',
-      items: recipe.ingredients,
-    },
-  ];
-}
-
-function getIngredientKey(groupIndex: number, item: Recipe['ingredients'][number], itemIndex: number) {
-  return `${groupIndex}-${item.label}-${itemIndex}`;
-}
-
 export function RecipePreview({ recipe }: Props) {
-  const [activeView, setActiveView] = useState<ViewMode>('ingredients');
-  const [checkedIngredients, setCheckedIngredients] = useState<Record<string, boolean>>({});
-  const [checkedSteps, setCheckedSteps] = useState<Record<number, boolean>>({});
-  const scrollRef = useRef<HTMLDivElement | null>(null);
-  const [showScrollHint, setShowScrollHint] = useState(false);
-  const toggleDirection: 'left' | 'right' = activeView === 'ingredients' ? 'left' : 'right';
-
   const ingredientGroups = useMemo(() => toIngredientGroups(recipe), [recipe]);
-  const heroImage = recipe.imageUrl?.trim() ? recipe.imageUrl : DEFAULT_RECIPE_IMAGE;
-  const totalTime = recipe.prepTimeMinutes + recipe.cookTimeMinutes;
-
-  const titleSegments = useMemo(() => {
-    if (recipe.titleSegments && recipe.titleSegments.length > 0) {
-      return recipe.titleSegments;
-    }
-    return [
-      ...(recipe.titlePrefix ? [{ text: recipe.titlePrefix, size: 'small' as const }] : []),
-      { text: recipe.title, size: 'big' as const },
-      ...(recipe.titleSuffix ? [{ text: recipe.titleSuffix, size: 'small' as const }] : []),
-    ];
-  }, [recipe]);
+  const heroImage = getRecipeHeroImage(recipe);
+  const titleSegments = useMemo(() => getTitleSegments(recipe), [recipe]);
+  const {
+    activeView,
+    setActiveView,
+    checkedIngredients,
+    checkedSteps,
+    scrollRef,
+    showScrollHint,
+    toggleDirection,
+    toggleIngredient,
+    toggleStep,
+  } = useRecipeChecklistState({
+    ingredientGroupCount: ingredientGroups.length,
+    stepCount: recipe.steps.length,
+  });
 
   const heroStyle = {
     '--recipe-hero-image': `url(${heroImage})`,
   } as CSSProperties;
-
-  const toggleIngredient = (key: string) => {
-    setCheckedIngredients((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  const toggleStep = (index: number) => {
-    setCheckedSteps((prev) => ({ ...prev, [index]: !prev[index] }));
-  };
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const updateHint = () => {
-      const hasScroll = el.scrollHeight > el.clientHeight + 1;
-      const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
-      setShowScrollHint(hasScroll && !atBottom);
-    };
-    updateHint();
-    el.addEventListener('scroll', updateHint);
-    window.addEventListener('resize', updateHint);
-    return () => {
-      el.removeEventListener('scroll', updateHint);
-      window.removeEventListener('resize', updateHint);
-    };
-  }, [activeView, ingredientGroups.length, recipe.steps.length]);
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (el) {
-      el.scrollTop = 0;
-      const hasScroll = el.scrollHeight > el.clientHeight + 1;
-      const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setShowScrollHint(hasScroll && !atBottom);
-    }
-  }, [activeView, ingredientGroups.length, recipe.steps.length]);
 
   return (
     <div className="recipe-shell recipe-shell--preview" style={heroStyle}>
@@ -169,9 +109,7 @@ export function RecipePreview({ recipe }: Props) {
                     <ol className="checklist" aria-label="Gör så här">
                       {recipe.steps.map((step, index) => {
                         const isChecked = Boolean(checkedSteps[index]);
-                        const fallback = `Steg ${index + 1}`;
-                        const customTitle = step.title?.trim();
-                        const displayTitle = customTitle && customTitle.length > 0 ? customTitle : fallback;
+                        const displayTitle = getRecipeStepLabel(step, index);
                         return (
                           <li key={index} className={isChecked ? 'checklist__item is-checked' : 'checklist__item'}>
                             <label className="checklist__row">
@@ -301,8 +239,7 @@ export function RecipePreview({ recipe }: Props) {
                     <ol className="recipe-desktop-steps__list">
                       {recipe.steps.map((step, index) => {
                         const isChecked = Boolean(checkedSteps[index]);
-                        const customTitle = step.title?.trim();
-                        const displayLabel = customTitle && customTitle.length > 0 ? customTitle : `Steg ${index + 1}`;
+                        const displayLabel = getRecipeStepLabel(step, index);
                         return (
                           <li
                             key={index}
