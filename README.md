@@ -27,7 +27,14 @@ Make sure the environment variables below are present in `.env.local`.
 - In the studio, authenticated users can click `Ladda ner backup` to download all recipes as a JSON file directly from Firestore.
 - For a file-based local backup, run `npm run backup:recipes`.
 - The script writes a timestamped backup under `backups/firestore-recipes/` with both `all-recipes.json` and one file per recipe.
-- The script requires these extra env vars in your shell: `FIREBASE_EXPORT_EMAIL` and `FIREBASE_EXPORT_PASSWORD`.
+- The backup script can read via the Firebase client SDK when project rules allow it. If not, set `FIREBASE_EXPORT_EMAIL` and `FIREBASE_EXPORT_PASSWORD` for REST fallback.
+
+## Live data checks
+- `npm run validate:live-recipes` validates the live `recipes` collection in Firestore against the shared schema.
+- `npm run repair:live-recipes` prints the pending live migration that removes legacy `categoryType` fields and recalculates `categories`.
+- `npm run repair:live-recipes -- --write` applies that live migration with merge updates plus field deletion.
+- `npm run lint` may still print a `baseline-browser-mapping` staleness notice even on the latest package version; that warning reflects upstream Baseline dataset age, not necessarily an outdated local install.
+- `npm run check:live` runs the blocking live validation plus workflow tests intended for CI/release gates.
 
 ## Images
 Set the `imageUrl` field in the JSON to any publicly reachable image (WordPress CDN, your own hosting, etc.). The current editor does not upload images; it only rewrites `imageUrl` if you paste a different link.

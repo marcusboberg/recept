@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { resolveShareRecipeWithSlug } from '@/lib/firebaseServer';
+import { getRecipePath } from '@/lib/routes';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -22,7 +23,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
   const title = recipe.title || 'Recept';
   const description = recipe.description || 'Ett recept från recept.marcusboberg.se';
-  const canonical = `${siteUrl}/share/${canonicalSlug ?? recipe.slug}`;
+  const canonical = `${siteUrl}${getRecipePath(canonicalSlug ?? recipe.slug)}`;
   const shareImage = `${siteUrl}/api/share/${canonicalSlug ?? recipe.slug}`;
 
   return {
@@ -67,7 +68,7 @@ export default async function SharePage({ params }: { params: Promise<{ slug: st
     permanentRedirect(`/share/${canonicalSlug}`);
   }
 
-  const targetHref = `/#/recipe/${canonicalSlug ?? slug}`;
+  const targetHref = getRecipePath(canonicalSlug ?? slug);
 
   return (
     <div

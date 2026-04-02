@@ -1,10 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { Alert, Badge, Button, Group, List, SimpleGrid, Stack, Text, TextInput, ThemeIcon } from '@mantine/core';
-import { recipeSchema, type Recipe } from '@/schema/recipeSchema';
+import { Alert, Badge, Button, Group, List, SegmentedControl, SimpleGrid, Stack, Text, TextInput, ThemeIcon } from '@mantine/core';
+import { buildCategoryOptions } from '@/lib/categoryOptions';
+import { finalizeImportedRecipe } from '@/lib/importRecipes';
 import { recipeToJson } from '@/lib/recipes';
 import { useLiveRecipes } from '@/lib/useLiveRecipes';
+import { type Recipe } from '@/schema/recipeSchema';
+import { editorSegmentedClassNames } from './editor/types';
 import { StudioCategoryField } from './StudioCategoryField';
 import { StudioSectionCard } from './StudioSectionCard';
 
@@ -17,32 +20,13 @@ export function IcaImportCard({ onImport, className }: Props) {
   const [url, setUrl] = useState('');
   const [categoryPlace, setCategoryPlace] = useState('');
   const [categoryBase, setCategoryBase] = useState('');
-  const [categoryType, setCategoryType] = useState('');
+  const [recipeKind, setRecipeKind] = useState<'mat' | 'drink'>('mat');
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [preview, setPreview] = useState<Recipe | null>(null);
   const liveRecipes = useLiveRecipes();
-
-  const categoryOptions = (() => {
-    const place = new Set<string>();
-    const base = new Set<string>();
-    const type = new Set<string>();
-    liveRecipes.forEach((recipe) => {
-      const p = recipe.categoryPlace?.trim();
-      const b = recipe.categoryBase?.trim();
-      const t = recipe.categoryType?.trim();
-      if (p) place.add(p);
-      if (b) base.add(b);
-      if (t) type.add(t);
-    });
-    const sortFn = (a: string, b: string) => a.localeCompare(b, 'sv');
-    return {
-      place: Array.from(place).sort(sortFn),
-      base: Array.from(base).sort(sortFn),
-      type: Array.from(type).sort(sortFn),
-    };
-  })();
+  const categoryOptions = buildCategoryOptions(liveRecipes);
 
   const handleConvert = async () => {
     setStatus(null);
@@ -50,10 +34,6 @@ export function IcaImportCard({ onImport, className }: Props) {
     const trimmedUrl = url.trim();
     if (!trimmedUrl) {
       setError('Ange en ICA-länk att importera.');
-      return;
-    }
-    if (!categoryPlace.trim() || !categoryBase.trim() || !categoryType.trim()) {
-      setError('Fyll i plats, basvara och typ före import.');
       return;
     }
     const normalizedUrl = /^https?:\/\//i.test(trimmedUrl) ? trimmedUrl : `https://${trimmedUrl}`;
@@ -74,12 +54,11 @@ export function IcaImportCard({ onImport, className }: Props) {
       }
       const html = (payload as { html?: string }).html ?? '';
       const recipe = convertIcaHtml(html, normalizedUrl);
-      const categories = [categoryPlace, categoryBase, categoryType].map((c) => c.trim());
-      recipe.categoryPlace = categories[0];
-      recipe.categoryBase = categories[1];
-      recipe.categoryType = categories[2];
-      recipe.categories = categories;
-      const parsed = recipeSchema.parse(recipe);
+      const parsed = finalizeImportedRecipe(recipe, {
+        categoryPlace,
+        categoryBase,
+        isDrink: recipeKind === 'drink',
+      });
       const json = recipeToJson(parsed);
       onImport(json, parsed.title);
       setPreview(parsed);
@@ -124,13 +103,23 @@ export function IcaImportCard({ onImport, className }: Props) {
               options={categoryOptions.base}
               onChange={setCategoryBase}
             />
-            <StudioCategoryField
-              label="4. Typ"
-              placeholder="t.ex. Ugnsbakat"
-              value={categoryType}
-              options={categoryOptions.type}
-              onChange={setCategoryType}
-            />
+            <Stack gap={6}>
+              <Text size="sm" fw={600} c="dimmed">
+                4. Recept
+              </Text>
+              <SegmentedControl
+                value={recipeKind}
+                onChange={(value) => setRecipeKind(value as 'mat' | 'drink')}
+                data={[
+                  { label: 'Mat', value: 'mat' },
+                  { label: 'Drink', value: 'drink' },
+                ]}
+                radius="xl"
+                color="studioBlue"
+                classNames={editorSegmentedClassNames}
+                fullWidth
+              />
+            </Stack>
           </SimpleGrid>
           <Group gap="sm" align="center">
             <Button type="button" color="studioBlue" radius="xl" onClick={handleConvert} disabled={isProcessing || url.trim().length === 0} loading={isProcessing}>
@@ -255,7 +244,6 @@ function convertIcaHtml(html: string, sourceUrl: string): Recipe {
     imageUrl,
     categoryPlace: '',
     categoryBase: '',
-    categoryType: '',
     categories,
     isDrink: false,
     prepTimeMinutes,

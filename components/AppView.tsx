@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { RecipesShell } from '@/components/RecipesShell';
 import { RecipeMobile } from '@/components/RecipeMobile';
@@ -9,6 +11,15 @@ import { emptyRecipe } from '@/lib/templates';
 import { recipeToJson } from '@/lib/recipes';
 import { useLiveRecipes } from '@/lib/useLiveRecipes';
 import { derivePublicCategoriesArray, SWEETNESS_CATEGORY_NAME, recipeInSweetnessCollection, toCategorySlug } from '@/lib/categories';
+import {
+  getCategoriesPath,
+  getCategoryGroupPath,
+  getCategoryPath,
+  getHomePath,
+  getStudioNewHref,
+  getSweetnessPath,
+  legacyHashToPublicPath,
+} from '@/lib/routes';
 import { SearchBar } from './SearchBar';
 
 type View =
@@ -50,18 +61,81 @@ function parseHash(hash: string): View {
   }
 }
 
-export function AppView() {
-  // Start with a deterministic view for SSR; hydrate with the real hash once the client is available.
-  const [view, setView] = useState<View>({ type: 'list' });
+interface AppViewProps {
+  initialView?: View;
+  allowStudioHashes?: boolean;
+}
+
+export function AppView({ initialView = { type: 'list' }, allowStudioHashes = false }: AppViewProps) {
+  const router = useRouter();
+  const initialType = initialView.type;
+  const initialSlug = 'slug' in initialView ? initialView.slug : null;
+  const initialGroup = 'group' in initialView ? initialView.group : null;
+  const [view, setView] = useState<View>(initialView);
+  const initialViewKey =
+    initialType === 'category'
+      ? `category:${initialSlug}`
+      : initialType === 'recipe'
+        ? `recipe:${initialSlug}`
+        : initialType === 'edit'
+          ? `edit:${initialSlug}`
+          : initialType === 'categoryGroup'
+            ? `categoryGroup:${initialGroup}`
+            : initialType;
+  const normalizedInitialView = useMemo<View>(() => {
+    switch (initialType) {
+      case 'category':
+        return { type: 'category', slug: initialSlug ?? '' };
+      case 'recipe':
+        return { type: 'recipe', slug: initialSlug ?? '' };
+      case 'edit':
+        return { type: 'edit', slug: initialSlug ?? '' };
+      case 'categoryGroup':
+        return { type: 'categoryGroup', group: (initialGroup as 'place' | 'base') ?? 'place' };
+      case 'categories':
+        return { type: 'categories' };
+      case 'sweetness':
+        return { type: 'sweetness' };
+      case 'new':
+        return { type: 'new' };
+      case 'list':
+      default:
+        return { type: 'list' };
+    }
+  }, [initialGroup, initialSlug, initialType]);
 
   useEffect(() => {
-    const handleHashChange = () => setView(parseHash(window.location.hash));
+    setView(normalizedInitialView);
+  }, [normalizedInitialView]);
+
+  useEffect(() => {
+    if (!allowStudioHashes || typeof window === 'undefined') {
+      return;
+    }
+
+    const handleHashChange = () => {
+      const hash = window.location.hash;
+      const hashView = parseHash(hash);
+      if (hashView.type === 'new' || hashView.type === 'edit') {
+        setView(hashView);
+        return;
+      }
+
+      const publicPath = legacyHashToPublicPath(hash);
+      if (publicPath && publicPath !== `${window.location.pathname}${window.location.search}`) {
+        router.replace(publicPath);
+        return;
+      }
+
+      setView(normalizedInitialView);
+    };
+
     handleHashChange();
     window.addEventListener('hashchange', handleHashChange);
     return () => {
       window.removeEventListener('hashchange', handleHashChange);
     };
-  }, []);
+  }, [allowStudioHashes, normalizedInitialView, router]);
 
   useEffect(() => {
     if (typeof document === 'undefined') {
@@ -88,9 +162,9 @@ export function AppView() {
   }, [view.type]);
 
   const categoryGroups = [
-    { key: 'place' as const, label: 'Region', href: '#/categories/place', accent: 'place' },
-    { key: 'base' as const, label: 'Basvara', href: '#/categories/base', accent: 'base' },
-    { key: 'sweetness' as const, label: 'Sötma', href: '#/sweetness', accent: 'type' },
+    { key: 'place' as const, label: 'Region', href: getCategoryGroupPath('place'), accent: 'place' },
+    { key: 'base' as const, label: 'Basvara', href: getCategoryGroupPath('base'), accent: 'base' },
+    { key: 'sweetness' as const, label: 'Sötma', href: getSweetnessPath(), accent: 'type' },
   ];
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -102,10 +176,16 @@ export function AppView() {
     if (typeof window === 'undefined') return;
     if (window.history.length > 1) {
       window.history.back();
-    } else if (view.type === 'categoryGroup') {
-      window.location.hash = '#/categories';
     } else {
-      window.location.hash = '#/';
+      if (view.type === 'category') {
+        router.push(categoryParentPath);
+        return;
+      }
+      if (view.type === 'categoryGroup') {
+        router.push(getCategoriesPath());
+        return;
+      }
+      router.push(getHomePath());
     }
   };
 
@@ -115,8 +195,13 @@ export function AppView() {
       .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
       .join(' ');
 
-  const categoryParentLabel = useMemo(() => {
-    if (view.type !== 'category') return null;
+  const { categoryParentLabel, categoryParentPath } = useMemo(() => {
+    if (view.type !== 'category') {
+      return {
+        categoryParentLabel: null,
+        categoryParentPath: getHomePath(),
+      };
+    }
     const place = new Set<string>();
     const base = new Set<string>();
     liveRecipes
@@ -125,9 +210,13 @@ export function AppView() {
         if (recipe.categoryPlace) place.add(toCategorySlug(recipe.categoryPlace));
         if (recipe.categoryBase) base.add(toCategorySlug(recipe.categoryBase));
       });
-    if (place.has(view.slug)) return 'Alla Regioner';
-    if (base.has(view.slug)) return 'Alla Basvaror';
-    return 'Alla Recept';
+    if (place.has(view.slug)) {
+      return { categoryParentLabel: 'Alla Regioner', categoryParentPath: getCategoryGroupPath('place') };
+    }
+    if (base.has(view.slug)) {
+      return { categoryParentLabel: 'Alla Basvaror', categoryParentPath: getCategoryGroupPath('base') };
+    }
+    return { categoryParentLabel: 'Alla Recept', categoryParentPath: getHomePath() };
   }, [liveRecipes, view]);
 
   const categoryDisplayName = useMemo(() => {
@@ -225,9 +314,9 @@ export function AppView() {
                 />
               </div>
             </div>
-            <a href="#/new" className="home-hero__cta">
+            <Link href={getStudioNewHref()} className="home-hero__cta">
               + nytt recept
-            </a>
+            </Link>
           </div>
         </header>
       )}
@@ -235,19 +324,19 @@ export function AppView() {
         <div className="category-search-row">
           <div className="category-group-row">
             {categoryGroups.map((group) => (
-              <a key={group.key} className={`category-group-card category-group-card--${group.accent}`} href={group.href}>
+              <Link key={group.key} className={`category-group-card category-group-card--${group.accent}`} href={group.href}>
                 <div className="category-group-card__label">{group.label}</div>
                 <div className="category-group-card__cta" aria-hidden="true">
                   →
                 </div>
-              </a>
+              </Link>
             ))}
-            <a className="category-group-card category-group-card--drink" href="#/category/drinkar">
+            <Link className="category-group-card category-group-card--drink" href={getCategoryPath('drinkar')}>
               <div className="category-group-card__label">Drinkar</div>
               <div className="category-group-card__cta" aria-hidden="true">
                 →
               </div>
-            </a>
+            </Link>
             <button
               type="button"
               className="category-group-card category-group-card--search home-search-card"

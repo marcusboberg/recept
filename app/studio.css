@@ -1225,10 +1225,36 @@
   align-self: flex-start;
 }
 
-.preview-grid__save {
+.preview-grid__actions {
   width: 100%;
-  background: var(--accent) !important;
-  border-color: transparent !important;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.preview-grid__save {
+  flex: 1 1 auto;
+  min-height: 2.85rem;
+  padding-inline: 1.35rem !important;
+  background: linear-gradient(180deg, #56b85b 0%, #47a84d 100%) !important;
+  border: 1px solid rgba(49, 130, 55, 0.18) !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 24px rgba(71, 168, 77, 0.18);
+}
+
+.preview-grid__save :where(.mantine-Button-inner) {
+  min-height: 100%;
+  align-items: center;
+}
+
+.preview-grid__save :where(.mantine-Button-label) {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+  transform: translateY(-0.02em);
+}
+
+.preview-grid__save:hover:not([data-disabled]):not(:disabled) {
+  background: linear-gradient(180deg, #4fb054 0%, #419948 100%) !important;
 }
 
 .preview-grid__device {
@@ -1259,8 +1285,7 @@
 }
 
 .preview-grid__delete {
-  align-self: center;
-  margin-top: 0.5rem;
+  flex: 0 0 auto;
   display: inline-flex;
   gap: 0.4rem;
   align-items: center;
@@ -1269,6 +1294,29 @@
   padding: 0;
   font-weight: 500;
   cursor: pointer;
+}
+
+.editor-section__add-button {
+  min-height: 2.5rem;
+  padding-inline: 1rem !important;
+  background: linear-gradient(180deg, #4b72ee 0%, #3558d5 100%) !important;
+  border: 1px solid rgba(53, 88, 213, 0.16) !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 20px rgba(53, 88, 213, 0.16);
+}
+
+.editor-section__add-button :where(.mantine-Button-inner) {
+  align-items: center;
+}
+
+.editor-section__add-button :where(.mantine-Button-label) {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+}
+
+.editor-section__add-button:hover:not([data-disabled]):not(:disabled) {
+  background: linear-gradient(180deg, #456ae1 0%, #314fc1 100%) !important;
 }
 
 .preview-form-stack {
@@ -1537,3 +1585,10 @@
   }
 
   .new-recipe-shell__content--locked {
+.studio-lazy-loading {
+  min-height: 40vh;
+  display: grid;
+  place-items: center;
+  color: rgba(15, 23, 42, 0.72);
+  font-size: 1rem;
+}

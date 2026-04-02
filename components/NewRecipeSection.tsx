@@ -252,7 +252,7 @@ export function NewRecipeSection({ initialJson, initialTitle }: Props) {
   "imageUrl": "/images/recipes/new-recipe.jpg",
   "categoryPlace": "",
   "categoryBase": "",
-  "categoryType": "",
+  "isDrink": false,
   "categories": [],
   "prepTimeMinutes": 0,
   "cookTimeMinutes": 0,
@@ -268,7 +268,9 @@ export function NewRecipeSection({ initialJson, initialTitle }: Props) {
 Regler:
 - Behåll svensk stavning/diakritik i text (endast raka ASCII-citattecken runt nycklar/värden).
 - "slug" = kebab-case av titeln (endast a-z, 0-9, bindestreck). Konvertera å/ä/ö → a, övriga accenter till närmaste ASCII.
-- "categoryPlace" (plats), "categoryBase" (basvara), "categoryType" (typ) måste alltid fyllas. Lägg även in dem i "categories" + ev. extra etiketter.
+- "categoryPlace" (plats) och "categoryBase" (basvara) måste alltid fyllas.
+- "isDrink": true för drinkar, annars false.
+- Lägg bara in extra etiketter i "categories" när de inte redan täcks av plats, basvara eller Drinkar.
 - Tider: heltal minuter, sätt 0 om saknas.
 - "servings": heltal >= 1. Om okänt, sätt 4.
 - "ingredients": alltid minst ett objekt. Lämna bort fält som saknas (ingen tom sträng).

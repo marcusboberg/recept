@@ -16,7 +16,6 @@ export const recipeSchema = z.object({
   isDrink: z.boolean().optional().default(false),
   categoryPlace: z.string().trim().min(1, 'Platskategori krävs'),
   categoryBase: z.string().trim().min(1, 'Basvarukategori krävs'),
-  categoryType: z.string().trim().min(1, 'Typkategori krävs'),
   categories: z.array(z.string()).default([]),
   titlePrefix: z.string().optional(),
   titleSuffix: z.string().optional(),
@@ -48,7 +47,6 @@ export const recipeSchema = z.object({
       [
         data.categoryPlace,
         data.categoryBase,
-        data.categoryType,
         ...(data.isDrink ? ['Drinkar'] : []),
         ...data.categories,
       ]

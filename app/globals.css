@@ -185,6 +185,79 @@ h6,
   border-radius: 12px;
 }
 
+.public-skeleton {
+  position: relative;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(226, 232, 240, 0.95);
+}
+
+.public-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.72), transparent);
+  animation: public-skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes public-skeleton-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.public-skeleton--title {
+  width: min(18rem, 62vw);
+  height: 2.8rem;
+}
+
+.public-skeleton--input {
+  width: min(28rem, 100%);
+  height: 3.35rem;
+  border-radius: 18px;
+}
+
+.public-skeleton--button {
+  width: 9.5rem;
+  height: 3.2rem;
+}
+
+.category-group-card--skeleton {
+  pointer-events: none;
+}
+
+.public-skeleton--card-label {
+  width: 5.6rem;
+  height: 1.15rem;
+}
+
+.public-skeleton--card-cta {
+  width: 7rem;
+  height: 0.95rem;
+  margin-top: 0.55rem;
+}
+
+.recipe-card--skeleton {
+  pointer-events: none;
+}
+
+.public-skeleton--media {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.public-skeleton--recipe-title {
+  width: 11rem;
+  height: 1.45rem;
+}
+
+.public-skeleton--recipe-subtitle {
+  width: 6rem;
+  height: 0.95rem;
+}
+
 p {
   margin: 0;
 }
@@ -1121,6 +1194,12 @@ button, input, textarea {
   line-height: 1.45;
 }
 
+.editor-meta-toggle-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.42rem;
+}
+
 .title-composer__toolbar {
   display: flex;
   align-items: center;
@@ -1287,6 +1366,10 @@ button, input, textarea {
   border-radius: 12px;
 }
 
+.ingredient-row--placeholder {
+  animation: ingredientPlaceholderIn 180ms ease;
+}
+
 .ingredient-row__grid {
   display: grid;
   grid-template-columns: 36px minmax(0, 1fr) minmax(120px, 0.28fr) minmax(140px, auto) 36px;
@@ -1298,6 +1381,11 @@ button, input, textarea {
   width: 100%;
   font-size: 0.98rem;
   font-weight: 500;
+}
+
+.ingredient-row__name--placeholder::placeholder,
+.ingredient-row__amount--placeholder::placeholder {
+  color: rgba(100, 116, 139, 0.76);
 }
 
 .ingredient-row__name--heading {
@@ -1338,6 +1426,12 @@ button, input, textarea {
   width: 100%;
   min-width: 120px;
   height: 42px;
+}
+
+.ingredient-row__handle-spacer,
+.ingredient-row__delete-spacer {
+  width: 36px;
+  height: 36px;
 }
 
 .ingredient-drag {
@@ -1386,6 +1480,17 @@ button, input, textarea {
   }
   100% {
     background: transparent;
+  }
+}
+
+@keyframes ingredientPlaceholderIn {
+  0% {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 .ingredient-kind-toggle {

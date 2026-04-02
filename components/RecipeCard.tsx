@@ -1,7 +1,9 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 import { DEFAULT_RECIPE_IMAGE } from '@/lib/images';
+import { getRecipePath } from '@/lib/routes';
 import type { Recipe } from '@/schema/recipeSchema';
 
 interface Props {
@@ -20,13 +22,10 @@ export function RecipeCard({ recipe }: Props) {
         ];
 
   return (
-    <a
-      href={`#/recipe/${recipe.slug}`}
-      className="recipe-card"
-    >
+    <Link href={getRecipePath(recipe.slug)} className="recipe-card" prefetch>
       <div className="recipe-card__image">
         <div className="recipe-card__media">
-          <Image src={hero} alt={recipe.title} fill sizes="320px" />
+          <Image src={hero} alt={recipe.title} fill sizes="(max-width: 640px) 92vw, (max-width: 1024px) 44vw, 320px" />
         </div>
         <div className="recipe-card__overlay recipe-card__overlay--center">
           <div className="recipe-card__titleblock">
@@ -44,6 +43,6 @@ export function RecipeCard({ recipe }: Props) {
           </div>
         </div>
       </div>
-    </a>
+    </Link>
   );
 }

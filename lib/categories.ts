@@ -13,14 +13,12 @@ export function deriveCategoriesArray(input: {
   categories?: string[];
   categoryPlace?: string;
   categoryBase?: string;
-  categoryType?: string;
   imageUrl?: string;
   isDrink?: boolean;
 }): string[] {
   const items = [
     input.categoryPlace,
     input.categoryBase,
-    input.categoryType,
     ...(input.isDrink ? ['Drinkar'] : []),
     ...(input.categories ?? []),
   ]
@@ -33,15 +31,13 @@ export function derivePublicCategoriesArray(input: {
   categories?: string[];
   categoryPlace?: string;
   categoryBase?: string;
-  categoryType?: string;
   isDrink?: boolean;
 }): string[] {
-  const categoryType = input.categoryType?.trim();
   const items = [
     input.categoryPlace,
     input.categoryBase,
     ...(input.isDrink ? ['Drinkar'] : []),
-    ...(input.categories ?? []).filter((entry) => entry.trim() !== categoryType),
+    ...(input.categories ?? []),
   ]
     .map((c) => c?.trim())
     .filter((c): c is string => Boolean(c && c.length > 0));

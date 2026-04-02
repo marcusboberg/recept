@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { shouldApplyRecipeRefresh, shouldApplyRecipesRefresh } from '../lib/publicRecipeRefresh.ts';
 import { recipeSchema } from '../schema/recipeSchema.ts';
 import {
   applyEditableIngredientGroups,
@@ -26,8 +27,7 @@ const createRecipe = (overrides: Record<string, unknown> = {}) =>
     steps: [{ title: '', body: 'Blanda allt.' }],
     categoryPlace: 'Sverige',
     categoryBase: 'Potatis',
-    categoryType: 'Middag',
-    categories: ['Sverige', 'Potatis', 'Middag'],
+    categories: ['Sverige', 'Potatis'],
     ...overrides,
   });
 
@@ -117,6 +117,28 @@ const cases: Array<[string, () => void]> = [
 
       assert.match(getRecipeHeroImage(recipe), /^data:image\/svg\+xml/);
       assert.equal(getRecipeStepLabel(recipe.steps[0], 0), 'Steg 1');
+    },
+  ],
+  [
+    'refresh helpers only update when slug or updatedAt changes',
+    () => {
+      const current = createRecipe({
+        slug: 'amaretto-sour',
+        updatedAt: '2026-04-02T07:00:00.000Z',
+      });
+      const same = createRecipe({
+        slug: 'amaretto-sour',
+        updatedAt: '2026-04-02T07:00:00.000Z',
+      });
+      const next = createRecipe({
+        slug: 'amaretto-sour',
+        updatedAt: '2026-04-02T07:05:00.000Z',
+      });
+
+      assert.equal(shouldApplyRecipeRefresh(current, same), false);
+      assert.equal(shouldApplyRecipeRefresh(current, next), true);
+      assert.equal(shouldApplyRecipesRefresh([current], [same]), false);
+      assert.equal(shouldApplyRecipesRefresh([current], [next]), true);
     },
   ],
 ];
