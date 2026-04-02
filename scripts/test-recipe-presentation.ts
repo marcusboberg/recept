@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { shouldApplyRecipeRefresh, shouldApplyRecipesRefresh } from '../lib/publicRecipeRefresh.ts';
+import { parsePublicRecipeData, resolvePublicRecipeFromCollection } from '../lib/publicRecipeData.ts';
 import { recipeSchema } from '../schema/recipeSchema.ts';
 import {
   applyEditableIngredientGroups,
@@ -139,6 +140,28 @@ const cases: Array<[string, () => void]> = [
       assert.equal(shouldApplyRecipeRefresh(current, next), true);
       assert.equal(shouldApplyRecipesRefresh([current], [same]), false);
       assert.equal(shouldApplyRecipesRefresh([current], [next]), true);
+    },
+  ],
+  [
+    'public recipe helpers parse legacy data and resolve slug history consistently',
+    () => {
+      const recipe = createRecipe({
+        slug: 'canonical-recipe',
+        slugHistory: ['old-recipe'],
+        categories: ['Sverige', 'Potatis', 'Fusion'],
+      });
+
+      const parsed = parsePublicRecipeData({
+        ...recipe,
+        categories: ['Sverige', 'Potatis', 'Fusion', 'bakverk'],
+      });
+
+      assert.ok(parsed.recipe);
+      assert.deepEqual(parsed.recipe?.categories, ['Sverige', 'Potatis', 'Fusion', 'Bakverk']);
+
+      const resolved = resolvePublicRecipeFromCollection([parsed.recipe!], 'old-recipe');
+      assert.equal(resolved.canonicalSlug, 'canonical-recipe');
+      assert.equal(resolved.recipe?.slug, 'canonical-recipe');
     },
   ],
 ];

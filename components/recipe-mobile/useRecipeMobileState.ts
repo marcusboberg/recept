@@ -55,40 +55,32 @@ export function useRecipeMobileState({ slug, initialRecipe }: Options) {
     }
 
     const loadRecipe = async () => {
-      const [{ doc, getDoc }, { getFirestoreClient }, { resolveRecipeSlugByHistory }] = await Promise.all([
-        import('firebase/firestore'),
-        import('@/lib/firebaseClient'),
-        import('@/lib/slugHistory'),
-      ]);
+      const response = await fetch(`/api/public-recipes?slug=${encodeURIComponent(slug)}`, {
+        cache: 'no-store',
+      });
 
-      const db = getFirestoreClient();
-      const snapshot = await getDoc(doc(db, 'recipes', slug));
+      if (!response.ok) {
+        throw new Error(`Failed to load public recipe (${response.status})`);
+      }
 
-      if (!snapshot.exists()) {
-        if (!redirectAttemptedRef.current) {
-          redirectAttemptedRef.current = true;
-          try {
-            const resolved = await resolveRecipeSlugByHistory(db, slug);
-            if (resolved && resolved !== slug && typeof window !== 'undefined') {
-              window.location.replace(getRecipePath(resolved));
-              return;
-            }
-          } catch {
-            // fall through to error state
-          }
-        }
+      const payload = (await response.json()) as {
+        recipe?: unknown;
+        canonicalSlug?: string | null;
+      };
 
-        if (!cancelled) {
-          setError('Receptet hittades inte.');
-          setLiveRecipe(null);
-        }
+      if (payload.canonicalSlug && payload.canonicalSlug !== slug && !redirectAttemptedRef.current && typeof window !== 'undefined') {
+        redirectAttemptedRef.current = true;
+        window.location.replace(getRecipePath(payload.canonicalSlug));
         return;
       }
 
-      const parsed = recipeSchema.safeParse(normalizeLegacyRecipeForRead(snapshot.data()));
+      const parsed = recipeSchema.safeParse(normalizeLegacyRecipeForRead(payload.recipe));
       if (!cancelled && parsed.success) {
         setLiveRecipe(parsed.data);
         setError(null);
+      } else if (!cancelled && payload.recipe == null) {
+        setError('Receptet hittades inte.');
+        setLiveRecipe(null);
       } else if (!cancelled) {
         setError('Receptet kunde inte läsas.');
         setLiveRecipe(null);
@@ -115,18 +107,15 @@ export function useRecipeMobileState({ slug, initialRecipe }: Options) {
     let cancelled = false;
     const timeoutId = window.setTimeout(async () => {
       try {
-        const [{ doc, getDoc }, { getFirestoreClient }] = await Promise.all([
-          import('firebase/firestore'),
-          import('@/lib/firebaseClient'),
-        ]);
-
-        const db = getFirestoreClient();
-        const snapshot = await getDoc(doc(db, 'recipes', slug));
-        if (!snapshot.exists() || cancelled) {
+        const response = await fetch(`/api/public-recipes?slug=${encodeURIComponent(slug)}`, {
+          cache: 'no-store',
+        });
+        if (!response.ok || cancelled) {
           return;
         }
 
-        const parsed = recipeSchema.safeParse(normalizeLegacyRecipeForRead(snapshot.data()));
+        const payload = (await response.json()) as { recipe?: unknown };
+        const parsed = recipeSchema.safeParse(normalizeLegacyRecipeForRead(payload.recipe));
         if (!parsed.success || cancelled) {
           return;
         }
