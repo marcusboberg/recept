@@ -30,6 +30,7 @@ export function useRecipeMobileState({ slug, initialRecipe }: Options) {
   const [error, setError] = useState<string | null>(null);
   const [isQuickEditing, setIsQuickEditing] = useState(false);
   const [draftRecipe, setDraftRecipe] = useState<Recipe | null>(null);
+  const [pendingQuickEditStart, setPendingQuickEditStart] = useState(false);
   const [authStatus, setAuthStatus] = useState<'loading' | 'authenticated' | 'unauthenticated'>('loading');
   const [authUser, setAuthUser] = useState<User | null>(null);
   const [editStatus, setEditStatus] = useState<string | null>(null);
@@ -292,6 +293,13 @@ export function useRecipeMobileState({ slug, initialRecipe }: Options) {
     updateDraftRecipe((prev) => applyEditableIngredientGroups(prev, updater(getEditableIngredientGroups(prev))));
   };
 
+  const startQuickEdit = (recipe: Recipe) => {
+    setDraftRecipe(cloneRecipe(recipe));
+    setEditStatus(null);
+    setPendingQuickEditStart(false);
+    setIsQuickEditing(true);
+  };
+
   const handleBack = () => {
     if (typeof window === 'undefined') return;
     if (window.history.length > 1) {
@@ -304,6 +312,12 @@ export function useRecipeMobileState({ slug, initialRecipe }: Options) {
   const handleStartQuickEdit = () => {
     if (!liveRecipe) return;
 
+    if (authStatus === 'loading') {
+      setEditStatus('Kollar inloggning…');
+      setPendingQuickEditStart(true);
+      return;
+    }
+
     if (authStatus !== 'authenticated') {
       if (typeof window !== 'undefined') {
         window.location.assign(getStudioEditHref(liveRecipe.slug));
@@ -311,15 +325,30 @@ export function useRecipeMobileState({ slug, initialRecipe }: Options) {
       return;
     }
 
-    setDraftRecipe(cloneRecipe(liveRecipe));
-    setEditStatus(null);
-    setIsQuickEditing(true);
+    startQuickEdit(liveRecipe);
   };
 
   const handleCancelQuickEdit = () => {
     setEditStatus(null);
+    setPendingQuickEditStart(false);
     setIsQuickEditing(false);
   };
+
+  useEffect(() => {
+    if (!pendingQuickEditStart || !liveRecipe) {
+      return;
+    }
+
+    if (authStatus === 'authenticated') {
+      startQuickEdit(liveRecipe);
+      return;
+    }
+
+    if (authStatus === 'unauthenticated' && typeof window !== 'undefined') {
+      setPendingQuickEditStart(false);
+      window.location.assign(getStudioEditHref(liveRecipe.slug));
+    }
+  }, [authStatus, liveRecipe, pendingQuickEditStart]);
 
   const handleSaveQuickEdit = async () => {
     if (!draftRecipe || !liveRecipe) return;
