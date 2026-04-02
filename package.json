@@ -12,7 +12,7 @@
     "test:recipe-workflows": "node --loader ts-node/esm scripts/test-recipe-workflows.ts",
     "typecheck": "tsc --pretty --noEmit",
     "typecheck:worker": "npm run --prefix wordpress-proxy typecheck",
-    "check": "npm run lint && npm run typecheck && npm run typecheck:worker && npm run test:recipe-presentation",
+    "check": "npm run validate:recipes && npm run lint && npm run typecheck && npm run typecheck:worker && npm run test:recipe-presentation",
     "check:live": "npm run validate:live-recipes && npm run test:recipe-workflows",
     "validate": "node --loader ts-node/esm scripts/validate-recipes.ts",
     "validate:recipes": "node --loader ts-node/esm scripts/validate-recipes.ts",
