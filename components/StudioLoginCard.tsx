@@ -28,6 +28,9 @@ interface Props {
   title?: string;
   subtitle?: string;
   quickAccounts?: QuickAccount[];
+  compact?: boolean;
+  embedded?: boolean;
+  showBackButton?: boolean;
 }
 
 const DEFAULT_QUICK_ACCOUNTS: QuickAccount[] = [
@@ -48,6 +51,9 @@ export function StudioLoginCard({
   title = 'Logga in för att använda studion',
   subtitle = 'Snabbinloggning med färdiga konton eller valfri e-post. Lösenord krävs alltid.',
   quickAccounts = DEFAULT_QUICK_ACCOUNTS,
+  compact = false,
+  embedded = false,
+  showBackButton = Boolean(onBack),
 }: Props) {
   const [activeQuick, setActiveQuick] = useState<string>(quickAccounts[0]?.id ?? 'primary');
   const [email, setEmail] = useState<string>(quickAccounts[0]?.value ?? '');
@@ -85,9 +91,17 @@ export function StudioLoginCard({
     return null;
   }
 
-  return (
-    <div className="new-recipe-locked">
-      <Paper shadow="lg" radius="xl" withBorder p="xl" maw={720} mx="auto" w="100%">
+  const content = (
+    <Paper
+      shadow={compact ? 'sm' : 'lg'}
+      radius="xl"
+      withBorder
+      p={compact ? 'lg' : 'xl'}
+      maw={compact ? 560 : 720}
+      mx="auto"
+      w="100%"
+      className={compact ? 'studio-login-card studio-login-card--compact' : 'studio-login-card'}
+    >
         <Stack gap="lg">
           <Group gap="sm">
             <ThemeIcon radius="xl" size="lg" color="studioBlue">
@@ -179,7 +193,7 @@ export function StudioLoginCard({
                   </Stack>
                 )}
 
-                {onBack ? (
+                {showBackButton && onBack ? (
                   <Group justify="center">
                     <Button type="button" variant="subtle" color="gray" onClick={onBack}>
                       Tillbaka
@@ -191,6 +205,11 @@ export function StudioLoginCard({
           )}
         </Stack>
       </Paper>
-    </div>
   );
+
+  if (embedded) {
+    return content;
+  }
+
+  return <div className="new-recipe-locked">{content}</div>;
 }

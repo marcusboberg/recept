@@ -1,6 +1,8 @@
 export type PublicCategoryGroup = 'place' | 'base';
 
 const STUDIO_ROOT_PATH = '/';
+export const STUDIO_MOBILE_QUICK_EDIT_INTENT_KEY = 'recipe-mobile-quick-edit-intent';
+export const RECIPE_QUICK_EDIT_SEARCH_PARAM = 'quickEdit';
 
 export function getHomePath() {
   return '/';
@@ -24,6 +26,10 @@ export function getSweetnessPath() {
 
 export function getRecipePath(slug: string) {
   return `/recept/${slug}`;
+}
+
+export function getRecipeQuickEditPath(slug: string) {
+  return `${getRecipePath(slug)}?${RECIPE_QUICK_EDIT_SEARCH_PARAM}=1`;
 }
 
 export function getStudioNewHash() {

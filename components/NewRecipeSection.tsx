@@ -15,6 +15,7 @@ import { StudioLoginCard } from './StudioLoginCard';
 import { StudioMantineProvider } from './StudioMantineProvider';
 import { StudioPageHeader } from './StudioPageHeader';
 import { StudioSectionCard } from './StudioSectionCard';
+import { StudioLockedMobileShell } from './StudioLockedMobileShell';
 
 interface Props {
   initialJson: string;
@@ -131,6 +132,7 @@ export function NewRecipeSection({ initialJson, initialTitle }: Props) {
   };
 
   const isAuthenticated = authStatus === 'authenticated';
+  const showMobileLockedShell = !isAuthenticated;
 
   const contentClass =
     activeView === 'preview' || activeView === 'json'
@@ -185,7 +187,25 @@ export function NewRecipeSection({ initialJson, initialTitle }: Props) {
 
   return (
     <StudioMantineProvider>
-      <div className="new-recipe-shell">
+      {showMobileLockedShell && (
+        <div className="studio-mobile-locked-only">
+          <StudioLockedMobileShell
+            title="Ny rätt"
+            subtitle="Logga in för att importera, klistra in eller skapa ett nytt recept från mobilen utan att öppna hela studion först."
+            onBack={handleBack}
+          >
+            <StudioLoginCard
+              status={authStatus}
+              title="Logga in för att fortsätta"
+              subtitle="När du är inne kan du direkt importera eller skapa ett nytt recept."
+              compact
+              embedded
+            />
+          </StudioLockedMobileShell>
+        </div>
+      )}
+
+      <div className={`new-recipe-shell ${showMobileLockedShell ? 'studio-shell--desktop-when-locked' : ''}`}>
         <StudioSidebar
           title="Ny rätt"
           navSections={navSections}

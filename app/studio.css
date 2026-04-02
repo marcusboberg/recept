@@ -1556,6 +1556,98 @@
   border: 1px solid rgba(148, 163, 184, 0.25);
 }
 
+.studio-login-card--compact {
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(18px);
+  border-color: rgba(148, 163, 184, 0.22);
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.1);
+}
+
+.studio-mobile-locked-only {
+  display: none;
+}
+
+.studio-mobile-locked-shell {
+  min-height: 100svh;
+  padding: 1rem 1rem 1.4rem;
+  background:
+    radial-gradient(circle at top right, rgba(37, 99, 235, 0.14), transparent 38%),
+    linear-gradient(180deg, #fdfaf4 0%, #f7f8ff 52%, #eef2ff 100%);
+}
+
+.studio-mobile-locked-shell__topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.studio-mobile-locked-shell__back {
+  padding-left: 0.25rem;
+  padding-right: 0.5rem;
+}
+
+.studio-mobile-locked-shell__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: #0f172a;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.studio-mobile-locked-shell__brand-mark {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.8rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #fff;
+  box-shadow: 0 10px 20px rgba(37, 99, 235, 0.18);
+}
+
+.studio-mobile-locked-shell__brand-copy {
+  white-space: nowrap;
+}
+
+.studio-mobile-locked-shell__body {
+  max-width: 32rem;
+  margin: 0 auto;
+}
+
+.studio-mobile-locked-shell__intro {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.studio-mobile-locked-shell__eyebrow {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: rgba(15, 23, 42, 0.5);
+}
+
+.studio-mobile-locked-shell__title {
+  margin: 0;
+  font-size: clamp(1.9rem, 7vw, 2.35rem);
+  line-height: 0.96;
+  letter-spacing: -0.04em;
+  max-width: 11ch;
+}
+
+.studio-mobile-locked-shell__subtitle {
+  margin: 0;
+  color: rgba(15, 23, 42, 0.68);
+  line-height: 1.5;
+  max-width: 34ch;
+}
+
 @media (max-width: 960px) {
   .new-recipe-shell {
     flex-direction: column;
@@ -1577,14 +1669,31 @@
   .workspace-grid {
     grid-template-columns: 1fr;
   }
+
+  .studio-mobile-locked-only {
+    display: block;
+  }
+
+  .studio-shell--desktop-when-locked {
+    display: none;
+  }
+
+  .new-recipe-locked {
+    min-height: auto;
+    padding: 0;
+  }
+
+  .studio-login-card--compact {
+    border-radius: 24px;
+  }
 }
 
 @media (max-width: 1100px) {
   .preview-wall {
     height: auto;
   }
+}
 
-  .new-recipe-shell__content--locked {
 .studio-lazy-loading {
   min-height: 40vh;
   display: grid;

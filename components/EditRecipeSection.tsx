@@ -11,10 +11,12 @@ import { resolveRecipeSlugByHistory } from '@/lib/slugHistory';
 import { recipeToJson } from '@/lib/recipes';
 import { recipeSchema } from '@/schema/recipeSchema';
 import { getUserDisplay } from '@/lib/userDisplay';
+import { getRecipeQuickEditPath, STUDIO_MOBILE_QUICK_EDIT_INTENT_KEY } from '@/lib/routes';
 import { onAuthStateChanged, signOut, type User } from 'firebase/auth';
 import { BackupRecipesButton } from './BackupRecipesButton';
 import { StudioLoginCard } from './StudioLoginCard';
 import { StudioMantineProvider } from './StudioMantineProvider';
+import { StudioLockedMobileShell } from './StudioLockedMobileShell';
 
 interface Props {
   slug: string;
@@ -77,6 +79,23 @@ export function EditRecipeSection({ slug }: Props) {
     return unsubscribe;
   }, []);
 
+  useEffect(() => {
+    if (authStatus !== 'authenticated' || typeof window === 'undefined') {
+      return;
+    }
+
+    const intentSlug = window.sessionStorage.getItem(STUDIO_MOBILE_QUICK_EDIT_INTENT_KEY);
+    if (intentSlug !== slug) {
+      return;
+    }
+
+    window.sessionStorage.removeItem(STUDIO_MOBILE_QUICK_EDIT_INTENT_KEY);
+
+    if (window.matchMedia('(max-width: 960px)').matches) {
+      window.location.assign(getRecipeQuickEditPath(slug));
+    }
+  }, [authStatus, slug]);
+
   const handleLogout = async () => {
     const auth = getFirebaseAuth();
     await signOut(auth);
@@ -87,6 +106,13 @@ export function EditRecipeSection({ slug }: Props) {
       window.location.hash = '#/';
     }
   };
+
+  const showMobileLockedShell = authStatus !== 'authenticated';
+  const mobileLockedTitle = status === 'ready' && title ? title : 'Redigera recept';
+  const mobileLockedSubtitle =
+    status === 'ready' && title
+      ? `Logga in för att fortsätta redigera ${title} från mobilen.`
+      : 'Logga in för att fortsätta redigera receptet från mobilen.';
 
   const { name: profileName, initial: profileInitial } = getUserDisplay(user);
 
@@ -165,7 +191,21 @@ export function EditRecipeSection({ slug }: Props) {
 
   return (
     <StudioMantineProvider>
-      <div className="new-recipe-shell">
+      {showMobileLockedShell && (
+        <div className="studio-mobile-locked-only">
+          <StudioLockedMobileShell title={mobileLockedTitle} subtitle={mobileLockedSubtitle} onBack={handleBack}>
+            <StudioLoginCard
+              status={authStatus}
+              title="Logga in för att fortsätta"
+              subtitle="Använd ett av snabbkontona eller valfri e-post. När du är inne stannar du kvar i samma redigeringsvy."
+              compact
+              embedded
+            />
+          </StudioLockedMobileShell>
+        </div>
+      )}
+
+      <div className={`new-recipe-shell ${showMobileLockedShell ? 'studio-shell--desktop-when-locked' : ''}`}>
         <StudioSidebar
           title="Redigera recept"
           navSections={navSections}

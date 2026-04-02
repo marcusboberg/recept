@@ -16,7 +16,13 @@ import {
   toIngredientGroups,
   type IngredientGroup,
 } from '@/lib/recipePresentation';
-import { getHomePath, getRecipePath, getStudioEditHref } from '@/lib/routes';
+import {
+  getHomePath,
+  getRecipePath,
+  getStudioEditHref,
+  RECIPE_QUICK_EDIT_SEARCH_PARAM,
+  STUDIO_MOBILE_QUICK_EDIT_INTENT_KEY,
+} from '@/lib/routes';
 import { buildQuickEditPayload } from '@/lib/recipeWorkflows';
 import { recipeSchema, type Recipe } from '@/schema/recipeSchema';
 
@@ -40,6 +46,13 @@ export function useRecipeMobileState({ slug, initialRecipe }: Options) {
   const shareStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const editStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const redirectAttemptedRef = useRef(false);
+
+  const rememberQuickEditIntent = (recipeSlug: string) => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    window.sessionStorage.setItem(STUDIO_MOBILE_QUICK_EDIT_INTENT_KEY, recipeSlug);
+  };
 
   useEffect(() => {
     redirectAttemptedRef.current = false;
@@ -320,6 +333,7 @@ export function useRecipeMobileState({ slug, initialRecipe }: Options) {
 
     if (authStatus !== 'authenticated') {
       if (typeof window !== 'undefined') {
+        rememberQuickEditIntent(liveRecipe.slug);
         window.location.assign(getStudioEditHref(liveRecipe.slug));
       }
       return;
@@ -346,9 +360,25 @@ export function useRecipeMobileState({ slug, initialRecipe }: Options) {
 
     if (authStatus === 'unauthenticated' && typeof window !== 'undefined') {
       setPendingQuickEditStart(false);
+      rememberQuickEditIntent(liveRecipe.slug);
       window.location.assign(getStudioEditHref(liveRecipe.slug));
     }
   }, [authStatus, liveRecipe, pendingQuickEditStart]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !liveRecipe || isQuickEditing || authStatus !== 'authenticated') {
+      return;
+    }
+
+    const url = new URL(window.location.href);
+    if (url.searchParams.get(RECIPE_QUICK_EDIT_SEARCH_PARAM) !== '1') {
+      return;
+    }
+
+    startQuickEdit(liveRecipe);
+    url.searchParams.delete(RECIPE_QUICK_EDIT_SEARCH_PARAM);
+    window.history.replaceState({}, '', url.pathname + url.search + url.hash);
+  }, [authStatus, isQuickEditing, liveRecipe]);
 
   const handleSaveQuickEdit = async () => {
     if (!draftRecipe || !liveRecipe) return;
