@@ -93,6 +93,17 @@ export function PublicRecipesView({ recipes, view }: Props) {
     { key: 'sweetness' as const, label: 'Sötma', href: getSweetnessPath(), accent: 'type' },
   ];
 
+  useEffect(() => {
+    if (view.type !== 'list') {
+      return;
+    }
+
+    router.prefetch(getCategoryGroupPath('place'));
+    router.prefetch(getCategoryGroupPath('base'));
+    router.prefetch(getSweetnessPath());
+    router.prefetch(getCategoryPath('drinkar'));
+  }, [router, view.type]);
+
   const { categoryParentLabel, categoryParentPath } = useMemo(() => {
     if (view.type !== 'category') {
       return {
