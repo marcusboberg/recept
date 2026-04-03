@@ -1,4 +1,11 @@
 export type PublicCategoryGroup = 'place' | 'base';
+export type PublicView =
+  | { type: 'categories' }
+  | { type: 'category'; slug: string }
+  | { type: 'sweetness' }
+  | { type: 'list' }
+  | { type: 'categoryGroup'; group: PublicCategoryGroup }
+  | { type: 'recipe'; slug: string };
 
 const STUDIO_ROOT_PATH = '/';
 export const STUDIO_MOBILE_QUICK_EDIT_INTENT_KEY = 'recipe-mobile-quick-edit-intent';
@@ -46,6 +53,58 @@ export function getStudioNewHref() {
 
 export function getStudioEditHref(slug: string) {
   return `${STUDIO_ROOT_PATH}${getStudioEditHash(slug)}`;
+}
+
+export function getPublicPathForView(view: PublicView) {
+  switch (view.type) {
+    case 'categories':
+      return getCategoriesPath();
+    case 'category':
+      return getCategoryPath(view.slug);
+    case 'recipe':
+      return getRecipePath(view.slug);
+    case 'sweetness':
+      return getSweetnessPath();
+    case 'categoryGroup':
+      return getCategoryGroupPath(view.group);
+    case 'list':
+    default:
+      return getHomePath();
+  }
+}
+
+export function parsePublicViewFromPath(pathname: string): PublicView | null {
+  const segments = pathname.split('/').filter(Boolean);
+
+  if (segments.length === 0) {
+    return { type: 'list' };
+  }
+
+  if (segments[0] === 'recept' && segments[1]) {
+    return { type: 'recipe', slug: segments[1] };
+  }
+
+  if (segments[0] !== 'kategorier' && segments[0] !== 'sotma') {
+    return null;
+  }
+
+  if (segments[0] === 'sotma') {
+    return { type: 'sweetness' };
+  }
+
+  if (segments.length === 1) {
+    return { type: 'categories' };
+  }
+
+  if (segments[1] === 'grupp' && (segments[2] === 'place' || segments[2] === 'base')) {
+    return { type: 'categoryGroup', group: segments[2] };
+  }
+
+  if (segments[1]) {
+    return { type: 'category', slug: segments[1] };
+  }
+
+  return null;
 }
 
 export function legacyHashToPublicPath(hash: string): string | null {

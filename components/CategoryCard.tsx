@@ -8,13 +8,27 @@ import { getCategoryPath } from '@/lib/routes';
 
 interface Props {
   category: CategoryInfo;
+  onNavigate?: (slug: string) => void;
 }
 
-export function CategoryCard({ category }: Props) {
+export function CategoryCard({ category, onNavigate }: Props) {
   const hero = category.image || DEFAULT_RECIPE_IMAGE;
   const segments = [{ text: category.name, size: 'big' as const }];
+  const href = getCategoryPath(category.slug);
   return (
-    <Link href={getCategoryPath(category.slug)} className="recipe-card recipe-card--category" prefetch>
+    <Link
+      href={href}
+      className="recipe-card recipe-card--category"
+      prefetch
+      onClick={(event) => {
+        if (!onNavigate || event.defaultPrevented || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+          return;
+        }
+
+        event.preventDefault();
+        onNavigate(category.slug);
+      }}
+    >
       <div className="recipe-card__image">
         <div className="recipe-card__media">
           <Image src={hero} alt={category.name} fill sizes="(max-width: 640px) 92vw, (max-width: 1024px) 44vw, 320px" />

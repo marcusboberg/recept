@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { startTransition, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { startTransition, useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from 'react';
+import { usePublicSite } from '@/components/public/PublicSiteContext';
 import { RecipesView } from '@/components/RecipesView';
 import { SearchBar } from '@/components/SearchBar';
 import { derivePublicCategoriesArray, recipeInSweetnessCollection, SWEETNESS_CATEGORY_NAME, toCategorySlug } from '@/lib/categories';
@@ -12,26 +13,26 @@ import {
   getCategoryGroupPath,
   getCategoryPath,
   getHomePath,
+  getPublicPathForView,
   getStudioNewHref,
   getSweetnessPath,
+  parsePublicViewFromPath,
+  type PublicView,
 } from '@/lib/routes';
 import { type Recipe } from '@/schema/recipeSchema';
-
-type PublicView =
-  | { type: 'categories' }
-  | { type: 'category'; slug: string }
-  | { type: 'sweetness' }
-  | { type: 'list' }
-  | { type: 'categoryGroup'; group: 'place' | 'base' };
 
 interface Props {
   recipes: Recipe[];
   view: PublicView;
+  embedded?: boolean;
 }
 
-export function PublicRecipesView({ recipes, view }: Props) {
+export function PublicRecipesView({ recipes, view, embedded = false }: Props) {
   const router = useRouter();
+  const pathname = usePathname();
+  const { completePublicNavigation, rememberPublicView, seedRecipes } = usePublicSite();
   const [liveRecipes, setLiveRecipes] = useState(recipes);
+  const [currentView, setCurrentView] = useState(view);
   const [searchQuery, setSearchQuery] = useState('');
   const [parentWidth, setParentWidth] = useState(0);
   const parentRef = useRef<HTMLSpanElement | null>(null);
@@ -47,6 +48,74 @@ export function PublicRecipesView({ recipes, view }: Props) {
   }, [recipes]);
 
   useEffect(() => {
+    setCurrentView(view);
+  }, [view]);
+
+  useEffect(() => {
+    if (embedded) {
+      return;
+    }
+
+    const parsed = parsePublicViewFromPath(pathname);
+    if (!parsed) {
+      return;
+    }
+
+    setCurrentView((prev) => {
+      if (
+        prev.type === parsed.type &&
+        ('slug' in prev ? prev.slug : null) === ('slug' in parsed ? parsed.slug : null) &&
+        ('group' in prev ? prev.group : null) === ('group' in parsed ? parsed.group : null)
+      ) {
+        return prev;
+      }
+
+      return parsed;
+    });
+  }, [embedded, pathname]);
+
+  useEffect(() => {
+    seedRecipes(liveRecipes);
+  }, [liveRecipes, seedRecipes]);
+
+  useEffect(() => {
+    if (embedded || currentView.type === 'recipe') {
+      return;
+    }
+
+    rememberPublicView(currentView);
+    completePublicNavigation(currentView);
+  }, [completePublicNavigation, currentView, embedded, rememberPublicView]);
+
+  const navigatePublic = (nextView: PublicView) => {
+    const nextPath = getPublicPathForView(nextView);
+
+    startTransition(() => {
+      setCurrentView(nextView);
+      setSearchQuery('');
+    });
+
+    if (typeof window !== 'undefined') {
+      window.history.pushState(null, '', nextPath);
+    } else {
+      router.push(nextPath);
+    }
+  };
+
+  const handlePublicLink = (event: MouseEvent<HTMLElement>, nextView: PublicView) => {
+    if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+      return;
+    }
+
+    event.preventDefault();
+    navigatePublic(nextView);
+  };
+
+  useEffect(() => {
+    if (embedded) {
+      return;
+    }
+
     let cancelled = false;
     const controller = new AbortController();
     const timeoutId = window.setTimeout(async () => {
@@ -85,7 +154,7 @@ export function PublicRecipesView({ recipes, view }: Props) {
       controller.abort();
       window.clearTimeout(timeoutId);
     };
-  }, [liveRecipes]);
+  }, [embedded, liveRecipes]);
 
   const categoryGroups = [
     { key: 'place' as const, label: 'Region', href: getCategoryGroupPath('place'), accent: 'place' },
@@ -94,7 +163,7 @@ export function PublicRecipesView({ recipes, view }: Props) {
   ];
 
   useEffect(() => {
-    if (view.type !== 'list') {
+    if (currentView.type !== 'list') {
       return;
     }
 
@@ -102,10 +171,10 @@ export function PublicRecipesView({ recipes, view }: Props) {
     router.prefetch(getCategoryGroupPath('base'));
     router.prefetch(getSweetnessPath());
     router.prefetch(getCategoryPath('drinkar'));
-  }, [router, view.type]);
+  }, [currentView.type, router]);
 
   const { categoryParentLabel, categoryParentPath } = useMemo(() => {
-    if (view.type !== 'category') {
+    if (currentView.type !== 'category') {
       return {
         categoryParentLabel: null,
         categoryParentPath: getHomePath(),
@@ -121,47 +190,51 @@ export function PublicRecipesView({ recipes, view }: Props) {
         if (recipe.categoryBase) base.add(toCategorySlug(recipe.categoryBase));
       });
 
-    if (place.has(view.slug)) {
+    if (place.has(currentView.slug)) {
       return { categoryParentLabel: 'Alla Regioner', categoryParentPath: getCategoryGroupPath('place') };
     }
 
-    if (base.has(view.slug)) {
+    if (base.has(currentView.slug)) {
       return { categoryParentLabel: 'Alla Basvaror', categoryParentPath: getCategoryGroupPath('base') };
     }
 
     return { categoryParentLabel: 'Alla Recept', categoryParentPath: getHomePath() };
-  }, [liveRecipes, view]);
+  }, [currentView, liveRecipes]);
 
   const categoryDisplayName = useMemo(() => {
-    if (view.type !== 'category') return null;
+    if (currentView.type !== 'category') return null;
 
     for (const recipe of liveRecipes.filter((item) => !recipeInSweetnessCollection(item))) {
       for (const name of derivePublicCategoriesArray(recipe)) {
-        if (toCategorySlug(name) === view.slug) {
+        if (toCategorySlug(name) === currentView.slug) {
           return name;
         }
       }
     }
 
     return null;
-  }, [liveRecipes, view]);
+  }, [currentView, liveRecipes]);
 
   const headerTitle = (() => {
-    if (view.type === 'categoryGroup') {
-      return view.group === 'place' ? 'Alla Regioner' : 'Alla Basvaror';
+    if (currentView.type === 'categories') {
+      return 'Kategorier';
     }
-    if (view.type === 'sweetness') {
+    if (currentView.type === 'categoryGroup') {
+      return currentView.group === 'place' ? 'Alla Regioner' : 'Alla Basvaror';
+    }
+    if (currentView.type === 'sweetness') {
       return SWEETNESS_CATEGORY_NAME;
     }
-    if (view.type === 'category') {
-      return categoryDisplayName ?? formatTitle(view.slug);
+    if (currentView.type === 'category') {
+      return categoryDisplayName ?? formatTitle(currentView.slug);
     }
     return 'Alla Recept';
   })();
 
   const prevTitle = (() => {
-    if (view.type === 'categoryGroup' || view.type === 'sweetness') return 'Alla Recept';
-    if (view.type === 'category') return categoryParentLabel;
+    if (currentView.type === 'categories') return 'Alla Recept';
+    if (currentView.type === 'categoryGroup' || currentView.type === 'sweetness') return 'Alla Recept';
+    if (currentView.type === 'category') return categoryParentLabel;
     return null;
   })();
   const hasParent = Boolean(prevTitle);
@@ -176,7 +249,7 @@ export function PublicRecipesView({ recipes, view }: Props) {
       return;
     }
 
-    const isHome = view.type === 'list';
+    const isHome = currentView.type === 'list';
     shell.classList.toggle(homeClass, isHome);
     document.body.classList.toggle(homeClass, isHome);
 
@@ -184,7 +257,7 @@ export function PublicRecipesView({ recipes, view }: Props) {
       shell.classList.remove(homeClass);
       document.body.classList.remove(homeClass);
     };
-  }, [view.type]);
+  }, [currentView.type]);
 
   useEffect(() => {
     if (!prevTitle) {
@@ -200,31 +273,30 @@ export function PublicRecipesView({ recipes, view }: Props) {
   }, [prevTitle, headerTitle]);
 
   const goBack = () => {
-    if (typeof window === 'undefined') return;
-    if (window.history.length > 1) {
-      window.history.back();
+    if (currentView.type === 'category') {
+      navigatePublic(parsePublicViewFromPath(categoryParentPath) ?? { type: 'list' });
       return;
     }
 
-    if (view.type === 'category') {
-      router.push(categoryParentPath);
+    if (currentView.type === 'categoryGroup') {
+      navigatePublic({ type: 'list' });
       return;
     }
 
-    if (view.type === 'categoryGroup') {
-      router.push(getCategoriesPath());
+    if (currentView.type === 'sweetness') {
+      navigatePublic({ type: 'list' });
       return;
     }
 
-    router.push(getHomePath());
+    navigatePublic({ type: 'list' });
   };
 
   return (
-    <div className={`page-shell space-y-6 home-landing ${view.type === 'list' ? 'is-home' : ''}`}>
-      {(view.type === 'list' || view.type === 'categoryGroup' || view.type === 'category' || view.type === 'sweetness') && (
+    <div className={`page-shell space-y-6 home-landing ${currentView.type === 'list' ? 'is-home' : ''}`}>
+      {(currentView.type === 'list' || currentView.type === 'categories' || currentView.type === 'categoryGroup' || currentView.type === 'category' || currentView.type === 'sweetness') && (
         <header className="home-hero">
           <div className="home-hero__title-row">
-            {(view.type === 'categoryGroup' || view.type === 'category' || view.type === 'sweetness') && (
+            {(currentView.type === 'categories' || currentView.type === 'categoryGroup' || currentView.type === 'category' || currentView.type === 'sweetness') && (
               <button type="button" className="home-hero__back" onClick={goBack} aria-label="Tillbaka">
                 <i className="fa-solid fa-arrow-left" aria-hidden="true" />
               </button>
@@ -260,18 +332,32 @@ export function PublicRecipesView({ recipes, view }: Props) {
         </header>
       )}
 
-      {view.type === 'list' && (
+      {currentView.type === 'list' && (
         <div className="category-search-row">
           <div className="category-group-row">
             {categoryGroups.map((group) => (
-              <Link key={group.key} className={`category-group-card category-group-card--${group.accent}`} href={group.href}>
+              <Link
+                key={group.key}
+                className={`category-group-card category-group-card--${group.accent}`}
+                href={group.href}
+                onClick={(event) =>
+                  handlePublicLink(
+                    event,
+                    group.key === 'sweetness' ? { type: 'sweetness' } : { type: 'categoryGroup', group: group.key },
+                  )
+                }
+              >
                 <div className="category-group-card__label">{group.label}</div>
                 <div className="category-group-card__cta" aria-hidden="true">
                   →
                 </div>
               </Link>
             ))}
-            <Link className="category-group-card category-group-card--drink" href={getCategoryPath('drinkar')}>
+            <Link
+              className="category-group-card category-group-card--drink"
+              href={getCategoryPath('drinkar')}
+              onClick={(event) => handlePublicLink(event, { type: 'category', slug: 'drinkar' })}
+            >
               <div className="category-group-card__label">Drinkar</div>
               <div className="category-group-card__cta" aria-hidden="true">
                 →
@@ -297,35 +383,42 @@ export function PublicRecipesView({ recipes, view }: Props) {
         </div>
       )}
 
-      {view.type === 'categories' && <RecipesView recipes={liveRecipes} showCategories />}
-      {view.type === 'categoryGroup' && (
+      {currentView.type === 'categories' && (
+        <RecipesView recipes={liveRecipes} showCategories onNavigateToCategory={(slug) => navigatePublic({ type: 'category', slug })} />
+      )}
+      {currentView.type === 'categoryGroup' && (
         <RecipesView
           recipes={liveRecipes}
-          categoryGroup={view.group}
+          categoryGroup={currentView.group}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           showSearchBar={false}
+          onNavigateToCategory={(slug) => navigatePublic({ type: 'category', slug })}
         />
       )}
-      {view.type === 'category' && (
+      {currentView.type === 'category' && (
         <RecipesView
           recipes={liveRecipes}
-          categorySlug={view.slug}
+          categorySlug={currentView.slug}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           showSearchBar={false}
+          onNavigateToCategory={(slug) => navigatePublic({ type: 'category', slug })}
+          onNavigateHome={() => navigatePublic({ type: 'list' })}
         />
       )}
-      {view.type === 'sweetness' && (
+      {currentView.type === 'sweetness' && (
         <RecipesView
           recipes={liveRecipes}
           collection="sweetness"
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           showSearchBar={false}
+          onNavigateToCategory={(slug) => navigatePublic({ type: 'category', slug })}
+          onNavigateHome={() => navigatePublic({ type: 'list' })}
         />
       )}
-      {view.type === 'list' && (
+      {currentView.type === 'list' && (
         <RecipesView recipes={liveRecipes} searchQuery={searchQuery} onSearchChange={setSearchQuery} showSearchBar={false} />
       )}
     </div>

@@ -3,17 +3,20 @@
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
-import type { CSSProperties } from 'react';
+import { useRouter } from 'next/navigation';
+import { useEffect, type CSSProperties } from 'react';
+import { usePublicSite } from '@/components/public/PublicSiteContext';
 import { RecipeMobileHero } from '@/components/recipe-mobile/RecipeMobileHero';
 import { RecipeMobileReadView } from '@/components/recipe-mobile/RecipeMobileReadView';
 import { useRecipeMobileState } from '@/components/recipe-mobile/useRecipeMobileState';
 import { getIngredientKey, getRecipeStepLabel } from '@/lib/recipePresentation';
-import { getHomePath, getStudioEditHref } from '@/lib/routes';
+import { getHomePath, getPublicPathForView, getStudioEditHref } from '@/lib/routes';
 import type { Recipe } from '@/schema/recipeSchema';
 
 interface Props {
   slug: string;
   initialRecipe?: Recipe;
+  source?: 'page' | 'instant';
 }
 
 const RecipeQuickEditPanel = dynamic(
@@ -24,7 +27,9 @@ const RecipeQuickEditPanel = dynamic(
   },
 );
 
-export function RecipeMobile({ slug, initialRecipe }: Props) {
+export function RecipeMobile({ slug, initialRecipe, source = 'page' }: Props) {
+  const router = useRouter();
+  const { completeRecipeNavigation, lastPublicView, openPublicInstant, seedRecipe } = usePublicSite();
   const {
     activeView,
     checkedIngredients,
@@ -59,6 +64,28 @@ export function RecipeMobile({ slug, initialRecipe }: Props) {
     '--recipe-hero-image': `url(${heroImage})`,
   } as CSSProperties;
 
+  const handleRecipeBack = () => {
+    if (source === 'page' && lastPublicView) {
+      openPublicInstant(lastPublicView);
+      router.push(getPublicPathForView(lastPublicView));
+      return;
+    }
+
+    handleBack();
+  };
+
+  useEffect(() => {
+    if (liveRecipe) {
+      seedRecipe(liveRecipe);
+    }
+  }, [liveRecipe, seedRecipe]);
+
+  useEffect(() => {
+    if (source === 'page' && liveRecipe) {
+      completeRecipeNavigation(liveRecipe.slug);
+    }
+  }, [completeRecipeNavigation, liveRecipe, source]);
+
   if (!liveRecipe) {
     return (
       <div className="page-shell space-y-4">
@@ -92,7 +119,7 @@ export function RecipeMobile({ slug, initialRecipe }: Props) {
             editStatus={editStatus}
             heroImage={heroImage}
             isQuickEditing={isQuickEditing}
-            onBack={handleBack}
+            onBack={handleRecipeBack}
             onEdit={handleStartQuickEdit}
             onShare={handleShare}
             shareStatus={shareStatus}
@@ -134,9 +161,9 @@ export function RecipeMobile({ slug, initialRecipe }: Props) {
 
       <div className="recipe-desktop-only">
         <div className="recipe-desktop-background" />
-        <a href={getHomePath()} className="back-button desktop back-button--floating">
+        <button type="button" className="back-button desktop back-button--floating" onClick={handleRecipeBack}>
           <i className="fa-solid fa-arrow-left" aria-hidden="true" /> Tillbaka
-        </a>
+        </button>
         <div className="recipe-desktop-content">
           <div className="recipe-desktop-card">
             <div className="recipe-desktop-card__body recipe-desktop-card__ingredients">

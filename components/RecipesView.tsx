@@ -21,6 +21,8 @@ interface Props {
   searchQuery?: string;
   onSearchChange?: (value: string) => void;
   showSearchBar?: boolean;
+  onNavigateToCategory?: (slug: string) => void;
+  onNavigateHome?: () => void;
 }
 
 export function RecipesView({
@@ -33,6 +35,8 @@ export function RecipesView({
   searchQuery: searchQueryProp,
   onSearchChange,
   showSearchBar = true,
+  onNavigateToCategory,
+  onNavigateHome,
 }: Props) {
   const isControlled = searchQueryProp !== undefined;
   const [internalSearch, setInternalSearch] = useState(searchQueryProp ?? '');
@@ -106,7 +110,7 @@ export function RecipesView({
       <div className="space-y-4">
         <div className="recipe-grid">
           {categories.map((category) => (
-            <CategoryCard key={category.slug} category={category} />
+            <CategoryCard key={category.slug} category={category} onNavigate={onNavigateToCategory} />
           ))}
           {categories.length === 0 && <p className="text-muted">Inga kategorier hittades.</p>}
         </div>
@@ -128,7 +132,7 @@ export function RecipesView({
         )}
         <div className="category-grid">
           {items.map((category) => (
-            <CategoryCard key={category.slug} category={category} />
+            <CategoryCard key={category.slug} category={category} onNavigate={onNavigateToCategory} />
           ))}
           {items.length === 0 && <p className="text-muted">Inga kategorier hittades för {label.toLowerCase()}.</p>}
         </div>
@@ -140,11 +144,34 @@ export function RecipesView({
     <div className="space-y-4">
       {!categorySlug && showCategoryChips && categories.length > 0 && (
         <div className="category-chips">
-          <Link className="chip-button chip-button--ghost" href={getHomePath()}>
+          <Link
+            className="chip-button chip-button--ghost"
+            href={getHomePath()}
+            onClick={(event) => {
+              if (!onNavigateHome || event.defaultPrevented || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+                return;
+              }
+
+              event.preventDefault();
+              onNavigateHome();
+            }}
+          >
             Alla
           </Link>
           {categories.map((category) => (
-            <Link key={category.slug} className="chip-button" href={getCategoryPath(category.slug)}>
+            <Link
+              key={category.slug}
+              className="chip-button"
+              href={getCategoryPath(category.slug)}
+              onClick={(event) => {
+                if (!onNavigateToCategory || event.defaultPrevented || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+                  return;
+                }
+
+                event.preventDefault();
+                onNavigateToCategory(category.slug);
+              }}
+            >
               {category.name}
             </Link>
           ))}

@@ -2,6 +2,8 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { usePublicSite } from '@/components/public/PublicSiteContext';
 import { DEFAULT_RECIPE_IMAGE } from '@/lib/images';
 import { getRecipePath } from '@/lib/routes';
 import type { Recipe } from '@/schema/recipeSchema';
@@ -11,7 +13,10 @@ interface Props {
 }
 
 export function RecipeCard({ recipe }: Props) {
+  const router = useRouter();
+  const { openRecipeInstant } = usePublicSite();
   const hero = recipe.imageUrl?.trim() || DEFAULT_RECIPE_IMAGE;
+  const href = getRecipePath(recipe.slug);
   const segments =
     recipe.titleSegments && recipe.titleSegments.length > 0
       ? recipe.titleSegments
@@ -22,7 +27,20 @@ export function RecipeCard({ recipe }: Props) {
         ];
 
   return (
-    <Link href={getRecipePath(recipe.slug)} className="recipe-card" prefetch>
+    <Link
+      href={href}
+      className="recipe-card"
+      prefetch
+      onClick={(event) => {
+        if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+          return;
+        }
+
+        event.preventDefault();
+        openRecipeInstant(recipe);
+        router.push(href);
+      }}
+    >
       <div className="recipe-card__image">
         <div className="recipe-card__media">
           <Image src={hero} alt={recipe.title} fill sizes="(max-width: 640px) 92vw, (max-width: 1024px) 44vw, 320px" />
