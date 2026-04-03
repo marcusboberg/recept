@@ -6,11 +6,18 @@ import { Button, Stack, Text, Title } from '@mantine/core';
 interface Props {
   title: string;
   subtitle: string;
+  meta?: string;
   onBack: () => void;
   children: ReactNode;
 }
 
-export function StudioLockedMobileShell({ title, subtitle, onBack, children }: Props) {
+export function StudioLockedMobileShell({
+  title,
+  subtitle,
+  meta,
+  onBack,
+  children,
+}: Props) {
   return (
     <section className="studio-mobile-locked-shell">
       <header className="studio-mobile-locked-shell__topbar">
@@ -34,11 +41,13 @@ export function StudioLockedMobileShell({ title, subtitle, onBack, children }: P
 
       <Stack gap="xl" className="studio-mobile-locked-shell__body">
         <div className="studio-mobile-locked-shell__intro">
-          <Text className="studio-mobile-locked-shell__eyebrow">Låst studio</Text>
-          <Title order={1} className="studio-mobile-locked-shell__title">
-            {title}
-          </Title>
-          <Text className="studio-mobile-locked-shell__subtitle">{subtitle}</Text>
+          {title ? (
+            <Title order={1} className="studio-mobile-locked-shell__title">
+              {title}
+            </Title>
+          ) : null}
+          {subtitle ? <Text className="studio-mobile-locked-shell__subtitle">{subtitle}</Text> : null}
+          {meta ? <Text className="studio-mobile-locked-shell__meta">{meta}</Text> : null}
         </div>
 
         {children}

@@ -15,6 +15,7 @@ import { StudioLoginCard } from './StudioLoginCard';
 import { StudioMantineProvider } from './StudioMantineProvider';
 import { StudioPageHeader } from './StudioPageHeader';
 import { StudioSectionCard } from './StudioSectionCard';
+import { StudioLockedDesktopShell } from './StudioLockedDesktopShell';
 import { StudioLockedMobileShell } from './StudioLockedMobileShell';
 
 interface Props {
@@ -190,22 +191,41 @@ export function NewRecipeSection({ initialJson, initialTitle }: Props) {
       {showMobileLockedShell && (
         <div className="studio-mobile-locked-only">
           <StudioLockedMobileShell
-            title="Ny rätt"
-            subtitle="Logga in för att importera, klistra in eller skapa ett nytt recept från mobilen utan att öppna hela studion först."
+            title=""
+            subtitle=""
             onBack={handleBack}
           >
             <StudioLoginCard
               status={authStatus}
-              title="Logga in för att fortsätta"
-              subtitle="När du är inne kan du direkt importera eller skapa ett nytt recept."
-              compact
+              title=""
+              subtitle=""
               embedded
+              immersive
             />
           </StudioLockedMobileShell>
         </div>
       )}
+      {!isAuthenticated && (
+        <div className="studio-desktop-locked-only">
+          <StudioLockedDesktopShell
+            eyebrow=""
+            title="Skapa nytt recept."
+            subtitle=""
+            onBack={handleBack}
+          >
+            <StudioLoginCard
+              status={authStatus}
+              title=""
+              subtitle=""
+              embedded
+              immersive
+            />
+          </StudioLockedDesktopShell>
+        </div>
+      )}
 
-      <div className={`new-recipe-shell ${showMobileLockedShell ? 'studio-shell--desktop-when-locked' : ''}`}>
+      {isAuthenticated && (
+      <div className="new-recipe-shell">
         <StudioSidebar
           title="Ny rätt"
           navSections={navSections}
@@ -214,7 +234,6 @@ export function NewRecipeSection({ initialJson, initialTitle }: Props) {
           footer={sidebarFooter}
         />
         <div className={contentClass}>
-          {!isAuthenticated && <StudioLoginCard status={authStatus} onBack={handleBack} />}
           {isAuthenticated && (
             <>
             {activeView === 'wordpress' && (
@@ -387,6 +406,7 @@ Regler:
           )}
         </div>
       </div>
+      )}
     </StudioMantineProvider>
   );
 }

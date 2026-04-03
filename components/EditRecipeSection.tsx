@@ -14,6 +14,7 @@ import { getUserDisplay } from '@/lib/userDisplay';
 import { getRecipeQuickEditPath, STUDIO_MOBILE_QUICK_EDIT_INTENT_KEY } from '@/lib/routes';
 import { onAuthStateChanged, signOut, type User } from 'firebase/auth';
 import { BackupRecipesButton } from './BackupRecipesButton';
+import { StudioLockedDesktopShell } from './StudioLockedDesktopShell';
 import { StudioLoginCard } from './StudioLoginCard';
 import { StudioMantineProvider } from './StudioMantineProvider';
 import { StudioLockedMobileShell } from './StudioLockedMobileShell';
@@ -193,19 +194,42 @@ export function EditRecipeSection({ slug }: Props) {
     <StudioMantineProvider>
       {showMobileLockedShell && (
         <div className="studio-mobile-locked-only">
-          <StudioLockedMobileShell title={mobileLockedTitle} subtitle={mobileLockedSubtitle} onBack={handleBack}>
+          <StudioLockedMobileShell
+            title={mobileLockedTitle}
+            subtitle=""
+            onBack={handleBack}
+          >
             <StudioLoginCard
               status={authStatus}
-              title="Logga in för att fortsätta"
-              subtitle="Använd ett av snabbkontona eller valfri e-post. När du är inne stannar du kvar i samma redigeringsvy."
-              compact
+              title=""
+              subtitle=""
               embedded
+              immersive
             />
           </StudioLockedMobileShell>
         </div>
       )}
+      {authStatus !== 'authenticated' && (
+        <div className="studio-desktop-locked-only">
+          <StudioLockedDesktopShell
+            eyebrow=""
+            title={status === 'ready' && title ? title : 'Redigera recept.'}
+            subtitle=""
+            onBack={handleBack}
+          >
+            <StudioLoginCard
+              status={authStatus}
+              title=""
+              subtitle=""
+              embedded
+              immersive
+            />
+          </StudioLockedDesktopShell>
+        </div>
+      )}
 
-      <div className={`new-recipe-shell ${showMobileLockedShell ? 'studio-shell--desktop-when-locked' : ''}`}>
+      {authStatus === 'authenticated' && (
+      <div className="new-recipe-shell">
         <StudioSidebar
           title="Redigera recept"
           navSections={navSections}
@@ -244,18 +268,12 @@ export function EditRecipeSection({ slug }: Props) {
                   </section>
                 )}
               </>
-            ) : (
-              <StudioLoginCard
-                status={authStatus}
-                onBack={handleBack}
-                title="Logga in för att redigera"
-                subtitle="Snabbinloggning med färdiga konton eller valfri e-post. Lösenord krävs alltid."
-              />
-            )}
+            ) : null}
             </>
           )}
         </div>
       </div>
+      )}
     </StudioMantineProvider>
   );
 }

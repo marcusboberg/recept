@@ -14,6 +14,7 @@ import {
   getCategoryPath,
   getHomePath,
   getPublicPathForView,
+  getStudioNewHash,
   getStudioNewHref,
   getSweetnessPath,
   parsePublicViewFromPath,
@@ -100,6 +101,26 @@ export function PublicRecipesView({ recipes, view, embedded = false }: Props) {
     } else {
       router.push(nextPath);
     }
+  };
+
+  const openStudioNew = (event: MouseEvent<HTMLElement>) => {
+    if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+      return;
+    }
+
+    event.preventDefault();
+
+    if (typeof window === 'undefined') {
+      router.push(getStudioNewHref());
+      return;
+    }
+
+    if (window.location.pathname === getHomePath()) {
+      window.location.hash = getStudioNewHash();
+      return;
+    }
+
+    window.location.assign(getStudioNewHref());
   };
 
   const handlePublicLink = (event: MouseEvent<HTMLElement>, nextView: PublicView) => {
@@ -325,7 +346,7 @@ export function PublicRecipesView({ recipes, view, embedded = false }: Props) {
                 />
               </div>
             </div>
-            <Link href={getStudioNewHref()} className="home-hero__cta">
+            <Link href={getStudioNewHref()} className="home-hero__cta" onClick={openStudioNew}>
               + nytt recept
             </Link>
           </div>

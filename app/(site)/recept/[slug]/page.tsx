@@ -21,9 +21,10 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     };
   }
 
-  const title = recipe.title || 'Recept';
-  const description = recipe.description || 'Ett recept från recept.marcusboberg.se';
-  const resolvedSlug = canonicalSlug ?? recipe.slug;
+  const resolvedRecipe = recipe;
+  const title = resolvedRecipe.title || 'Recept';
+  const description = resolvedRecipe.description || 'Ett recept från recept.marcusboberg.se';
+  const resolvedSlug = canonicalSlug ?? resolvedRecipe.slug;
   const canonical = `${siteUrl}${getRecipePath(resolvedSlug)}`;
   const shareImage = `${siteUrl}/api/share/${resolvedSlug}`;
 
