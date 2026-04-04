@@ -2,8 +2,10 @@
 
 import { useState } from 'react';
 import { Alert, Badge, Button, Group, List, SegmentedControl, SimpleGrid, Stack, Text, TextInput, ThemeIcon } from '@mantine/core';
+import { getBaseCategoryIconClass } from '@/lib/categoryIcons';
 import { buildCategoryOptions } from '@/lib/categoryOptions';
 import { finalizeImportedRecipe } from '@/lib/importRecipes';
+import type { RecipeKind } from '@/lib/recipeKind';
 import { recipeToJson } from '@/lib/recipes';
 import { useLiveRecipes } from '@/lib/useLiveRecipes';
 import { type Recipe } from '@/schema/recipeSchema';
@@ -32,7 +34,7 @@ export function WordPressImportCard({ onImport, className }: Props) {
   const [url, setUrl] = useState('');
   const [categoryPlace, setCategoryPlace] = useState('');
   const [categoryBase, setCategoryBase] = useState('');
-  const [recipeKind, setRecipeKind] = useState<'mat' | 'drink'>('mat');
+  const [recipeKind, setRecipeKind] = useState<RecipeKind>('mat');
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -69,7 +71,7 @@ export function WordPressImportCard({ onImport, className }: Props) {
       const parsed = finalizeImportedRecipe(recipe, {
         categoryPlace,
         categoryBase,
-        isDrink: recipeKind === 'drink',
+        recipeKind,
       });
       const json = recipeToJson(parsed);
       onImport(json, parsed.title);
@@ -113,18 +115,20 @@ export function WordPressImportCard({ onImport, className }: Props) {
               placeholder="t.ex. Kyckling"
               value={categoryBase}
               options={categoryOptions.base}
+              getOptionIconClass={getBaseCategoryIconClass}
               onChange={setCategoryBase}
             />
             <Stack gap={6}>
               <Text size="sm" fw={600} c="dimmed">
-                4. Recept
+                4. Typ
               </Text>
               <SegmentedControl
                 value={recipeKind}
-                onChange={(value) => setRecipeKind(value as 'mat' | 'drink')}
+                onChange={(value) => setRecipeKind(value as RecipeKind)}
                 data={[
                   { label: 'Mat', value: 'mat' },
-                  { label: 'Drink', value: 'drink' },
+                  { label: 'Dryck', value: 'drink' },
+                  { label: 'Sötma', value: 'sweetness' },
                 ]}
                 radius="xl"
                 color="studioBlue"
@@ -270,6 +274,7 @@ function convertWordPressHtml(html: string): Recipe {
     slugHistory: [],
     description: cleanText(description),
     imageUrl,
+    recipeKind: 'mat',
     categoryPlace: '',
     categoryBase: '',
     categories: [],

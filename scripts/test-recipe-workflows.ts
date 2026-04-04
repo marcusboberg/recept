@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { getBaseCategoryIconClass } from '../lib/categoryIcons.ts';
+import { buildCategoryOptions } from '../lib/categoryOptions.ts';
 import { finalizeImportedRecipe } from '../lib/importRecipes.ts';
 import { normalizeLegacyRecipeForRead } from '../lib/legacyRecipes.ts';
 import { buildEditorSavePayload, buildQuickEditPayload, NEW_RECIPE_SLUG } from '../lib/recipeWorkflows.ts';
@@ -94,23 +96,25 @@ const cases: Array<[string, () => void]> = [
     },
   ],
   [
-    'import finalization enforces selected categories and schema validation',
+    'import finalization supports sweetness as its own recipe kind',
     () => {
       const recipe = createRecipe();
 
       const payload = finalizeImportedRecipe(recipe, {
         categoryPlace: 'Frankrike',
-        categoryBase: 'Sötma',
+        categoryBase: 'Choklad',
+        recipeKind: 'sweetness',
       });
 
       assert.equal(payload.categoryPlace, 'Frankrike');
-      assert.equal(payload.categoryBase, 'Sötma');
+      assert.equal(payload.categoryBase, 'Choklad');
+      assert.equal(payload.recipeKind, 'sweetness');
       assert.equal(payload.isDrink, false);
-      assert.deepEqual(payload.categories, ['Frankrike', 'Sötma']);
+      assert.deepEqual(payload.categories, ['Frankrike', 'Choklad', 'Sötma']);
     },
   ],
   [
-    'import finalization derives Drinkar from isDrink without categoryType',
+    'import finalization derives Drinkar from recipe kind without categoryType',
     () => {
       const recipe = createRecipe({
         isDrink: true,
@@ -120,11 +124,29 @@ const cases: Array<[string, () => void]> = [
       const payload = finalizeImportedRecipe(recipe, {
         categoryPlace: 'Internationellt',
         categoryBase: 'Sprit',
-        isDrink: true,
+        recipeKind: 'drink',
       });
 
+      assert.equal(payload.recipeKind, 'drink');
       assert.equal(payload.isDrink, true);
       assert.deepEqual(payload.categories, ['Internationellt', 'Sprit', 'Drinkar']);
+    },
+  ],
+  [
+    'legacy recipe kind is inferred from previous sweetness modeling',
+    () => {
+      const normalized = recipeSchema.parse(
+        normalizeLegacyRecipeForRead({
+          ...createRecipe({
+            categoryBase: 'Sötma',
+            categories: ['Sverige', 'Sötma', 'Bakverk'],
+          }),
+        }),
+      );
+
+      assert.equal(normalized.recipeKind, 'sweetness');
+      assert.equal(normalized.isDrink, false);
+      assert.deepEqual(normalized.categories, ['Sverige', 'Sötma', 'Bakverk']);
     },
   ],
   [
@@ -142,6 +164,30 @@ const cases: Array<[string, () => void]> = [
       );
 
       assert.deepEqual(normalized.categories, ['Nordisk', 'Sötma', 'Bakverk', 'Fika', 'Frukt']);
+    },
+  ],
+  [
+    'category options hide synthetic base categories from suggestions',
+    () => {
+      const options = buildCategoryOptions([
+        createRecipe({ categoryBase: 'Potatis' }),
+        createRecipe({ categoryBase: 'Sötma', recipeKind: 'sweetness' }),
+        createRecipe({ categoryBase: 'Sprit', recipeKind: 'drink', isDrink: true }),
+      ]);
+
+      assert.deepEqual(options.base, ['Potatis']);
+    },
+  ],
+  [
+    'base category icons resolve from known names and fall back safely',
+    () => {
+      assert.equal(getBaseCategoryIconClass('Kött'), 'fa-solid fa-steak');
+      assert.equal(getBaseCategoryIconClass('Kallskuret'), 'fa-solid fa-sandwich');
+      assert.equal(getBaseCategoryIconClass('Kyckling'), 'fa-solid fa-turkey');
+      assert.equal(getBaseCategoryIconClass('Köttfärs'), 'fa-solid fa-bowl-rice');
+      assert.equal(getBaseCategoryIconClass('Vegetariskt'), 'fa-solid fa-carrot');
+      assert.equal(getBaseCategoryIconClass('Umami'), 'fa-solid fa-mushroom');
+      assert.equal(getBaseCategoryIconClass('Okänd basvara'), 'fa-solid fa-utensils');
     },
   ],
 ];

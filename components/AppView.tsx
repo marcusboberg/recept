@@ -11,6 +11,7 @@ import { emptyRecipe } from '@/lib/templates';
 import { recipeToJson } from '@/lib/recipes';
 import { useLiveRecipes } from '@/lib/useLiveRecipes';
 import { derivePublicCategoriesArray, SWEETNESS_CATEGORY_NAME, recipeInSweetnessCollection, toCategorySlug } from '@/lib/categories';
+import { isVisibleBaseCategory } from '@/lib/recipeKind';
 import {
   getCategoriesPath,
   getCategoryGroupPath,
@@ -208,7 +209,7 @@ export function AppView({ initialView = { type: 'list' }, allowStudioHashes = fa
       .filter((recipe) => !recipeInSweetnessCollection(recipe))
       .forEach((recipe) => {
         if (recipe.categoryPlace) place.add(toCategorySlug(recipe.categoryPlace));
-        if (recipe.categoryBase) base.add(toCategorySlug(recipe.categoryBase));
+        if (isVisibleBaseCategory(recipe.categoryBase)) base.add(toCategorySlug(recipe.categoryBase));
       });
     if (place.has(view.slug)) {
       return { categoryParentLabel: 'Alla Regioner', categoryParentPath: getCategoryGroupPath('place') };

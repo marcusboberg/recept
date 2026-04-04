@@ -14,6 +14,7 @@ export const emptyRecipe: Recipe = recipeSchema.parse({
   cookTimeMinutes: 15,
   servings: 2,
   imageUrl: '/images/recipes/new-recipe.jpg',
+  recipeKind: 'mat',
   ingredients: [
     { label: 'Olive oil', amount: '2 tbsp' },
     { label: 'Garlic cloves', amount: '3', notes: 'thinly sliced' },

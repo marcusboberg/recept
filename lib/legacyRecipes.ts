@@ -1,3 +1,5 @@
+import { inferRecipeKind } from './recipeKind.ts';
+
 const LEGACY_DRINK_DEFAULTS = {
   categoryPlace: 'Internationellt',
   categoryBase: 'Sprit',
@@ -63,6 +65,7 @@ export function normalizeLegacyRecipeForRead(input: unknown): unknown {
     const legacyType = typeof input.categoryType === 'string' ? input.categoryType.trim() : '';
     return {
       ...input,
+      recipeKind: inferRecipeKind(input),
       categories: cleanCategoryList(input.categories).filter((entry) => entry !== legacyType),
     };
   }
@@ -73,6 +76,7 @@ export function normalizeLegacyRecipeForRead(input: unknown): unknown {
 
   return {
     ...input,
+    recipeKind: 'drink',
     categoryPlace: nextPlace,
     categoryBase: nextBase,
     categories: Array.from(

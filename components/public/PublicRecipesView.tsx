@@ -7,6 +7,7 @@ import { usePublicSite } from '@/components/public/PublicSiteContext';
 import { RecipesView } from '@/components/RecipesView';
 import { SearchBar } from '@/components/SearchBar';
 import { derivePublicCategoriesArray, recipeInSweetnessCollection, SWEETNESS_CATEGORY_NAME, toCategorySlug } from '@/lib/categories';
+import { isVisibleBaseCategory } from '@/lib/recipeKind';
 import { shouldApplyRecipesRefresh } from '@/lib/publicRecipeRefresh';
 import {
   getCategoriesPath,
@@ -208,7 +209,7 @@ export function PublicRecipesView({ recipes, view, embedded = false }: Props) {
       .filter((recipe) => !recipeInSweetnessCollection(recipe))
       .forEach((recipe) => {
         if (recipe.categoryPlace) place.add(toCategorySlug(recipe.categoryPlace));
-        if (recipe.categoryBase) base.add(toCategorySlug(recipe.categoryBase));
+        if (isVisibleBaseCategory(recipe.categoryBase)) base.add(toCategorySlug(recipe.categoryBase));
       });
 
     if (place.has(currentView.slug)) {

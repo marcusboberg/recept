@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { DRINK_CATEGORY_NAME, inferRecipeKind, RECIPE_KIND_VALUES, SWEETNESS_CATEGORY_NAME } from '../lib/recipeKind.ts';
 
 export const recipeSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -13,6 +14,7 @@ export const recipeSchema = z.object({
   cookTimeMinutes: z.number().int().nonnegative(),
   servings: z.number().int().positive(),
   imageUrl: z.string().url().or(z.string().startsWith('/')).optional(),
+  recipeKind: z.enum(RECIPE_KIND_VALUES).optional(),
   isDrink: z.boolean().optional().default(false),
   categoryPlace: z.string().trim().min(1, 'Platskategori krävs'),
   categoryBase: z.string().trim().min(1, 'Basvarukategori krävs'),
@@ -42,12 +44,14 @@ export const recipeSchema = z.object({
   createdAt: z.string().datetime().optional(),
   updatedAt: z.string().datetime().optional(),
 }).transform((data) => {
+  const recipeKind = inferRecipeKind(data);
   const derivedCategories = Array.from(
     new Set(
       [
         data.categoryPlace,
         data.categoryBase,
-        ...(data.isDrink ? ['Drinkar'] : []),
+        ...(recipeKind === 'drink' ? [DRINK_CATEGORY_NAME] : []),
+        ...(recipeKind === 'sweetness' ? [SWEETNESS_CATEGORY_NAME] : []),
         ...data.categories,
       ]
         .map((c) => c?.trim())
@@ -93,8 +97,10 @@ export const recipeSchema = z.object({
 
   return {
     ...data,
+    recipeKind,
     titleSegments: segments,
     slugHistory: normalizedSlugHistory,
+    isDrink: recipeKind === 'drink',
     categories: derivedCategories,
     ingredients: normalizedIngredients,
     ingredientGroups: normalizedGroups,

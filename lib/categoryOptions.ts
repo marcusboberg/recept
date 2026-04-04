@@ -1,4 +1,5 @@
 import type { Recipe } from '../schema/recipeSchema.ts';
+import { isVisibleBaseCategory } from './recipeKind.ts';
 
 export function buildCategoryOptions(recipes: Recipe[]) {
   const place = new Set<string>();
@@ -9,7 +10,7 @@ export function buildCategoryOptions(recipes: Recipe[]) {
     const nextBase = recipe.categoryBase?.trim();
 
     if (nextPlace) place.add(nextPlace);
-    if (nextBase) base.add(nextBase);
+    if (isVisibleBaseCategory(nextBase)) base.add(nextBase);
   });
 
   const sortFn = (a: string, b: string) => a.localeCompare(b, 'sv');

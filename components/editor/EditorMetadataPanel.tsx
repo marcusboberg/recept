@@ -3,6 +3,8 @@
 import type { ReactNode } from 'react';
 import { Paper, SegmentedControl, Stack, Text, TextInput, Title } from '@mantine/core';
 import { StudioCategoryField } from '@/components/StudioCategoryField';
+import { getBaseCategoryIconClass } from '@/lib/categoryIcons';
+import { inferRecipeKind, type RecipeKind } from '@/lib/recipeKind';
 import type { Recipe } from '@/schema/recipeSchema';
 import { editorSegmentedClassNames } from './types';
 
@@ -17,6 +19,8 @@ interface Props {
 }
 
 export function EditorMetadataPanel({ categoryOptions, formRecipe, titleComposer, updateRecipe }: Props) {
+  const recipeKind = inferRecipeKind(formRecipe);
+
   return (
     <Paper className="workspace-card stack" withBorder radius="xl" p="xl" shadow="sm">
       <Stack gap="lg">
@@ -63,27 +67,30 @@ export function EditorMetadataPanel({ categoryOptions, formRecipe, titleComposer
                 label="Basvara"
                 value={formRecipe.categoryBase ?? ''}
                 options={categoryOptions.base}
+                getOptionIconClass={getBaseCategoryIconClass}
                 onChange={(value) => updateRecipe((prev) => ({ ...prev, categoryBase: value }))}
               />
               <div className="editor-meta-toggle-field">
                 <Text size="sm" fw={600} c="dimmed">
-                  Recept
+                  Typ
                 </Text>
                 <SegmentedControl
-                  aria-label="Välj mat eller dryck"
-                  value={formRecipe.isDrink ? 'drink' : 'mat'}
+                  aria-label="Välj mat, dryck eller sötma"
+                  value={recipeKind}
                   onChange={(value) =>
                     updateRecipe((prev) => {
-                      const nextIsDrink = value === 'drink';
+                      const nextRecipeKind = value as RecipeKind;
                       return {
                         ...prev,
-                        isDrink: nextIsDrink,
+                        recipeKind: nextRecipeKind,
+                        isDrink: nextRecipeKind === 'drink',
                       };
                     })
                   }
                   data={[
                     { label: 'Mat', value: 'mat' },
-                    { label: 'Drink', value: 'drink' },
+                    { label: 'Dryck', value: 'drink' },
+                    { label: 'Sötma', value: 'sweetness' },
                   ]}
                   radius="xl"
                   color="studioBlue"

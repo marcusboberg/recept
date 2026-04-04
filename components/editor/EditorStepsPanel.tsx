@@ -57,7 +57,7 @@ export function EditorStepsPanel({ addStep, formRecipe, removeStep, updateStep }
       <Stack gap="lg">
         <Group justify="space-between" align="center" gap="md">
           <Title order={3}>Gör så här</Title>
-          <Button type="button" color="studioBlue" radius="xl" onClick={addStep}>
+          <Button type="button" className="editor-section__add-button" color="studioBlue" radius="xl" onClick={addStep}>
             Lägg till steg
           </Button>
         </Group>

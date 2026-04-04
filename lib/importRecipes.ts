@@ -1,17 +1,18 @@
 import { recipeSchema, type Recipe } from '../schema/recipeSchema.ts';
 import { deriveCategoriesArray } from './categories.ts';
+import type { RecipeKind } from './recipeKind.ts';
 
 export type ImportCategoriesInput = {
   categoryPlace: string;
   categoryBase: string;
-  isDrink?: boolean;
+  recipeKind?: RecipeKind;
 };
 
 function normalizeImportCategories(input: ImportCategoriesInput) {
   return {
     categoryPlace: input.categoryPlace.trim(),
     categoryBase: input.categoryBase.trim(),
-    isDrink: input.isDrink === true,
+    recipeKind: input.recipeKind ?? 'mat',
   };
 }
 
@@ -34,7 +35,8 @@ export function finalizeImportedRecipe(recipe: Recipe, categories: ImportCategor
     ...recipe,
     categoryPlace: normalized.categoryPlace,
     categoryBase: normalized.categoryBase,
-    isDrink: normalized.isDrink,
+    recipeKind: normalized.recipeKind,
+    isDrink: normalized.recipeKind === 'drink',
     categories: extraCategories,
   });
 }

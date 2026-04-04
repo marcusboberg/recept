@@ -7,6 +7,7 @@ interface StudioCategoryFieldProps {
   value: string;
   options: string[];
   placeholder?: string;
+  getOptionIconClass?: (value: string) => string | null | undefined;
   onChange: (value: string) => void;
 }
 
@@ -15,6 +16,7 @@ export function StudioCategoryField({
   value,
   options,
   placeholder,
+  getOptionIconClass,
   onChange,
 }: StudioCategoryFieldProps) {
   const combobox = useCombobox({
@@ -63,7 +65,14 @@ export function StudioCategoryField({
         <Combobox.Options>
           {filteredOptions.map((option) => (
             <Combobox.Option value={option} key={option}>
-              {option}
+              <span className="studio-category-option">
+                {getOptionIconClass ? (
+                  <span className="studio-category-option__icon" aria-hidden="true">
+                    <i className={getOptionIconClass(option) ?? 'fa-solid fa-utensils'} />
+                  </span>
+                ) : null}
+                <span>{option}</span>
+              </span>
             </Combobox.Option>
           ))}
         </Combobox.Options>

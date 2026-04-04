@@ -1,6 +1,7 @@
 import type { Recipe } from '@/schema/recipeSchema';
+import { DRINK_CATEGORY_NAME, inferRecipeKind, SWEETNESS_CATEGORY_NAME } from './recipeKind.ts';
 
-export const SWEETNESS_CATEGORY_NAME = 'Sötma';
+export { SWEETNESS_CATEGORY_NAME } from './recipeKind.ts';
 
 export interface CategoryInfo {
   name: string;
@@ -13,13 +14,16 @@ export function deriveCategoriesArray(input: {
   categories?: string[];
   categoryPlace?: string;
   categoryBase?: string;
+  recipeKind?: string;
   imageUrl?: string;
   isDrink?: boolean;
 }): string[] {
+  const recipeKind = inferRecipeKind(input);
   const items = [
     input.categoryPlace,
     input.categoryBase,
-    ...(input.isDrink ? ['Drinkar'] : []),
+    ...(recipeKind === 'drink' ? [DRINK_CATEGORY_NAME] : []),
+    ...(recipeKind === 'sweetness' ? [SWEETNESS_CATEGORY_NAME] : []),
     ...(input.categories ?? []),
   ]
     .map((c) => c?.trim())
@@ -31,12 +35,15 @@ export function derivePublicCategoriesArray(input: {
   categories?: string[];
   categoryPlace?: string;
   categoryBase?: string;
+  recipeKind?: string;
   isDrink?: boolean;
 }): string[] {
+  const recipeKind = inferRecipeKind(input);
   const items = [
     input.categoryPlace,
     input.categoryBase,
-    ...(input.isDrink ? ['Drinkar'] : []),
+    ...(recipeKind === 'drink' ? [DRINK_CATEGORY_NAME] : []),
+    ...(recipeKind === 'sweetness' ? [SWEETNESS_CATEGORY_NAME] : []),
     ...(input.categories ?? []),
   ]
     .map((c) => c?.trim())
@@ -50,13 +57,7 @@ export function toCategorySlug(name: string): string {
 }
 
 export function recipeInSweetnessCollection(recipe: Recipe): boolean {
-  if (recipe.isDrink) {
-    return false;
-  }
-
-  const sweetnessSlug = toCategorySlug(SWEETNESS_CATEGORY_NAME);
-
-  return deriveCategoriesArray(recipe).some((name) => toCategorySlug(name) === sweetnessSlug);
+  return inferRecipeKind(recipe) === 'sweetness';
 }
 
 export function buildCategories(recipes: Recipe[], fallbackImage: string): CategoryInfo[] {

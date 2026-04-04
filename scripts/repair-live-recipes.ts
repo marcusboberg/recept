@@ -19,9 +19,10 @@ async function main() {
       const categoriesChanged = JSON.stringify(currentCategories) !== JSON.stringify(patch.categories);
       const placeChanged = (typeof raw.categoryPlace === 'string' ? raw.categoryPlace : '') !== patch.categoryPlace;
       const baseChanged = (typeof raw.categoryBase === 'string' ? raw.categoryBase : '') !== patch.categoryBase;
+      const recipeKindChanged = (typeof raw.recipeKind === 'string' ? raw.recipeKind : '') !== patch.recipeKind;
       const drinkChanged = Boolean(raw.isDrink) !== patch.isDrink;
 
-      if (!hasLegacyType && !categoriesChanged && !placeChanged && !baseChanged && !drinkChanged) {
+      if (!hasLegacyType && !categoriesChanged && !placeChanged && !baseChanged && !recipeKindChanged && !drinkChanged) {
         return null;
       }
 

@@ -388,6 +388,7 @@ export function buildCategoryTypeRemovalPatch(document: LiveRecipeDocument) {
         typeof normalizedInput.categoryPlace === 'string' ? normalizedInput.categoryPlace : undefined,
       categoryBase:
         typeof normalizedInput.categoryBase === 'string' ? normalizedInput.categoryBase : undefined,
+      recipeKind: typeof normalizedInput.recipeKind === 'string' ? normalizedInput.recipeKind : undefined,
       isDrink: normalizedInput.isDrink === true,
       categories: Array.isArray(normalizedInput.categories)
         ? normalizedInput.categories.filter((entry): entry is string => typeof entry === 'string')
@@ -399,6 +400,7 @@ export function buildCategoryTypeRemovalPatch(document: LiveRecipeDocument) {
     patch: {
       categoryPlace: normalized.categoryPlace,
       categoryBase: normalized.categoryBase,
+      recipeKind: normalized.recipeKind,
       isDrink: normalized.isDrink,
       categories: normalized.categories,
       updatedAt: new Date().toISOString(),

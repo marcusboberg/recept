@@ -324,7 +324,7 @@ export function useEditorRecipeState({ initialJson }: UseEditorRecipeStateOption
       initialSlugWasAutoRef.current = payload.slug === NEW_RECIPE_SLUG || isAutoLikeSlug(payload.slug, payload.title);
       setStatus('Recipe saved to Firebase.');
       if (typeof window !== 'undefined') {
-        window.location.assign(getRecipePath(payload.slug));
+        window.location.replace(getRecipePath(payload.slug));
       }
     } catch (error) {
       setStatus((error as Error).message);

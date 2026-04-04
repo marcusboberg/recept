@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import { matchQuery } from '@/lib/recipes';
 import { DEFAULT_RECIPE_IMAGE } from '@/lib/images';
 import { buildPublicCategories, recipeInPublicCategory, recipeInSweetnessCollection, toCategorySlug } from '@/lib/categories';
+import { isVisibleBaseCategory } from '@/lib/recipeKind';
 import { getCategoryPath, getHomePath } from '@/lib/routes';
 import { type Recipe } from '@/schema/recipeSchema';
 import { RecipeCard } from './RecipeCard';
@@ -81,6 +82,7 @@ export function RecipesView({
       collectionRecipes.forEach((recipe) => {
         const value = recipe[field];
         if (!value) return;
+        if (field === 'categoryBase' && !isVisibleBaseCategory(value)) return;
         const slug = toCategorySlug(value);
         if (!slug) return;
         const current = map.get(slug);
