@@ -61,7 +61,7 @@ const cases: Array<[string, () => void]> = [
       ]);
 
       assert.equal(next.ingredientGroups, undefined);
-      assert.deepEqual(next.ingredients, [{ label: 'Smör', amount: '50 g', notes: undefined, kind: 'ingredient' }]);
+      assert.deepEqual(next.ingredients, [{ label: 'Smör', amount: '50 g', kind: 'ingredient' }]);
     },
   ],
   [
