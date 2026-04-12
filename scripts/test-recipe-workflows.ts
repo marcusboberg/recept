@@ -96,6 +96,61 @@ const cases: Array<[string, () => void]> = [
     },
   ],
   [
+    'quick edit payload strips undefined nested fields before save',
+    () => {
+      const liveRecipe = createRecipe({
+        slug: 'live-slug',
+      });
+      const draftRecipe = createRecipe({
+        ingredientGroups: [
+          {
+            title: 'Drink',
+            items: [
+              {
+                label: 'Gin',
+                amount: '2 cl',
+                notes: undefined,
+                kind: 'ingredient',
+              },
+              {
+                label: 'Citron',
+                amount: undefined,
+                kind: 'ingredient',
+              },
+            ],
+          },
+        ],
+        ingredients: [
+          {
+            label: 'Gin',
+            amount: '2 cl',
+            notes: undefined,
+            kind: 'ingredient',
+          },
+        ],
+        steps: [{ title: undefined, body: 'Skaka med is.' }],
+      });
+
+      const payload = buildQuickEditPayload({
+        draftRecipe,
+        liveRecipe,
+        now: '2026-04-01T20:00:00.000Z',
+      });
+
+      assert.deepEqual(payload.ingredientGroups, [
+        {
+          title: 'Drink',
+          items: [
+            { label: 'Gin', amount: '2 cl', kind: 'ingredient' },
+            { label: 'Citron', kind: 'ingredient' },
+          ],
+        },
+      ]);
+      assert.deepEqual(payload.ingredients, [{ label: 'Gin', amount: '2 cl', kind: 'ingredient' }]);
+      assert.deepEqual(payload.steps, [{ body: 'Skaka med is.' }]);
+    },
+  ],
+  [
     'import finalization supports sweetness as its own recipe kind',
     () => {
       const recipe = createRecipe();

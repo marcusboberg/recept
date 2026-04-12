@@ -43,8 +43,8 @@ export function applyEditableIngredientGroups(recipe: Recipe, groups: Ingredient
       group.items.length > 0
         ? group.items.map((item) => ({
             label: item.label,
-            amount: item.amount,
-            notes: item.notes,
+            ...(item.amount !== undefined ? { amount: item.amount } : {}),
+            ...(item.notes !== undefined ? { notes: item.notes } : {}),
             kind: item.kind ?? 'ingredient',
           }))
         : [{ label: '', kind: 'ingredient' as const }],

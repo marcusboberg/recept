@@ -4,6 +4,24 @@ import { getEditableTitleSegments } from './recipePresentation.ts';
 
 export const NEW_RECIPE_SLUG = 'new-recipe-slug';
 
+function stripUndefinedDeep<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value
+      .filter((entry) => entry !== undefined)
+      .map((entry) => stripUndefinedDeep(entry)) as T;
+  }
+
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([, entry]) => entry !== undefined)
+        .map(([key, entry]) => [key, stripUndefinedDeep(entry)]),
+    ) as T;
+  }
+
+  return value;
+}
+
 export function toRecipeSlug(value: string): string {
   const transliterated = value
     .normalize('NFD')
@@ -80,7 +98,7 @@ export function buildEditorSavePayload({
     draftPayload.slugHistory = Array.from(nextHistory);
   }
 
-  const payload = recipeSchema.parse(draftPayload);
+  const payload = recipeSchema.parse(stripUndefinedDeep(draftPayload));
   const isCreateLike = !initialSlug || initialSlug === NEW_RECIPE_SLUG;
   const shouldCheckCollision = isCreateLike || slugChanged;
 
@@ -102,13 +120,15 @@ export function buildQuickEditPayload({
   liveRecipe,
   now = new Date().toISOString(),
 }: BuildQuickEditPayloadOptions) {
-  return recipeSchema.parse({
-    ...draftRecipe,
-    slug: liveRecipe.slug,
-    slugHistory: liveRecipe.slugHistory ?? draftRecipe.slugHistory ?? [],
-    titleSegments: getEditableTitleSegments(draftRecipe),
-    createdAt: draftRecipe.createdAt ?? liveRecipe.createdAt ?? now,
-    updatedAt: now,
-    categories: deriveCategoriesArray(draftRecipe),
-  });
+  return recipeSchema.parse(
+    stripUndefinedDeep({
+      ...draftRecipe,
+      slug: liveRecipe.slug,
+      slugHistory: liveRecipe.slugHistory ?? draftRecipe.slugHistory ?? [],
+      titleSegments: getEditableTitleSegments(draftRecipe),
+      createdAt: draftRecipe.createdAt ?? liveRecipe.createdAt ?? now,
+      updatedAt: now,
+      categories: deriveCategoriesArray(draftRecipe),
+    }),
+  );
 }
