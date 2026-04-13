@@ -895,8 +895,10 @@
   background: transparent;
   padding: 0;
   border-radius: 0;
-  min-width: 4rem;
+  min-width: 6.5rem;
+  max-width: none;
   text-align: right;
+  white-space: nowrap;
 }
 
 .recipe-mobile-simple ol.checklist .checklist__label {
