@@ -67,7 +67,7 @@ export function RecipeMobile({ slug, initialRecipe, source = 'page' }: Props) {
   const handleRecipeBack = () => {
     if (source === 'page' && lastPublicView) {
       openPublicInstant(lastPublicView);
-      router.back();
+      router.push(getPublicPathForView(lastPublicView));
       return;
     }
 

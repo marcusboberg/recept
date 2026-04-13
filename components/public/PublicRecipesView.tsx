@@ -96,6 +96,9 @@ export function PublicRecipesView({ recipes, view, embedded = false }: Props) {
       setCurrentView(nextView);
       setSearchQuery('');
     });
+    if (nextView.type !== 'recipe') {
+      rememberPublicView(nextView);
+    }
 
     if (typeof window !== 'undefined') {
       window.history.pushState(null, '', nextPath);
