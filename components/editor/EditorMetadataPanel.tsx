@@ -27,7 +27,7 @@ const UPLOAD_STEPS: { id: EditorImageUploadStep; label: string }[] = [
   { id: 'decode', label: 'Öppnar bilden i webbläsaren' },
   { id: 'resize', label: 'Skalar ner bilden' },
   { id: 'convert', label: 'Konverterar till WebP' },
-  { id: 'upload', label: 'Laddar upp till Firebase Storage' },
+  { id: 'upload', label: 'Laddar upp till Vercel Blob' },
   { id: 'downloadUrl', label: 'Hämtar bildlänk' },
   { id: 'updateField', label: 'Uppdaterar Bild-URL' },
 ];
@@ -155,7 +155,7 @@ export function EditorMetadataPanel({ categoryOptions, formRecipe, titleComposer
                 </Text>
               ) : (
                 <Text size="sm" c="dimmed">
-                  Konverteras till WebP, max 800 px.
+                  Konverteras till WebP och sparas i Vercel Blob.
                 </Text>
               )}
             </Group>

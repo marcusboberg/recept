@@ -37,9 +37,9 @@ Make sure the environment variables below are present in `.env.local`.
 - `npm run check:live` runs the blocking live validation plus workflow tests intended for CI/release gates.
 
 ## Images
-Set the `imageUrl` field in the JSON to any publicly reachable image (WordPress CDN, your own hosting, etc.). Studio can also upload a local image from the recipe editor. Uploaded images are compressed in the browser to WebP at max 800 px before being stored in Firebase Storage under `recipes/{slug}/hero.webp`, and the resulting download URL is written back to `imageUrl`.
+Set the `imageUrl` field in the JSON to any publicly reachable image (WordPress CDN, your own hosting, etc.). Studio can also upload a local image from the recipe editor. Uploaded images are compressed in the browser to WebP at max 800 px before being sent to `/api/upload-recipe-image`, stored in Vercel Blob under `recipes/{slug}/hero.webp`, and written back to `imageUrl`.
 
-Firebase Storage rules must allow authenticated users to write under `recipes/**` for uploads to work.
+Image uploads require a Vercel Blob store connected with the `RECIPE_IMAGES_READ_WRITE_TOKEN` environment variable.
 
 ## Environment
 Add the Firebase client config so webbläsaren kan logga in och prata med Firestore:

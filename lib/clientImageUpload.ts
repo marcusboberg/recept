@@ -1,8 +1,5 @@
 'use client';
 
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
-import { getFirebaseStorage } from '@/lib/firebaseClient';
-
 type CompressImageOptions = {
   maxSize?: number;
   onProgress?: (progress: RecipeImageUploadProgress) => void;
@@ -42,7 +39,6 @@ type UploadRecipeImageOptions = {
 const DEFAULT_MAX_SIZE = 800;
 const DEFAULT_QUALITY = 0.75;
 const FALLBACK_SLUG = 'new-recipe-slug';
-const UPLOAD_TIMEOUT_MS = 45000;
 
 async function decodeImage(file: File): Promise<{ source: CanvasImageSource; width: number; height: number; close?: () => void }> {
   if ('createImageBitmap' in window) {
@@ -133,31 +129,31 @@ export async function compressImageToWebp(file: File, options: CompressImageOpti
 export async function uploadRecipeImage(file: File, slug: string, options: UploadRecipeImageOptions = {}): Promise<UploadedRecipeImage> {
   options.onProgress?.({ step: 'validate' });
   const compressed = await compressImageToWebp(file, { onProgress: options.onProgress });
-  const storage = getFirebaseStorage();
   const safeSlug = toRecipeImageSlug(slug);
-  const imageRef = ref(storage, `recipes/${safeSlug}/hero.webp`);
 
   options.onProgress?.({
     step: 'upload',
   });
 
-  await Promise.race([
-    uploadBytes(imageRef, compressed.blob, {
-      contentType: 'image/webp',
-      cacheControl: 'public,max-age=31536000',
-    }),
-    new Promise<never>((_, reject) => {
-      window.setTimeout(() => {
-        reject(new Error('Firebase Storage svarade inte. Kontrollera Storage-regler, CORS och nätverk och försök igen.'));
-      }, UPLOAD_TIMEOUT_MS);
-    }),
-  ]);
+  const formData = new FormData();
+  formData.set('file', compressed.blob, 'hero.webp');
+  formData.set('slug', safeSlug);
+
+  const response = await fetch('/api/upload-recipe-image', {
+    method: 'POST',
+    body: formData,
+  });
+
+  const result = (await response.json().catch(() => null)) as { url?: string; error?: string } | null;
+
+  if (!response.ok || !result?.url) {
+    throw new Error(result?.error ?? 'Kunde inte ladda upp bilden till Vercel Blob.');
+  }
 
   options.onProgress?.({ step: 'downloadUrl' });
-  const url = await getDownloadURL(imageRef);
 
   return {
-    url,
+    url: result.url,
     width: compressed.width,
     height: compressed.height,
     size: compressed.size,
