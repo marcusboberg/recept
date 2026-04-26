@@ -136,7 +136,7 @@ export async function uploadRecipeImage(file: File, slug: string, options: Uploa
   });
 
   const formData = new FormData();
-  formData.set('file', compressed.blob, 'hero.webp');
+  formData.set('file', new File([compressed.blob], 'hero.webp', { type: 'image/webp' }));
   formData.set('slug', safeSlug);
 
   const response = await fetch('/api/upload-recipe-image', {
