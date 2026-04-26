@@ -5,6 +5,7 @@ import { getFirebaseStorage } from '@/lib/firebaseClient';
 
 type CompressImageOptions = {
   maxSize?: number;
+  onProgress?: (progress: RecipeImageUploadProgress) => void;
   quality?: number;
 };
 
@@ -22,9 +23,26 @@ type UploadedRecipeImage = {
   size: number;
 };
 
+export type RecipeImageUploadStep =
+  | 'validate'
+  | 'decode'
+  | 'resize'
+  | 'convert'
+  | 'upload'
+  | 'downloadUrl';
+
+type RecipeImageUploadProgress = {
+  step: RecipeImageUploadStep;
+};
+
+type UploadRecipeImageOptions = {
+  onProgress?: (progress: RecipeImageUploadProgress) => void;
+};
+
 const DEFAULT_MAX_SIZE = 800;
 const DEFAULT_QUALITY = 0.75;
 const FALLBACK_SLUG = 'new-recipe-slug';
+const UPLOAD_TIMEOUT_MS = 45000;
 
 async function decodeImage(file: File): Promise<{ source: CanvasImageSource; width: number; height: number; close?: () => void }> {
   if ('createImageBitmap' in window) {
@@ -66,9 +84,12 @@ export async function compressImageToWebp(file: File, options: CompressImageOpti
     throw new Error('Välj en bildfil.');
   }
 
+  options.onProgress?.({ step: 'decode' });
   const maxSize = options.maxSize ?? DEFAULT_MAX_SIZE;
   const quality = options.quality ?? DEFAULT_QUALITY;
   const decoded = await decodeImage(file);
+
+  options.onProgress?.({ step: 'resize' });
   const scale = Math.min(1, maxSize / Math.max(decoded.width, decoded.height));
   const width = Math.max(1, Math.round(decoded.width * scale));
   const height = Math.max(1, Math.round(decoded.height * scale));
@@ -86,6 +107,7 @@ export async function compressImageToWebp(file: File, options: CompressImageOpti
   context.drawImage(decoded.source, 0, 0, width, height);
   decoded.close?.();
 
+  options.onProgress?.({ step: 'convert' });
   const blob = await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(
       (result) => {
@@ -108,17 +130,30 @@ export async function compressImageToWebp(file: File, options: CompressImageOpti
   };
 }
 
-export async function uploadRecipeImage(file: File, slug: string): Promise<UploadedRecipeImage> {
-  const compressed = await compressImageToWebp(file);
+export async function uploadRecipeImage(file: File, slug: string, options: UploadRecipeImageOptions = {}): Promise<UploadedRecipeImage> {
+  options.onProgress?.({ step: 'validate' });
+  const compressed = await compressImageToWebp(file, { onProgress: options.onProgress });
   const storage = getFirebaseStorage();
   const safeSlug = toRecipeImageSlug(slug);
   const imageRef = ref(storage, `recipes/${safeSlug}/hero.webp`);
 
-  await uploadBytes(imageRef, compressed.blob, {
-    contentType: 'image/webp',
-    cacheControl: 'public,max-age=31536000',
+  options.onProgress?.({
+    step: 'upload',
   });
 
+  await Promise.race([
+    uploadBytes(imageRef, compressed.blob, {
+      contentType: 'image/webp',
+      cacheControl: 'public,max-age=31536000',
+    }),
+    new Promise<never>((_, reject) => {
+      window.setTimeout(() => {
+        reject(new Error('Firebase Storage svarade inte. Kontrollera Storage-regler, CORS och nätverk och försök igen.'));
+      }, UPLOAD_TIMEOUT_MS);
+    }),
+  ]);
+
+  options.onProgress?.({ step: 'downloadUrl' });
   const url = await getDownloadURL(imageRef);
 
   return {
