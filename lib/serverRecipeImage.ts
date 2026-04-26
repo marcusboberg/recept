@@ -1,6 +1,6 @@
 import sharp from 'sharp';
 
-export const RECIPE_IMAGE_MAX_SIZE = 800;
+export const RECIPE_IMAGE_MAX_SIZE = 1600;
 export const RECIPE_IMAGE_WEBP_QUALITY = 68;
 export const MAX_SOURCE_IMAGE_BYTES = 12 * 1024 * 1024;
 export const FALLBACK_RECIPE_IMAGE_SLUG = 'new-recipe-slug';
