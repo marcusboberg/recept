@@ -4,7 +4,7 @@ import { useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 import { Group, Paper, SegmentedControl, Stack, Text, TextInput, Title } from '@mantine/core';
 import { StudioCategoryField } from '@/components/StudioCategoryField';
 import { getBaseCategoryIconClass } from '@/lib/categoryIcons';
-import { uploadRecipeImage, type RecipeImageUploadStep } from '@/lib/clientImageUpload';
+import { createSmallerRecipeImage, uploadRecipeImage, type RecipeImageUploadStep } from '@/lib/clientImageUpload';
 import { inferRecipeKind, type RecipeKind } from '@/lib/recipeKind';
 import type { Recipe } from '@/schema/recipeSchema';
 import { editorSegmentedClassNames } from './types';
@@ -19,12 +19,13 @@ interface Props {
   updateRecipe: (updater: (prev: Recipe) => Recipe) => void;
 }
 
-type EditorImageUploadStep = RecipeImageUploadStep | 'updateField';
+type EditorImageUploadStep = RecipeImageUploadStep | 'downloadFile' | 'updateField';
 type UploadStepStatus = 'pending' | 'active' | 'complete' | 'error';
+type ImageActionStep = { id: EditorImageUploadStep; label: string };
 
-const UPLOAD_STEPS: { id: EditorImageUploadStep; label: string }[] = [
+const UPLOAD_STEPS: ImageActionStep[] = [
   { id: 'validate', label: 'Kontrollerar filen' },
-  { id: 'decode', label: 'Öppnar bilden i webbläsaren' },
+  { id: 'decode', label: 'Förbereder bilden' },
   { id: 'resize', label: 'Skalar ner bilden' },
   { id: 'convert', label: 'Konverterar till WebP' },
   { id: 'upload', label: 'Laddar upp till Vercel Blob' },
@@ -32,22 +33,41 @@ const UPLOAD_STEPS: { id: EditorImageUploadStep; label: string }[] = [
   { id: 'updateField', label: 'Uppdaterar Bild-URL' },
 ];
 
-function initialUploadStepStatus(): Record<EditorImageUploadStep, UploadStepStatus> {
-  return Object.fromEntries(UPLOAD_STEPS.map((step) => [step.id, 'pending'])) as Record<EditorImageUploadStep, UploadStepStatus>;
+const LOCAL_STEPS: ImageActionStep[] = [
+  { id: 'validate', label: 'Kontrollerar filen' },
+  { id: 'upload', label: 'Skickar bilden till servern' },
+  { id: 'resize', label: 'Skalar ner bilden' },
+  { id: 'convert', label: 'Konverterar till WebP' },
+  { id: 'downloadFile', label: 'Sparar filen som smaller' },
+];
+
+function initialUploadStepStatus(steps: ImageActionStep[]): Record<EditorImageUploadStep, UploadStepStatus> {
+  return Object.fromEntries(steps.map((step) => [step.id, 'pending'])) as Record<EditorImageUploadStep, UploadStepStatus>;
 }
 
 export function EditorMetadataPanel({ categoryOptions, formRecipe, titleComposer, updateRecipe }: Props) {
   const recipeKind = inferRecipeKind(formRecipe);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const uploadFileInputRef = useRef<HTMLInputElement | null>(null);
+  const localFileInputRef = useRef<HTMLInputElement | null>(null);
+  const activeStepsRef = useRef<ImageActionStep[]>(UPLOAD_STEPS);
   const [uploadStatus, setUploadStatus] = useState<{ tone: 'dimmed' | 'green' | 'red'; message: string } | null>(null);
-  const [uploadStepStatus, setUploadStepStatus] = useState<Record<EditorImageUploadStep, UploadStepStatus>>(initialUploadStepStatus);
-  const [uploading, setUploading] = useState(false);
+  const [activeSteps, setActiveSteps] = useState<ImageActionStep[]>(UPLOAD_STEPS);
+  const [uploadStepStatus, setUploadStepStatus] = useState<Record<EditorImageUploadStep, UploadStepStatus>>(initialUploadStepStatus(UPLOAD_STEPS));
+  const [processingImage, setProcessingImage] = useState<'local' | 'upload' | null>(null);
+
+  const startImageAction = (steps: ImageActionStep[], message: string) => {
+    activeStepsRef.current = steps;
+    setActiveSteps(steps);
+    setUploadStepStatus(initialUploadStepStatus(steps));
+    setUploadStatus({ tone: 'dimmed', message });
+  };
 
   const setActiveUploadStep = (stepId: EditorImageUploadStep) => {
-    const activeIndex = UPLOAD_STEPS.findIndex((step) => step.id === stepId);
+    const steps = activeStepsRef.current;
+    const activeIndex = steps.findIndex((step) => step.id === stepId);
     setUploadStepStatus((prev) => {
       const next = { ...prev };
-      UPLOAD_STEPS.forEach((step, index) => {
+      steps.forEach((step, index) => {
         if (prev[step.id] === 'error') return;
         if (index < activeIndex) {
           next[step.id] = 'complete';
@@ -55,6 +75,17 @@ export function EditorMetadataPanel({ categoryOptions, formRecipe, titleComposer
           next[step.id] = 'active';
         }
       });
+      return next;
+    });
+  };
+
+  const markCurrentStepAsError = () => {
+    setUploadStepStatus((prev) => {
+      const next = { ...prev };
+      const activeStep = activeStepsRef.current.find((step) => prev[step.id] === 'active');
+      if (activeStep) {
+        next[activeStep.id] = 'error';
+      }
       return next;
     });
   };
@@ -67,15 +98,14 @@ export function EditorMetadataPanel({ categoryOptions, formRecipe, titleComposer
       return;
     }
 
-    setUploading(true);
-    setUploadStepStatus(initialUploadStepStatus());
-    setUploadStatus({ tone: 'dimmed', message: 'Startar bilduppladdning…' });
+    setProcessingImage('upload');
+    startImageAction(UPLOAD_STEPS, 'Startar bilduppladdning…');
 
     try {
       const uploaded = await uploadRecipeImage(file, formRecipe.slug, {
         onProgress: ({ step }) => {
           setActiveUploadStep(step);
-          const current = UPLOAD_STEPS.find((entry) => entry.id === step);
+          const current = activeStepsRef.current.find((entry) => entry.id === step);
           setUploadStatus({
             tone: 'dimmed',
             message: current ? `${current.label}…` : 'Arbetar…',
@@ -85,26 +115,73 @@ export function EditorMetadataPanel({ categoryOptions, formRecipe, titleComposer
       setActiveUploadStep('updateField');
       updateRecipe((prev) => ({ ...prev, imageUrl: uploaded.url }));
       const kilobytes = Math.max(1, Math.round(uploaded.size / 1024));
-      setUploadStepStatus(Object.fromEntries(UPLOAD_STEPS.map((step) => [step.id, 'complete'])) as Record<EditorImageUploadStep, UploadStepStatus>);
+      setUploadStepStatus(Object.fromEntries(activeStepsRef.current.map((step) => [step.id, 'complete'])) as Record<EditorImageUploadStep, UploadStepStatus>);
       setUploadStatus({
         tone: 'green',
         message: `Uppladdad som WebP (${uploaded.width}x${uploaded.height}, ${kilobytes} kB).`,
       });
     } catch (error) {
-      setUploadStepStatus((prev) => {
-        const next = { ...prev };
-        const activeStep = UPLOAD_STEPS.find((step) => prev[step.id] === 'active');
-        if (activeStep) {
-          next[activeStep.id] = 'error';
-        }
-        return next;
-      });
+      markCurrentStepAsError();
       setUploadStatus({
         tone: 'red',
         message: (error as Error).message || 'Kunde inte ladda upp bilden.',
       });
     } finally {
-      setUploading(false);
+      setProcessingImage(null);
+    }
+  };
+
+  const handleLocalImageDownload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.currentTarget.files?.[0];
+    event.currentTarget.value = '';
+
+    if (!file) {
+      return;
+    }
+
+    setProcessingImage('local');
+    startImageAction(LOCAL_STEPS, 'Startar lokal WebP-version…');
+
+    try {
+      setActiveUploadStep('validate');
+      setUploadStatus({ tone: 'dimmed', message: 'Kontrollerar filen…' });
+      const image = await createSmallerRecipeImage(file, formRecipe.slug, {
+        onProgress: ({ step }) => {
+          setActiveUploadStep(step);
+          const current = activeStepsRef.current.find((entry) => entry.id === step);
+          setUploadStatus({
+            tone: 'dimmed',
+            message: current ? `${current.label}…` : 'Arbetar…',
+          });
+        },
+      });
+
+      setActiveUploadStep('resize');
+      setActiveUploadStep('convert');
+      setActiveUploadStep('downloadFile');
+      const objectUrl = URL.createObjectURL(image.blob);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = image.filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
+
+      const kilobytes = Math.max(1, Math.round(image.size / 1024));
+      setUploadStepStatus(Object.fromEntries(activeStepsRef.current.map((step) => [step.id, 'complete'])) as Record<EditorImageUploadStep, UploadStepStatus>);
+      setUploadStatus({
+        tone: 'green',
+        message: `Sparad som ${image.filename} (${image.width}x${image.height}, ${kilobytes} kB).`,
+      });
+    } catch (error) {
+      markCurrentStepAsError();
+      setUploadStatus({
+        tone: 'red',
+        message: (error as Error).message || 'Kunde inte skapa en mindre WebP.',
+      });
+    } finally {
+      setProcessingImage(null);
     }
   };
 
@@ -134,20 +211,35 @@ export function EditorMetadataPanel({ categoryOptions, formRecipe, titleComposer
               radius="md"
             />
             <input
-              ref={fileInputRef}
+              ref={uploadFileInputRef}
               type="file"
               accept="image/*"
               hidden
               onChange={handleImageUpload}
             />
+            <input
+              ref={localFileInputRef}
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={handleLocalImageDownload}
+            />
             <Group gap="sm" align="center" wrap="wrap">
               <button
                 type="button"
                 className="editor-image-upload-button"
-                disabled={uploading}
-                onClick={() => fileInputRef.current?.click()}
+                disabled={Boolean(processingImage)}
+                onClick={() => uploadFileInputRef.current?.click()}
               >
-                {uploading ? 'Laddar upp…' : 'Ladda upp bild'}
+                {processingImage === 'upload' ? 'Laddar upp…' : 'Ladda upp bild'}
+              </button>
+              <button
+                type="button"
+                className="editor-image-upload-button editor-image-upload-button--secondary"
+                disabled={Boolean(processingImage)}
+                onClick={() => localFileInputRef.current?.click()}
+              >
+                {processingImage === 'local' ? 'Skapar…' : 'Skapa liten WebP'}
               </button>
               {uploadStatus ? (
                 <Text size="sm" c={uploadStatus.tone}>
@@ -159,9 +251,9 @@ export function EditorMetadataPanel({ categoryOptions, formRecipe, titleComposer
                 </Text>
               )}
             </Group>
-            {(uploading || uploadStatus?.tone === 'green' || uploadStatus?.tone === 'red') && (
+            {(processingImage || uploadStatus?.tone === 'green' || uploadStatus?.tone === 'red') && (
               <ol className="editor-image-upload-steps" aria-label="Bilduppladdningens steg">
-                {UPLOAD_STEPS.map((step, index) => {
+                {activeSteps.map((step, index) => {
                   const status = uploadStepStatus[step.id];
                   return (
                     <li key={step.id} className={`editor-image-upload-step editor-image-upload-step--${status}`}>
@@ -178,7 +270,7 @@ export function EditorMetadataPanel({ categoryOptions, formRecipe, titleComposer
                       </span>
                       <span className="editor-image-upload-step__copy">
                         <span className="editor-image-upload-step__label">
-                          {index + 1}/{UPLOAD_STEPS.length} {step.label}
+                          {index + 1}/{activeSteps.length} {step.label}
                         </span>
                       </span>
                     </li>
