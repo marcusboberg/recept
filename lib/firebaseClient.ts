@@ -3,10 +3,12 @@
 import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
 import { getAuth, type Auth } from 'firebase/auth';
 import { getFirestore, type Firestore } from 'firebase/firestore';
+import { getStorage, type FirebaseStorage } from 'firebase/storage';
 
 let app: FirebaseApp | null = null;
 let authInstance: Auth | null = null;
 let firestoreInstance: Firestore | null = null;
+let storageInstance: FirebaseStorage | null = null;
 
 const config = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -38,4 +40,10 @@ export function getFirestoreClient(): Firestore {
   if (firestoreInstance) return firestoreInstance;
   firestoreInstance = getFirestore(ensureApp());
   return firestoreInstance;
+}
+
+export function getFirebaseStorage(): FirebaseStorage {
+  if (storageInstance) return storageInstance;
+  storageInstance = getStorage(ensureApp());
+  return storageInstance;
 }
