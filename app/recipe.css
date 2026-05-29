@@ -662,6 +662,10 @@
   align-self: flex-start;
 }
 
+.recipe-quick-edit__add--secondary {
+  color: #facc15;
+}
+
 .recipe-quick-edit__actions {
   position: sticky;
   bottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem);

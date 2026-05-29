@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef } from 'react';
 import type { IngredientGroup } from '@/lib/recipePresentation';
 import type { Recipe } from '@/schema/recipeSchema';
 
@@ -26,10 +27,41 @@ export function RecipeQuickEditPanel({
   updateDraftIngredientGroups,
   updateDraftRecipe,
 }: Props) {
+  const pendingGroupTitleFocus = useRef<number | null>(null);
+  const groupTitleRefs = useRef<Record<number, HTMLInputElement | null>>({});
   const groups = draftRecipe.ingredientGroups && draftRecipe.ingredientGroups.length > 0
     ? draftRecipe.ingredientGroups
     : [{ title: 'Ingredienser', items: draftRecipe.ingredients ?? [] }];
   const showGroupTitles = groups.length > 1 || groups.some((group) => Boolean(group.title?.trim() && group.title.trim() !== 'Ingredienser'));
+
+  const focusPendingGroupTitle = () => {
+    const groupIndex = pendingGroupTitleFocus.current;
+    if (groupIndex === null) {
+      return;
+    }
+
+    const target = groupTitleRefs.current[groupIndex];
+    if (!target) {
+      return;
+    }
+
+    target.focus();
+    target.select();
+    pendingGroupTitleFocus.current = null;
+  };
+
+  const addIngredientGroupAfter = (groupIndex: number) => {
+    updateDraftIngredientGroups((prev) => {
+      const next = [...prev];
+      next.splice(groupIndex + 1, 0, {
+        title: '',
+        items: [{ label: '', amount: '', kind: 'ingredient' }],
+      });
+      return next;
+    });
+    pendingGroupTitleFocus.current = groupIndex + 1;
+    window.setTimeout(focusPendingGroupTitle, 0);
+  };
 
   return (
     <div className="recipe-quick-edit">
@@ -90,9 +122,12 @@ export function RecipeQuickEditPanel({
       {activeView === 'ingredients' ? (
         <div className="recipe-quick-edit__section">
           {groups.map((group, groupIndex) => (
-            <div key={`${groupIndex}-${group.title ?? 'group'}`} className="recipe-quick-edit__group">
+            <div key={groupIndex} className="recipe-quick-edit__group">
               {showGroupTitles ? (
                 <input
+                  ref={(element) => {
+                    groupTitleRefs.current[groupIndex] = element;
+                  }}
                   className="recipe-quick-edit__group-title"
                   value={group.title ?? ''}
                   onChange={(event) =>
@@ -100,7 +135,7 @@ export function RecipeQuickEditPanel({
                       prev.map((entry, idx) => (idx === groupIndex ? { ...entry, title: event.target.value } : entry)),
                     )
                   }
-                  placeholder="Rubrik"
+                  placeholder="Mellanrubrik"
                 />
               ) : null}
               <div className="recipe-quick-edit__rows">
@@ -186,6 +221,13 @@ export function RecipeQuickEditPanel({
                 }
               >
                 + Lägg till ingrediens
+              </button>
+              <button
+                type="button"
+                className="recipe-quick-edit__add recipe-quick-edit__add--secondary"
+                onClick={() => addIngredientGroupAfter(groupIndex)}
+              >
+                + Lägg till mellanrubrik
               </button>
             </div>
           ))}
