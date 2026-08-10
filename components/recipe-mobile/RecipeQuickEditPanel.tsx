@@ -391,10 +391,25 @@ export function RecipeQuickEditPanel({
           </div>
           <DragOverlay dropAnimation={{ duration: 160, easing: 'ease-out' }}>
             {draggedIngredient ? (
-              <div className="recipe-quick-edit__drag-overlay">
-                <i className="fa-solid fa-grip-vertical" aria-hidden="true" />
-                <span>{draggedIngredient.label || 'Ny ingrediens'}</span>
-                {draggedIngredient.amount ? <strong>{draggedIngredient.amount}</strong> : null}
+              <div className="recipe-quick-edit__row recipe-quick-edit__row--overlay" aria-hidden="true">
+                <span className="recipe-quick-edit__drag-handle">
+                  <i className="fa-solid fa-grip-vertical" />
+                </span>
+                <input
+                  className="recipe-quick-edit__input recipe-quick-edit__input--label"
+                  value={draggedIngredient.label}
+                  readOnly
+                  tabIndex={-1}
+                />
+                <input
+                  className="recipe-quick-edit__input recipe-quick-edit__input--amount"
+                  value={draggedIngredient.amount ?? ''}
+                  readOnly
+                  tabIndex={-1}
+                />
+                <span className="recipe-quick-edit__icon">
+                  <i className="fa-solid fa-trash-can" />
+                </span>
               </div>
             ) : null}
           </DragOverlay>
