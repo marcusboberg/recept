@@ -105,6 +105,23 @@ export function applyEditableRecipeTitle(recipe: Recipe, title: string): Recipe 
   };
 }
 
+export function applyEditableTitleSegment(recipe: Recipe, segmentIndex: number, text: string): Recipe {
+  const titleSegments = getEditableTitleSegments(recipe);
+  const segment = titleSegments[segmentIndex];
+
+  if (!segment) {
+    return recipe;
+  }
+
+  return {
+    ...recipe,
+    ...(segment.size === 'big' ? { title: text } : {}),
+    titleSegments: titleSegments.map((entry, index) =>
+      index === segmentIndex ? { ...entry, text } : entry,
+    ),
+  };
+}
+
 interface IngredientPosition {
   groupIndex: number;
   itemIndex: number;

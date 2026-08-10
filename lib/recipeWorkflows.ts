@@ -98,7 +98,7 @@ export function buildEditorSavePayload({
     draftPayload.slugHistory = Array.from(nextHistory);
   }
 
-  const payload = recipeSchema.parse(stripUndefinedDeep(draftPayload));
+  const payload = stripUndefinedDeep(recipeSchema.parse(stripUndefinedDeep(draftPayload)));
   const isCreateLike = !initialSlug || initialSlug === NEW_RECIPE_SLUG;
   const shouldCheckCollision = isCreateLike || slugChanged;
 
@@ -120,15 +120,21 @@ export function buildQuickEditPayload({
   liveRecipe,
   now = new Date().toISOString(),
 }: BuildQuickEditPayloadOptions) {
-  return recipeSchema.parse(
-    stripUndefinedDeep({
-      ...draftRecipe,
-      slug: liveRecipe.slug,
-      slugHistory: liveRecipe.slugHistory ?? draftRecipe.slugHistory ?? [],
-      titleSegments: getEditableTitleSegments(draftRecipe),
-      createdAt: draftRecipe.createdAt ?? liveRecipe.createdAt ?? now,
-      updatedAt: now,
-      categories: deriveCategoriesArray(draftRecipe),
-    }),
+  const editableTitleSegments = getEditableTitleSegments(draftRecipe).filter(
+    (segment) => segment.size === 'big' || segment.text.trim().length > 0,
+  );
+
+  return stripUndefinedDeep(
+    recipeSchema.parse(
+      stripUndefinedDeep({
+        ...draftRecipe,
+        slug: liveRecipe.slug,
+        slugHistory: liveRecipe.slugHistory ?? draftRecipe.slugHistory ?? [],
+        titleSegments: editableTitleSegments,
+        createdAt: draftRecipe.createdAt ?? liveRecipe.createdAt ?? now,
+        updatedAt: now,
+        categories: deriveCategoriesArray(draftRecipe),
+      }),
+    ),
   );
 }

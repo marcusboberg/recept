@@ -5,6 +5,7 @@ import { recipeSchema } from '../schema/recipeSchema.ts';
 import {
   applyEditableIngredientGroups,
   applyEditableRecipeTitle,
+  applyEditableTitleSegment,
   getEditableTitleSegments,
   getRecipeHeroImage,
   getRecipeStepLabel,
@@ -125,6 +126,26 @@ const cases: Array<[string, () => void]> = [
       assert.deepEqual(next.titleSegments, [
         { text: 'Snabb', size: 'small' },
         { text: 'Risotto', size: 'big' },
+      ]);
+    },
+  ],
+  [
+    'editable title segments update small text without changing the primary recipe title',
+    () => {
+      const recipe = createRecipe({
+        title: 'Pasta',
+        titleSegments: [
+          { text: 'Snabb', size: 'small' },
+          { text: 'Pasta', size: 'big' },
+        ],
+      });
+
+      const next = applyEditableTitleSegment(recipe, 0, 'Krämig');
+
+      assert.equal(next.title, 'Pasta');
+      assert.deepEqual(next.titleSegments, [
+        { text: 'Krämig', size: 'small' },
+        { text: 'Pasta', size: 'big' },
       ]);
     },
   ],

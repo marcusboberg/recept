@@ -148,6 +148,36 @@ const cases: Array<[string, () => void]> = [
       ]);
       assert.deepEqual(payload.ingredients, [{ label: 'Gin', amount: '2 cl', kind: 'ingredient' }]);
       assert.deepEqual(payload.steps, [{ body: 'Skaka med is.' }]);
+      assert.equal(
+        'ingredientGroups' in
+          buildQuickEditPayload({
+            draftRecipe: createRecipe({ ingredientGroups: undefined }),
+            liveRecipe,
+            now: '2026-04-01T20:00:00.000Z',
+          }),
+        false,
+      );
+    },
+  ],
+  [
+    'quick edit payload removes an emptied small title segment',
+    () => {
+      const liveRecipe = createRecipe({ slug: 'live-slug' });
+      const draftRecipe = {
+        ...createRecipe({ title: 'Pasta' }),
+        titleSegments: [
+          { text: '', size: 'small' as const },
+          { text: 'Pasta', size: 'big' as const },
+        ],
+      };
+
+      const payload = buildQuickEditPayload({
+        draftRecipe,
+        liveRecipe,
+        now: '2026-04-01T20:00:00.000Z',
+      });
+
+      assert.deepEqual(payload.titleSegments, [{ text: 'Pasta', size: 'big' }]);
     },
   ],
   [

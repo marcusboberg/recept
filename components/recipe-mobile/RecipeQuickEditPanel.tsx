@@ -17,7 +17,8 @@ import {
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import {
-  applyEditableRecipeTitle,
+  applyEditableTitleSegment,
+  getEditableTitleSegments,
   moveIngredientBetweenGroups,
   type IngredientGroup,
 } from '@/lib/recipePresentation';
@@ -144,6 +145,8 @@ export function RecipeQuickEditPanel({
     ? draftRecipe.ingredientGroups
     : [{ title: 'Ingredienser', items: draftRecipe.ingredients ?? [] }];
   const showGroupTitles = groups.length > 1 || groups.some((group) => Boolean(group.title?.trim() && group.title.trim() !== 'Ingredienser'));
+  const titleSegments = getEditableTitleSegments(draftRecipe);
+  const primaryTitleIndex = titleSegments.findIndex((segment) => segment.size === 'big');
 
   const focusPendingGroupTitle = () => {
     const groupIndex = pendingGroupTitleFocus.current;
@@ -210,17 +213,27 @@ export function RecipeQuickEditPanel({
   return (
     <div className="recipe-quick-edit">
       <div className="recipe-quick-edit__meta">
-        <label className="recipe-quick-edit__field">
-          <span>Receptnamn</span>
-          <input
-            className="recipe-quick-edit__input"
-            value={draftRecipe.title}
-            onChange={(event) =>
-              updateDraftRecipe((prev) => applyEditableRecipeTitle(prev, event.target.value))
-            }
-            placeholder="Receptnamn"
-          />
-        </label>
+        {titleSegments.map((segment, segmentIndex) => {
+          const fieldLabel = segment.size === 'big'
+            ? 'Stor rubrik'
+            : segmentIndex < primaryTitleIndex
+              ? 'Liten rubrik ovanför'
+              : 'Liten rubrik under';
+
+          return (
+            <label className="recipe-quick-edit__field" key={`${segment.size}-${segmentIndex}`}>
+              <span>{fieldLabel}</span>
+              <input
+                className="recipe-quick-edit__input"
+                value={segment.text}
+                onChange={(event) =>
+                  updateDraftRecipe((prev) => applyEditableTitleSegment(prev, segmentIndex, event.target.value))
+                }
+                placeholder={fieldLabel}
+              />
+            </label>
+          );
+        })}
         <label className="recipe-quick-edit__field">
           <span>Bild</span>
           <input
