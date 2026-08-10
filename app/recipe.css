@@ -575,7 +575,7 @@
 
 .recipe-quick-edit__row {
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr) minmax(72px, 96px) 42px;
+  grid-template-columns: 52px minmax(0, 1fr) minmax(72px, 96px) 42px;
   gap: 0.5rem;
   align-items: center;
   position: relative;
@@ -658,8 +658,8 @@
 }
 
 .recipe-quick-edit__drag-handle {
-  width: 44px;
-  height: 44px;
+  width: 52px;
+  height: 52px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.08);
   color: rgba(248, 250, 252, 0.72);
@@ -668,6 +668,18 @@
   justify-content: center;
   touch-action: none;
   -webkit-touch-callout: none;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grab;
+  transition: color 100ms ease-out, background-color 100ms ease-out, transform 100ms ease-out;
+  will-change: transform;
+}
+
+.recipe-quick-edit__drag-handle:active {
+  background: rgba(37, 99, 235, 0.3);
+  color: #dbeafe;
+  cursor: grabbing;
+  transform: scale(0.94);
 }
 
 .recipe-quick-edit__drag-handle:focus-visible {

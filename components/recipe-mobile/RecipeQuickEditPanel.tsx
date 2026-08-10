@@ -133,7 +133,7 @@ export function RecipeQuickEditPanel({
   const [draggedIngredient, setDraggedIngredient] = useState<Recipe['ingredients'][number] | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: { delay: 180, tolerance: 8 },
+      activationConstraint: { distance: 4 },
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
