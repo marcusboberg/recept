@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import {
   DndContext,
   DragOverlay,
@@ -389,30 +390,35 @@ export function RecipeQuickEditPanel({
               </DroppableIngredientGroup>
             ))}
           </div>
-          <DragOverlay dropAnimation={{ duration: 160, easing: 'ease-out' }}>
-            {draggedIngredient ? (
-              <div className="recipe-quick-edit__row recipe-quick-edit__row--overlay" aria-hidden="true">
-                <span className="recipe-quick-edit__drag-handle">
-                  <i className="fa-solid fa-grip-vertical" />
-                </span>
-                <input
-                  className="recipe-quick-edit__input recipe-quick-edit__input--label"
-                  value={draggedIngredient.label}
-                  readOnly
-                  tabIndex={-1}
-                />
-                <input
-                  className="recipe-quick-edit__input recipe-quick-edit__input--amount"
-                  value={draggedIngredient.amount ?? ''}
-                  readOnly
-                  tabIndex={-1}
-                />
-                <span className="recipe-quick-edit__icon">
-                  <i className="fa-solid fa-trash-can" />
-                </span>
-              </div>
-            ) : null}
-          </DragOverlay>
+          {typeof document !== 'undefined'
+            ? createPortal(
+                <DragOverlay dropAnimation={{ duration: 160, easing: 'ease-out' }}>
+                  {draggedIngredient ? (
+                    <div className="recipe-quick-edit__row recipe-quick-edit__row--overlay" aria-hidden="true">
+                      <span className="recipe-quick-edit__drag-handle">
+                        <i className="fa-solid fa-grip-vertical" />
+                      </span>
+                      <input
+                        className="recipe-quick-edit__input recipe-quick-edit__input--label"
+                        value={draggedIngredient.label}
+                        readOnly
+                        tabIndex={-1}
+                      />
+                      <input
+                        className="recipe-quick-edit__input recipe-quick-edit__input--amount"
+                        value={draggedIngredient.amount ?? ''}
+                        readOnly
+                        tabIndex={-1}
+                      />
+                      <span className="recipe-quick-edit__icon">
+                        <i className="fa-solid fa-trash-can" />
+                      </span>
+                    </div>
+                  ) : null}
+                </DragOverlay>,
+                document.body,
+              )
+            : null}
         </DndContext>
       ) : (
         <div className="recipe-quick-edit__section recipe-quick-edit__section--steps">
