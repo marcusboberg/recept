@@ -552,11 +552,18 @@
   gap: 0.8rem;
   padding-top: 0.9rem;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+  transition: background-color 140ms ease, box-shadow 140ms ease;
 }
 
 .recipe-quick-edit__group:first-child {
   padding-top: 0;
   border-top: none;
+}
+
+.recipe-quick-edit__group.is-drop-target {
+  background: rgba(37, 99, 235, 0.12);
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.5);
 }
 
 .recipe-quick-edit__rows,
@@ -568,9 +575,16 @@
 
 .recipe-quick-edit__row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(82px, 108px) 42px;
-  gap: 0.65rem;
+  grid-template-columns: 44px minmax(0, 1fr) minmax(72px, 96px) 42px;
+  gap: 0.5rem;
   align-items: center;
+  position: relative;
+  z-index: 0;
+}
+
+.recipe-quick-edit__row.is-dragging {
+  opacity: 0.28;
+  z-index: 2;
 }
 
 .recipe-quick-edit__step {
@@ -633,6 +647,7 @@
 }
 
 .recipe-quick-edit__icon,
+.recipe-quick-edit__drag-handle,
 .recipe-quick-edit__add,
 .recipe-quick-edit__text-button,
 .recipe-quick-edit__cancel,
@@ -640,6 +655,46 @@
   border: none;
   font: inherit;
   cursor: pointer;
+}
+
+.recipe-quick-edit__drag-handle {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(248, 250, 252, 0.72);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+  -webkit-touch-callout: none;
+}
+
+.recipe-quick-edit__drag-handle:focus-visible {
+  outline: 3px solid rgba(96, 165, 250, 0.82);
+  outline-offset: 2px;
+}
+
+.recipe-quick-edit__drag-overlay {
+  width: min(calc(100vw - 2rem), 520px);
+  min-height: 52px;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.8rem 1rem;
+  border: 1px solid rgba(147, 197, 253, 0.72);
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.96);
+  color: #f8fafc;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.recipe-quick-edit__drag-overlay strong {
+  color: #bfdbfe;
+  font-size: 0.88rem;
 }
 
 .recipe-quick-edit__icon {

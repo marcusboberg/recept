@@ -84,6 +84,60 @@ export function getEditableTitleSegments(recipe: Recipe): TitleSegment[] {
   return segments;
 }
 
+export function applyEditableRecipeTitle(recipe: Recipe, title: string): Recipe {
+  const titleSegments = getEditableTitleSegments(recipe);
+  const primaryTitleIndex = titleSegments.findIndex((segment) => segment.size === 'big');
+
+  if (primaryTitleIndex === -1) {
+    return {
+      ...recipe,
+      title,
+      titleSegments: [{ text: title, size: 'big' }],
+    };
+  }
+
+  return {
+    ...recipe,
+    title,
+    titleSegments: titleSegments.map((segment, index) =>
+      index === primaryTitleIndex ? { ...segment, text: title } : segment,
+    ),
+  };
+}
+
+interface IngredientPosition {
+  groupIndex: number;
+  itemIndex: number;
+}
+
+export function moveIngredientBetweenGroups(
+  groups: IngredientGroup[],
+  source: IngredientPosition,
+  target: IngredientPosition,
+): IngredientGroup[] {
+  const sourceGroup = groups[source.groupIndex];
+  const targetGroup = groups[target.groupIndex];
+  const ingredient = sourceGroup?.items[source.itemIndex];
+
+  if (!sourceGroup || !targetGroup || !ingredient) {
+    return groups;
+  }
+
+  if (source.groupIndex === target.groupIndex && source.itemIndex === target.itemIndex) {
+    return groups;
+  }
+
+  const nextGroups = groups.map((group) => ({
+    ...group,
+    items: group.items.map((item) => ({ ...item })),
+  }));
+  const [movedIngredient] = nextGroups[source.groupIndex].items.splice(source.itemIndex, 1);
+  const insertionIndex = Math.max(0, Math.min(target.itemIndex, nextGroups[target.groupIndex].items.length));
+  nextGroups[target.groupIndex].items.splice(insertionIndex, 0, movedIngredient);
+
+  return nextGroups;
+}
+
 export function getRecipeHeroImage(recipe: Recipe): string {
   return recipe.imageUrl?.trim() ? recipe.imageUrl : DEFAULT_RECIPE_IMAGE;
 }

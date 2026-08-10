@@ -4,10 +4,12 @@ import { parsePublicRecipeData, resolvePublicRecipeFromCollection } from '../lib
 import { recipeSchema } from '../schema/recipeSchema.ts';
 import {
   applyEditableIngredientGroups,
+  applyEditableRecipeTitle,
   getEditableTitleSegments,
   getRecipeHeroImage,
   getRecipeStepLabel,
   getTitleSegments,
+  moveIngredientBetweenGroups,
   toIngredientGroups,
 } from '../lib/recipePresentation.ts';
 
@@ -104,6 +106,59 @@ const cases: Array<[string, () => void]> = [
         { text: 'Crispy', size: 'big' },
         { text: 'Deluxe', size: 'small' },
       ]);
+    },
+  ],
+  [
+    'editable recipe title updates the visible primary title segment',
+    () => {
+      const recipe = createRecipe({
+        title: 'Pasta',
+        titleSegments: [
+          { text: 'Snabb', size: 'small' },
+          { text: 'Pasta', size: 'big' },
+        ],
+      });
+
+      const next = applyEditableRecipeTitle(recipe, 'Risotto');
+
+      assert.equal(next.title, 'Risotto');
+      assert.deepEqual(next.titleSegments, [
+        { text: 'Snabb', size: 'small' },
+        { text: 'Risotto', size: 'big' },
+      ]);
+    },
+  ],
+  [
+    'ingredients can move within and between groups',
+    () => {
+      const groups = [
+        {
+          title: 'Deg',
+          items: [
+            { label: 'Mjöl', amount: '2 dl', kind: 'ingredient' as const },
+            { label: 'Smör', amount: '50 g', kind: 'ingredient' as const },
+          ],
+        },
+        {
+          title: 'Fyllning',
+          items: [{ label: 'Äpple', amount: '3 st', kind: 'ingredient' as const }],
+        },
+      ];
+
+      const betweenGroups = moveIngredientBetweenGroups(
+        groups,
+        { groupIndex: 0, itemIndex: 1 },
+        { groupIndex: 1, itemIndex: 1 },
+      );
+      assert.deepEqual(betweenGroups[0].items.map((item) => item.label), ['Mjöl']);
+      assert.deepEqual(betweenGroups[1].items.map((item) => item.label), ['Äpple', 'Smör']);
+
+      const withinGroup = moveIngredientBetweenGroups(
+        groups,
+        { groupIndex: 0, itemIndex: 0 },
+        { groupIndex: 0, itemIndex: 1 },
+      );
+      assert.deepEqual(withinGroup[0].items.map((item) => item.label), ['Smör', 'Mjöl']);
     },
   ],
   [
