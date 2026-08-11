@@ -11,6 +11,7 @@ import {
   getRecipeStepLabel,
   getTitleSegments,
   moveIngredientBetweenGroups,
+  removeIngredientGroupHeading,
   toIngredientGroups,
 } from '../lib/recipePresentation.ts';
 
@@ -180,6 +181,37 @@ const cases: Array<[string, () => void]> = [
         { groupIndex: 0, itemIndex: 1 },
       );
       assert.deepEqual(withinGroup[0].items.map((item) => item.label), ['Smör', 'Mjöl']);
+    },
+  ],
+  [
+    'removing an ingredient heading merges its ingredients without deleting them',
+    () => {
+      const groups = [
+        {
+          title: 'Deg',
+          items: [{ label: 'Mjöl', kind: 'ingredient' as const }],
+        },
+        {
+          title: 'Fyllning',
+          items: [{ label: 'Äpple', kind: 'ingredient' as const }],
+        },
+        {
+          title: 'Topping',
+          items: [{ label: 'Socker', kind: 'ingredient' as const }],
+        },
+      ];
+
+      const withoutMiddleHeading = removeIngredientGroupHeading(groups, 1);
+      assert.deepEqual(withoutMiddleHeading.map((group) => group.title), ['Deg', 'Topping']);
+      assert.deepEqual(withoutMiddleHeading[0].items.map((item) => item.label), ['Mjöl', 'Äpple']);
+
+      const withoutFirstHeading = removeIngredientGroupHeading(groups, 0);
+      assert.deepEqual(withoutFirstHeading.map((group) => group.title), ['Fyllning', 'Topping']);
+      assert.deepEqual(withoutFirstHeading[0].items.map((item) => item.label), ['Mjöl', 'Äpple']);
+
+      const withoutOnlyHeading = removeIngredientGroupHeading([groups[0]], 0);
+      assert.equal(withoutOnlyHeading[0].title, '');
+      assert.deepEqual(withoutOnlyHeading[0].items.map((item) => item.label), ['Mjöl']);
     },
   ],
   [

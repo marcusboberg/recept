@@ -155,6 +155,39 @@ export function moveIngredientBetweenGroups(
   return nextGroups;
 }
 
+export function removeIngredientGroupHeading(groups: IngredientGroup[], groupIndex: number): IngredientGroup[] {
+  const group = groups[groupIndex];
+
+  if (!group) {
+    return groups;
+  }
+
+  if (groups.length === 1) {
+    return [{ ...group, title: '' }];
+  }
+
+  const nextGroups = groups.map((entry) => ({
+    ...entry,
+    items: entry.items.map((item) => ({ ...item })),
+  }));
+
+  if (groupIndex === 0) {
+    nextGroups[1] = {
+      ...nextGroups[1],
+      items: [...nextGroups[0].items, ...nextGroups[1].items],
+    };
+    nextGroups.splice(0, 1);
+    return nextGroups;
+  }
+
+  nextGroups[groupIndex - 1] = {
+    ...nextGroups[groupIndex - 1],
+    items: [...nextGroups[groupIndex - 1].items, ...nextGroups[groupIndex].items],
+  };
+  nextGroups.splice(groupIndex, 1);
+  return nextGroups;
+}
+
 export function getRecipeHeroImage(recipe: Recipe): string {
   return recipe.imageUrl?.trim() ? recipe.imageUrl : DEFAULT_RECIPE_IMAGE;
 }

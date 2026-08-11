@@ -20,6 +20,7 @@ import {
   applyEditableTitleSegment,
   getEditableTitleSegments,
   moveIngredientBetweenGroups,
+  removeIngredientGroupHeading,
   type IngredientGroup,
 } from '@/lib/recipePresentation';
 import type { Recipe } from '@/schema/recipeSchema';
@@ -285,19 +286,31 @@ export function RecipeQuickEditPanel({
             {groups.map((group, groupIndex) => (
               <DroppableIngredientGroup key={groupIndex} groupIndex={groupIndex}>
                 {showGroupTitles ? (
-                  <input
-                    ref={(element) => {
-                      groupTitleRefs.current[groupIndex] = element;
-                    }}
-                    className="recipe-quick-edit__group-title"
-                    value={group.title ?? ''}
-                    onChange={(event) =>
-                      updateDraftIngredientGroups((prev) =>
-                        prev.map((entry, idx) => (idx === groupIndex ? { ...entry, title: event.target.value } : entry)),
-                      )
-                    }
-                    placeholder="Mellanrubrik"
-                  />
+                  <div className="recipe-quick-edit__group-header">
+                    <input
+                      ref={(element) => {
+                        groupTitleRefs.current[groupIndex] = element;
+                      }}
+                      className="recipe-quick-edit__group-title"
+                      value={group.title ?? ''}
+                      onChange={(event) =>
+                        updateDraftIngredientGroups((prev) =>
+                          prev.map((entry, idx) => (idx === groupIndex ? { ...entry, title: event.target.value } : entry)),
+                        )
+                      }
+                      placeholder="Mellanrubrik"
+                    />
+                    <button
+                      type="button"
+                      className="recipe-quick-edit__icon recipe-quick-edit__group-delete"
+                      onClick={() =>
+                        updateDraftIngredientGroups((prev) => removeIngredientGroupHeading(prev, groupIndex))
+                      }
+                      aria-label={`Ta bort mellanrubriken ${group.title || ''}`.trim()}
+                    >
+                      <i className="fa-solid fa-trash-can" aria-hidden="true" />
+                    </button>
+                  </div>
                 ) : null}
                 <SortableContext
                   items={group.items.map((_, itemIndex) => getIngredientDragId(groupIndex, itemIndex))}

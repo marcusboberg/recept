@@ -566,6 +566,18 @@
   box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.5);
 }
 
+.recipe-quick-edit__group-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.recipe-quick-edit__icon.recipe-quick-edit__group-delete {
+  width: 44px;
+  height: 44px;
+}
+
 .recipe-quick-edit__rows,
 .recipe-quick-edit__section--steps {
   display: flex;
